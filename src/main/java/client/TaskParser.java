@@ -94,7 +94,7 @@ public class TaskParser {
     private void makeTasksInPreprocessMode() {
         Path source = sources.get(0);
         String fileName = source.getFileName().toString();
-        String suffix = fileName.substring(fileName.lastIndexOf('.') + 1);
+        String suffix = fileName.substring(fileName.lastIndexOf('.'));
         if (C_SUFFIX.equals(suffix)) {
             task = new PreprocessTask(options, source, target);
         } else {
