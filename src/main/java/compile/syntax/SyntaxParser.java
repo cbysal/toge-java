@@ -447,9 +447,9 @@ public class SyntaxParser {
         return new AssignStmtAST(lVal, rVal);
     }
 
-    private BlankStmt parseBlankStmt() {
+    private BlankStmtAST parseBlankStmt() {
         tokens.expectAndFetch(Token.Type.SEMICOLON);
-        return new BlankStmt();
+        return new BlankStmtAST();
     }
 
     private BreakStmtAST parseBreakStmt() {
