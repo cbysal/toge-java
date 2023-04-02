@@ -577,7 +577,7 @@ public class SyntaxParser {
         return new WhileStmtAST(cond, body);
     }
 
-    private void allocInitVal(List<Integer> dimensions, Map<Integer, ExpAST> exps, int base, ExpAST src) {
+    private static void allocInitVal(List<Integer> dimensions, Map<Integer, ExpAST> exps, int base, ExpAST src) {
         if (dimensions.isEmpty()) {
             while (src instanceof InitValAST initVal) {
                 src = initVal.isEmpty() ? null : initVal.get(0);
