@@ -32,6 +32,7 @@ gen
 runtime
 
 # Tests
+src/test
 testcase
 *.c
 *.i
