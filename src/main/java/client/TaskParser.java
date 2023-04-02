@@ -55,6 +55,10 @@ public class TaskParser {
                 case '-' -> {
                     int splitIndex = args[i].indexOf('=');
                     if (splitIndex < 0) {
+                        if (i + 1 < args.length && args[i + 1].charAt(0) != '-') {
+                            options.put(args[i].substring(2), args[i + 1]);
+                            continue;
+                        }
                         options.put(args[i].substring(2), null);
                     } else {
                         String key = args[i].substring(2, splitIndex);
