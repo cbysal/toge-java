@@ -120,7 +120,7 @@ public class LexicalParser {
         throw new RuntimeException("Can not continue matching at position " + head);
     }
 
-    private boolean isKeywordOrIdChar(char c) {
+    private static boolean isKeywordOrIdChar(char c) {
         return Character.isLetterOrDigit(c) || c == '_';
     }
 
@@ -140,7 +140,7 @@ public class LexicalParser {
         return Token.valueOf(matched);
     }
 
-    private boolean isFloatChar(char c) {
+    private static boolean isFloatChar(char c) {
         return Character.isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') || c == 'P' || c == 'p' || c == 'X' || c == 'x' || c == '.' || c == '+' || c == '-';
     }
 
@@ -157,7 +157,7 @@ public class LexicalParser {
         return Token.valueOf(Float.parseFloat(matched));
     }
 
-    private boolean isHexIntChar(char c) {
+    private static boolean isHexIntChar(char c) {
         return Character.isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') || c == 'X' || c == 'x';
     }
 
@@ -174,7 +174,7 @@ public class LexicalParser {
         return Token.valueOf(Integer.parseInt(matched, 2, matched.length(), 16));
     }
 
-    private boolean isDecIntChar(char c) {
+    private static boolean isDecIntChar(char c) {
         return Character.isDigit(c);
     }
 
@@ -191,7 +191,7 @@ public class LexicalParser {
         return Token.valueOf(Integer.parseInt(matched));
     }
 
-    private boolean isOctIntChar(char c) {
+    private static boolean isOctIntChar(char c) {
         return c >= '0' && c < '8';
     }
 
