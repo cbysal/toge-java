@@ -4,7 +4,6 @@ import compile.lexical.token.Token;
 import compile.lexical.token.TokenList;
 
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class LexicalParser {
@@ -121,56 +120,91 @@ public class LexicalParser {
         throw new RuntimeException("Can not continue matching at position " + head);
     }
 
+    private boolean isKeywordOrIdChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+
     private Token tryMatchKeywordOrId() {
-        Matcher matcher = ID_PATTERN.matcher(content).region(head, content.length());
-        if (!matcher.find() || matcher.start() != head) {
+        int tail = head;
+        while (tail < content.length() && isKeywordOrIdChar(content.charAt(tail))) {
+            tail++;
+        }
+        String matched = content.substring(head, tail);
+        if (!ID_PATTERN.matcher(matched).matches()) {
             return null;
         }
-        head = matcher.end();
-        String matched = matcher.group();
+        head = tail;
         if (KEYWORDS.containsKey(matched)) {
             return Token.valueOf(KEYWORDS.get(matched));
         }
         return Token.valueOf(matched);
     }
 
+    private boolean isFloatChar(char c) {
+        return Character.isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') || c == 'P' || c == 'p' || c == 'X' || c == 'x' || c == '.' || c == '+' || c == '-';
+    }
+
     private Token tryMatchFloat() {
-        Matcher matcher = FLOAT_PATTERN.matcher(content).region(head, content.length());
-        if (!matcher.find() || matcher.start() != head) {
+        int tail = head;
+        while (tail < content.length() && isFloatChar(content.charAt(tail))) {
+            tail++;
+        }
+        String matched = content.substring(head, tail);
+        if (!FLOAT_PATTERN.matcher(matched).matches()) {
             return null;
         }
-        head = matcher.end();
-        String matched = matcher.group();
+        head = tail;
         return Token.valueOf(Float.parseFloat(matched));
     }
 
+    private boolean isHexIntChar(char c) {
+        return Character.isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') || c == 'X' || c == 'x';
+    }
+
     private Token tryMatchHexInt() {
-        Matcher matcher = HEX_INT_PATTERN.matcher(content).region(head, content.length());
-        if (!matcher.find() || matcher.start() != head) {
+        int tail = head;
+        while (tail < content.length() && isHexIntChar(content.charAt(tail))) {
+            tail++;
+        }
+        String matched = content.substring(head, tail);
+        if (!HEX_INT_PATTERN.matcher(matched).matches()) {
             return null;
         }
-        head = matcher.end();
-        String matched = matcher.group();
+        head = tail;
         return Token.valueOf(Integer.parseInt(matched, 2, matched.length(), 16));
     }
 
+    private boolean isDecIntChar(char c) {
+        return Character.isDigit(c);
+    }
+
     private Token tryMatchDecInt() {
-        Matcher matcher = DEC_INT_PATTERN.matcher(content).region(head, content.length());
-        if (!matcher.find() || matcher.start() != head) {
+        int tail = head;
+        while (tail < content.length() && isDecIntChar(content.charAt(tail))) {
+            tail++;
+        }
+        String matched = content.substring(head, tail);
+        if (!DEC_INT_PATTERN.matcher(matched).matches()) {
             return null;
         }
-        head = matcher.end();
-        String matched = matcher.group();
+        head = tail;
         return Token.valueOf(Integer.parseInt(matched));
     }
 
+    private boolean isOctIntChar(char c) {
+        return c >= '0' && c < '8';
+    }
+
     private Token tryMatchOctInt() {
-        Matcher matcher = OCT_INT_PATTERN.matcher(content).region(head, content.length());
-        if (!matcher.find() || matcher.start() != head) {
+        int tail = head;
+        while (tail < content.length() && isOctIntChar(content.charAt(tail))) {
+            tail++;
+        }
+        String matched = content.substring(head, tail);
+        if (!OCT_INT_PATTERN.matcher(matched).matches()) {
             return null;
         }
-        head = matcher.end();
-        String matched = matcher.group();
+        head = tail;
         // TODO here's a bug, but with this bug, program runs, fix it later
         // This branch matches decimal number 0, but it should not appear here.
         // With the following method call, a octal number string will also treat leading 0 as the digit in the octal
