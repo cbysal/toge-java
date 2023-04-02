@@ -171,6 +171,11 @@ public class LexicalParser {
         }
         head = matcher.end();
         String matched = matcher.group();
-        return Token.valueOf(Integer.parseInt(matched, 1, matched.length(), 8));
+        // TODO here's a bug, but with this bug, program runs, fix it later
+        // This branch matches decimal number 0, but it should not appear here.
+        // With the following method call, a octal number string will also treat leading 0 as the digit in the octal
+        // number. e.g. 012, that is 1 * 8 + 2 = 10, but with the following method call, it will be 0 * 64 + 1 * 8 + 2
+        // = 10. That is wrong in logic, but is right in result.
+        return Token.valueOf(Integer.parseInt(matched, 8));
     }
 }
