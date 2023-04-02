@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 
 public class ConstSymbol extends InitializedDataSymbol {
-
     ConstSymbol(boolean isFloat, String name, float value) {
         super(isFloat, name, value);
     }

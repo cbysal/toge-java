@@ -3,7 +3,6 @@ package compile.symbol;
 import java.util.List;
 
 public class ParamSymbol extends DataSymbol {
-
     ParamSymbol(boolean isFloat, String name) {
         super(isFloat, name);
     }

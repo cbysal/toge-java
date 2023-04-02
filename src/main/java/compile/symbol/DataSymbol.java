@@ -4,7 +4,7 @@ import java.util.List;
 
 public abstract class DataSymbol extends Symbol {
     private final int size;
-    protected final List<Integer> dimensions;
+    final List<Integer> dimensions;
 
     DataSymbol(boolean isFloat, String name) {
         this(isFloat, name, List.of());

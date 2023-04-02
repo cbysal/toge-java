@@ -1,8 +1,8 @@
 package compile.symbol;
 
 public abstract class Symbol {
-    protected final boolean isFloat;
-    protected final String name;
+    final boolean isFloat;
+    final String name;
 
     Symbol(boolean isFloat, String name) {
         this.isFloat = isFloat;

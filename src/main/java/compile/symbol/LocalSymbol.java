@@ -3,7 +3,6 @@ package compile.symbol;
 import java.util.List;
 
 public class LocalSymbol extends DataSymbol {
-
     LocalSymbol(boolean isFloat, String name) {
         super(isFloat, name);
     }

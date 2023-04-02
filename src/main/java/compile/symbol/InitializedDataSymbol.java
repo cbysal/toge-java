@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class InitializedDataSymbol extends DataSymbol {
-    protected final int value;
-    protected final Map<Integer, Integer> values;
+    private final int value;
+    private final Map<Integer, Integer> values;
 
     InitializedDataSymbol(boolean isFloat, String name, float value) {
         super(isFloat, name);
