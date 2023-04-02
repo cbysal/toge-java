@@ -1,6 +1,7 @@
 package client.task;
 
 import client.option.OptionPool;
+import compile.Compiler;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -24,23 +25,24 @@ public class CompileTask extends Task {
     @Override
     public void run() {
         super.run();
-        // TODO Third party compiler should be replaced.
-        if (!options.containsKey(OptionPool.CC)) {
-            throw new RuntimeException("Compile task need a third party compiler. Please specify a compiler with " +
-                    "option: --cc");
+        // TODO Remove third party compiler when Compiler is complete.
+        if (options.containsKey(OptionPool.CC)) {
+            String assembler = options.get(OptionPool.CC);
+            List<String> command = List.of(assembler, "-S", iFile.toString(), "-o", sFile.toString());
+            ProcessBuilder builder = new ProcessBuilder(command);
+            Process process;
+            try {
+                process = builder.start();
+                process.waitFor();
+            } catch (InterruptedException | IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (process.exitValue() != 0) {
+                throw new RuntimeException("Compiling failed with error code: " + process.exitValue());
+            }
+            return;
         }
-        String assembler = options.get(OptionPool.CC);
-        List<String> command = List.of(assembler, "-S", iFile.toString(), "-o", sFile.toString());
-        ProcessBuilder builder = new ProcessBuilder(command);
-        Process process;
-        try {
-            process = builder.start();
-            process.waitFor();
-        } catch (InterruptedException | IOException e) {
-            throw new RuntimeException(e);
-        }
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Compiling failed with error code: " + process.exitValue());
-        }
+        Compiler compiler = new Compiler(options, iFile, sFile);
+        compiler.compile();
     }
 }
