@@ -35,6 +35,10 @@ public class Token {
         return TOKEN_POOL.get(type);
     }
 
+    public Type getType() {
+        return type;
+    }
+
     @Override
     public String toString() {
         return type.toString();

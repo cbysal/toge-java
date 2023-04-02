@@ -3,6 +3,9 @@ package compile;
 import client.option.OptionPool;
 import compile.lexical.LexicalParser;
 import compile.lexical.token.TokenList;
+import compile.symbol.SymbolTable;
+import compile.syntax.SyntaxParser;
+import compile.syntax.ast.AST;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -37,6 +40,12 @@ public class Compiler {
         if (options.containsKey(OptionPool.PRINT_TOKENS)) {
             printTokens(tokens, options.get(OptionPool.PRINT_TOKENS));
         }
+        SymbolTable symbolTable = new SymbolTable();
+        SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
+        AST root = syntaxParser.getRootAST();
+        if (options.containsKey("print-ast")) {
+            printAST(root);
+        }
     }
 
     private static void printTokens(TokenList tokens, String target) {
@@ -52,4 +61,10 @@ public class Compiler {
             throw new RuntimeException(e);
         }
     }
+
+    private static void printAST(AST root) {
+        System.out.println("============ print-ast ============");
+        root.print(0);
+    }
+
 }
