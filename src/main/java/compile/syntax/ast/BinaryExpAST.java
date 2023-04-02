@@ -2,19 +2,9 @@ package compile.syntax.ast;
 
 import compile.symbol.Value;
 
-public class BinaryExpAST implements ExpAST {
+public record BinaryExpAST(compile.syntax.ast.BinaryExpAST.Type type, ExpAST left, ExpAST right) implements ExpAST {
     public enum Type {
         L_OR, L_AND, EQ, NE, GE, GT, LE, LT, ADD, SUB, DIV, MOD, MUL
-    }
-
-    private final Type type;
-    private final ExpAST left;
-    private final ExpAST right;
-
-    public BinaryExpAST(Type type, ExpAST left, ExpAST right) {
-        this.type = type;
-        this.left = left;
-        this.right = right;
     }
 
     @Override
@@ -173,18 +163,6 @@ public class BinaryExpAST implements ExpAST {
                 yield new Value(lVal.getInt() % rVal.getInt());
             }
         };
-    }
-
-    public Type getType() {
-        return type;
-    }
-
-    public ExpAST getLeft() {
-        return left;
-    }
-
-    public ExpAST getRight() {
-        return right;
     }
 
     @Override

@@ -2,17 +2,9 @@ package compile.syntax.ast;
 
 import compile.symbol.Value;
 
-public class UnaryExpAST implements ExpAST {
+public record UnaryExpAST(compile.syntax.ast.UnaryExpAST.Type type, ExpAST next) implements ExpAST {
     public enum Type {
         F2I, I2F, L_NOT, NEG
-    }
-
-    private final Type type;
-    private final ExpAST next;
-
-    public UnaryExpAST(Type type, ExpAST next) {
-        this.type = type;
-        this.next = next;
     }
 
     @Override
@@ -44,14 +36,6 @@ public class UnaryExpAST implements ExpAST {
                 yield new Value(-nVal.getInt());
             }
         };
-    }
-
-    public Type getType() {
-        return type;
-    }
-
-    public ExpAST getNext() {
-        return next;
     }
 
     @Override

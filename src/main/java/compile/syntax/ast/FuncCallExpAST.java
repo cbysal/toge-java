@@ -5,26 +5,10 @@ import compile.symbol.Value;
 
 import java.util.List;
 
-public class FuncCallExpAST implements ExpAST {
-    private final FuncSymbol func;
-    private final List<ExpAST> params;
-
-    public FuncCallExpAST(FuncSymbol func, List<ExpAST> params) {
-        this.func = func;
-        this.params = params;
-    }
-
+public record FuncCallExpAST(FuncSymbol func, List<ExpAST> params) implements ExpAST {
     @Override
     public Value calc() {
         throw new RuntimeException();
-    }
-
-    public FuncSymbol getFunc() {
-        return func;
-    }
-
-    public List<ExpAST> getParams() {
-        return params;
     }
 
     @Override

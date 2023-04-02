@@ -1,21 +1,6 @@
 package compile.syntax.ast;
 
-public class WhileStmtAST implements StmtAST {
-    private final ExpAST cond;
-    private final StmtAST body;
-
-    public WhileStmtAST(ExpAST cond, StmtAST body) {
-        this.cond = cond;
-        this.body = body;
-    }
-
-    public StmtAST getBody() {
-        return body;
-    }
-
-    public ExpAST getCond() {
-        return cond;
-    }
+public record WhileStmtAST(ExpAST cond, StmtAST body) implements StmtAST {
 
     @Override
     public void print(int depth) {

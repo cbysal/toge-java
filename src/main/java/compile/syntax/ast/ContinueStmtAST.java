@@ -1,6 +1,6 @@
 package compile.syntax.ast;
 
-public class ContinueStmtAST implements StmtAST {
+public record ContinueStmtAST() implements StmtAST {
     @Override
     public void print(int depth) {
         System.out.println("  ".repeat(depth) + "ContinueStmt");

@@ -1,33 +1,8 @@
 package compile.syntax.ast;
 
-public class IfStmtAST implements StmtAST {
-    private final ExpAST cond;
-    private final StmtAST stmt1, stmt2;
-
-    public IfStmtAST(ExpAST cond, StmtAST stmt1) {
-        this(cond, stmt1, null);
-    }
-
-    public IfStmtAST(ExpAST cond, StmtAST stmt1, StmtAST stmt2) {
-        this.cond = cond;
-        this.stmt1 = stmt1;
-        this.stmt2 = stmt2;
-    }
-
+public record IfStmtAST(ExpAST cond, StmtAST stmt1, StmtAST stmt2) implements StmtAST {
     public boolean hasElse() {
         return stmt2 != null;
-    }
-
-    public ExpAST getCond() {
-        return cond;
-    }
-
-    public StmtAST getStmt1() {
-        return stmt1;
-    }
-
-    public StmtAST getStmt2() {
-        return stmt2;
     }
 
     @Override

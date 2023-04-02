@@ -4,29 +4,9 @@ import compile.symbol.DataSymbol;
 
 import java.util.List;
 
-public class LValAST implements AST {
-    private final DataSymbol symbol;
-    private final List<ExpAST> dimensions;
-
-    public LValAST(DataSymbol symbol) {
-        this(symbol, List.of());
-    }
-
-    public LValAST(DataSymbol symbol, List<ExpAST> dimensions) {
-        this.symbol = symbol;
-        this.dimensions = dimensions;
-    }
-
-    public List<ExpAST> getDimensions() {
-        return dimensions;
-    }
-
-    public DataSymbol getSymbol() {
-        return symbol;
-    }
-
+public record LValAST(DataSymbol symbol, List<ExpAST> dimensions) implements AST {
     public boolean isSingle() {
-        return dimensions.isEmpty();
+        return dimensions == null;
     }
 
     @Override

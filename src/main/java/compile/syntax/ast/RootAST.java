@@ -1,11 +1,11 @@
 package compile.syntax.ast;
 
-import java.util.ArrayList;
+import java.util.List;
 
-public class RootAST extends ArrayList<CompUnitAST> implements AST {
+public record RootAST(List<CompUnitAST> compUnits) implements AST {
     @Override
     public void print(int depth) {
         System.out.println("Root");
-        forEach(compUnit -> compUnit.print(depth + 1));
+        compUnits.forEach(compUnit -> compUnit.print(depth + 1));
     }
 }
