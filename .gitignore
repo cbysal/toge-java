@@ -27,3 +27,13 @@ hs_err_pid*
 *.iml
 out
 gen
+
+# Runtime
+runtime
+
+# Tests
+testcase
+*.c
+*.i
+*.s
+*.token
