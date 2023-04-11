@@ -32,9 +32,14 @@ gen
 runtime
 
 # Tests
+test
 src/test
 testcase
 *.c
 *.i
 *.s
 *.token
+*.ll
+*.sy
+*.in
+*.out
