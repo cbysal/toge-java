@@ -4,7 +4,7 @@ import compile.symbol.Value;
 
 public record BinaryExpAST(compile.syntax.ast.BinaryExpAST.Type type, ExpAST left, ExpAST right) implements ExpAST {
     public enum Type {
-        L_OR, L_AND, EQ, NE, GE, GT, LE, LT, ADD, SUB, DIV, MOD, MUL
+        L_OR, L_AND, EQ, NE, GE, GT, LE, LT, ADD, SUB, MUL, DIV, MOD
     }
 
     @Override

@@ -3,9 +3,12 @@ package compile;
 import client.option.OptionPool;
 import compile.lexical.LexicalParser;
 import compile.lexical.token.TokenList;
+import compile.llvm.LLVMParser;
+import compile.llvm.ir.Module;
 import compile.symbol.SymbolTable;
 import compile.syntax.SyntaxParser;
 import compile.syntax.ast.AST;
+import compile.syntax.ast.RootAST;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -42,9 +45,14 @@ public class Compiler {
         }
         SymbolTable symbolTable = new SymbolTable();
         SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
-        AST root = syntaxParser.getRootAST();
-        if (options.containsKey("print-ast")) {
+        RootAST root = syntaxParser.getRootAST();
+        if (options.containsKey(OptionPool.PRINT_AST)) {
             printAST(root);
+        }
+        LLVMParser llvmParser = new LLVMParser(root);
+        Module module = llvmParser.getModule();
+        if (options.containsKey(OptionPool.PRINT_LLVM)) {
+            printLLVM(module, options.get(OptionPool.PRINT_LLVM));
         }
     }
 
@@ -67,4 +75,16 @@ public class Compiler {
         root.print(0);
     }
 
+    private void printLLVM(Module module, String target) {
+        if (target == null) {
+            System.out.println("============ print-llvm ============\n");
+            System.out.println(module);
+            return;
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(target))) {
+            writer.write(module.toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

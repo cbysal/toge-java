@@ -24,7 +24,7 @@ public abstract class DataSymbol extends Symbol {
         return dimensions.size();
     }
 
-    boolean isSingle() {
+    public boolean isSingle() {
         return dimensions.isEmpty();
     }
 

@@ -10,7 +10,7 @@ public record VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) implements E
     @Override
     public Value calc() {
         if (symbol instanceof InitializedDataSymbol symbol) {
-            if (dimensions == null) {
+            if (dimensions.isEmpty()) {
                 if (symbol.isFloat()) {
                     return new Value(symbol.getFloat());
                 }

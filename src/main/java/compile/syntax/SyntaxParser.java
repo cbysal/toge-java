@@ -151,27 +151,26 @@ public class SyntaxParser {
                 LocalSymbol symbol = symbolTable.makeLocal(isFloat, name, dimensions);
                 stmts.add(new LocalDefAST(symbol));
                 if (tokens.matchAndThenThrow(Token.Type.ASSIGN)) {
-                    stmts.add(new ExpStmtAST(new FuncCallExpAST(symbolTable.getFunc("memset"),
-                            List.of(new VarExpAST(symbol, null), new IntLitExpAST(0),
-                                    new IntLitExpAST(dimensions.stream().reduce(4, (i1, i2) -> i1 * i2))))));
                     InitValAST initVal = parseInitVal();
                     Map<Integer, ExpAST> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
-                    for (Map.Entry<Integer, ExpAST> exp : exps.entrySet()) {
+                    int totalSize = dimensions.stream().reduce(1, (i1, i2) -> i1 * i2);
+                    for (int i = 0; i < totalSize; i++) {
                         ExpAST[] dimensionExps = new ExpAST[dimensions.size()];
-                        int t = exp.getKey();
+                        int t = i;
                         for (int j = dimensions.size() - 1; j >= 0; j--) {
                             dimensionExps[j] = new IntLitExpAST(t % dimensions.get(j));
                             t /= dimensions.get(j);
                         }
-                        stmts.add(new AssignStmtAST(new LValAST(symbol, List.of(dimensionExps)), exp.getValue()));
+                        ExpAST exp = exps.getOrDefault(i, new IntLitExpAST(0));
+                        stmts.add(new AssignStmtAST(new LValAST(symbol, List.of(dimensionExps)), exp));
                     }
                 }
             } else {
                 LocalSymbol symbol = symbolTable.makeLocal(isFloat, name);
                 stmts.add(new LocalDefAST(symbol));
                 if (tokens.matchAndThenThrow(Token.Type.ASSIGN)) {
-                    LValAST lVal = new LValAST(symbol, null);
+                    LValAST lVal = new LValAST(symbol, List.of());
                     ExpAST rVal = parseAddSubExp();
                     stmts.add(new AssignStmtAST(lVal, rVal));
                 }
@@ -544,7 +543,7 @@ public class SyntaxParser {
             List<ExpAST> dimensions = parseDimensionExp();
             return new LValAST(symbolTable.getData(name), dimensions);
         }
-        return new LValAST(symbolTable.getData(name), null);
+        return new LValAST(symbolTable.getData(name), List.of());
     }
 
     private StmtAST parseRetStmt() {
@@ -563,7 +562,7 @@ public class SyntaxParser {
             List<ExpAST> dimensions = parseDimensionExp();
             return new VarExpAST(symbolTable.getData(name), dimensions);
         }
-        return new VarExpAST(symbolTable.getData(name), null);
+        return new VarExpAST(symbolTable.getData(name), List.of());
     }
 
     private WhileStmtAST parseWhileStmt() {

@@ -53,6 +53,10 @@ public abstract class InitializedDataSymbol extends DataSymbol {
         return values.getOrDefault(index, 0);
     }
 
+    public Map<Integer, Integer> getValues() {
+        return values;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
