@@ -11,6 +11,10 @@ public class ZextInstr extends Instr {
         this.value = value;
     }
 
+    public Value getValue() {
+        return value;
+    }
+
     @Override
     public String toString() {
         return String.format("%s = zext %s to %s", getTag(), value.getRet(), type);

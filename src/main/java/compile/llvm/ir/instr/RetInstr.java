@@ -15,6 +15,10 @@ public class RetInstr extends Instr {
         this.retValue = retValue;
     }
 
+    public Value getRetValue() {
+        return retValue;
+    }
+
     @Override
     public String toString() {
         if (retValue == null) {

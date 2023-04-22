@@ -13,6 +13,14 @@ public class StoreInstr extends Instr {
         this.dst = dst;
     }
 
+    public Value getSrc() {
+        return src;
+    }
+
+    public Value getDst() {
+        return dst;
+    }
+
     @Override
     public String getTag() {
         throw new RuntimeException("The return type of Store is always VOID. Never call this method!");

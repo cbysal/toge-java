@@ -41,6 +41,10 @@ public class BasicBlock {
         instrNum++;
     }
 
+    public Instr getFirst() {
+        return first;
+    }
+
     public void insertBefore(BasicBlock block) {
         parent.addBlockNum();
         if (prev == null) {

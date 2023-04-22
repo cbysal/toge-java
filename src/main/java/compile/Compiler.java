@@ -1,6 +1,10 @@
 package compile;
 
 import client.option.OptionPool;
+import codegen.CodeGenerator;
+import codegen.machine.DataItem;
+import codegen.machine.Function;
+import codegen.machine.TextItem;
 import compile.lexical.LexicalParser;
 import compile.lexical.token.TokenList;
 import compile.llvm.LLVMParser;
@@ -15,6 +19,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 public class Compiler {
     private final OptionPool options;
@@ -54,6 +59,11 @@ public class Compiler {
         if (options.containsKey(OptionPool.PRINT_LLVM)) {
             printLLVM(module, options.get(OptionPool.PRINT_LLVM));
         }
+        CodeGenerator codeGenerator = new CodeGenerator(module);
+        Map<String, TextItem> textItems = codeGenerator.getTextItems();
+        Map<String, DataItem> dataItems = codeGenerator.getDataItems();
+        Map<String, Function> functions = codeGenerator.getFunctions();
+        emitCode(textItems, dataItems, functions);
     }
 
     private static void printTokens(TokenList tokens, String target) {
@@ -83,6 +93,22 @@ public class Compiler {
         }
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(target))) {
             writer.write(module.toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void emitCode(Map<String, TextItem> textItems, Map<String, DataItem> dataItems,
+                          Map<String, Function> functions) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("  .text\n");
+        textItems.values().forEach(builder::append);
+        builder.append("  .data\n");
+        dataItems.values().forEach(builder::append);
+        builder.append("  .text\n");
+        functions.values().forEach(builder::append);
+        try {
+            Files.writeString(outputFile, builder);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

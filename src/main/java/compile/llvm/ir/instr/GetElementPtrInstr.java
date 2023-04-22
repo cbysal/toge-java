@@ -35,6 +35,18 @@ public class GetElementPtrInstr extends Instr {
         return base;
     }
 
+    public Value getBase() {
+        return base;
+    }
+
+    public Value getOffset() {
+        return offset;
+    }
+
+    public Value getIndex() {
+        return index;
+    }
+
     @Override
     public String toString() {
         if (index == null) {

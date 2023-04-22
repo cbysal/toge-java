@@ -24,6 +24,14 @@ public class Module {
         return globals.get(name);
     }
 
+    public Map<String, Global> getGlobals() {
+        return globals;
+    }
+
+    public Map<String, Function> getFunctions() {
+        return functions;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();

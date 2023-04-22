@@ -11,6 +11,10 @@ public class SitofpInstr extends Instr {
         this.base = base;
     }
 
+    public Value getBase() {
+        return base;
+    }
+
     @Override
     public String toString() {
         return String.format("%s = sitofp %s to float", getTag(), base.getRet());

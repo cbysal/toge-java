@@ -11,6 +11,10 @@ public class LoadInstr extends Instr {
         this.src = src;
     }
 
+    public Value getSrc() {
+        return src;
+    }
+
     @Override
     public String toString() {
         return String.format("%s = load %s, %s %s, align 4", getTag(), type, src.getType(), src.getTag());

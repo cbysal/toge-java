@@ -19,6 +19,10 @@ public class Function extends Value {
         params.add(param);
     }
 
+    public List<Param> getParams() {
+        return params;
+    }
+
     public void addFirst(BasicBlock block) {
         if (blockNum == 0) {
             first = block;

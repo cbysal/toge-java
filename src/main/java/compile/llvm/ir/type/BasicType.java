@@ -8,6 +8,11 @@ public final class BasicType implements Type {
     }
 
     @Override
+    public int getSize() {
+        return 4;
+    }
+
+    @Override
     public String toString() {
         return name;
     }

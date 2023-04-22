@@ -16,6 +16,14 @@ public class CallInstr extends Instr {
         this.params = params;
     }
 
+    public String getFunc() {
+        return func;
+    }
+
+    public List<Value> getParams() {
+        return params;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();

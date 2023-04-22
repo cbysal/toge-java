@@ -11,6 +11,10 @@ public class FptosiInstr extends Instr {
         this.base = base;
     }
 
+    public Value getBase() {
+        return base;
+    }
+
     @Override
     public String toString() {
         return String.format("%s = fptosi %s to i32", getTag(), base.getRet());

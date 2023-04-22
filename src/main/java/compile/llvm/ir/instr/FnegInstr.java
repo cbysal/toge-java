@@ -11,6 +11,10 @@ public class FnegInstr extends Instr {
         this.base = base;
     }
 
+    public Value getBase() {
+        return base;
+    }
+
     @Override
     public String toString() {
         return String.format("%s = fneg float %s", getTag(), base.getTag());

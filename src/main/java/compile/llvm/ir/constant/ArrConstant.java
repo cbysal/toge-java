@@ -14,6 +14,10 @@ public class ArrConstant extends Constant {
         this.values = values;
     }
 
+    public Map<Integer, Value> getValues() {
+        return values;
+    }
+
     @Override
     public String getTag() {
         StringBuilder builder = new StringBuilder();

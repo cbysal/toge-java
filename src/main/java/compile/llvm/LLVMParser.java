@@ -390,8 +390,8 @@ public class LLVMParser {
             }
         }
         Value cVal = visitExp(cond);
-        Instr cmpInstr = cVal.getType() == BasicType.I32 ? new CmpInstr(CmpInstr.Type.NE, cVal, new I32Constant(0)) :
-                new FcmpInstr(FcmpInstr.Type.UNE, cVal, new FloatConstant(0));
+        Instr cmpInstr = cVal.getType() == BasicType.I32 ? new CmpInstr(CmpInstr.Op.NE, cVal, new I32Constant(0)) :
+                new FcmpInstr(FcmpInstr.Op.UNE, cVal, new FloatConstant(0));
         curBlock.addLast(cmpInstr);
         Instr branchInstr = new BranchInstr(cmpInstr, trueBlock, falseBlock);
         curBlock.addLast(branchInstr);
@@ -445,20 +445,20 @@ public class LLVMParser {
         lVal = typeConversion(lVal, targetType);
         rVal = typeConversion(rVal, targetType);
         Instr cmpInstr = targetType == BasicType.I32 ? new CmpInstr(switch (cmpCond.type()) {
-            case EQ -> CmpInstr.Type.EQ;
-            case NE -> CmpInstr.Type.NE;
-            case GE -> CmpInstr.Type.SGE;
-            case GT -> CmpInstr.Type.SGT;
-            case LE -> CmpInstr.Type.SLE;
-            case LT -> CmpInstr.Type.SLT;
+            case EQ -> CmpInstr.Op.EQ;
+            case NE -> CmpInstr.Op.NE;
+            case GE -> CmpInstr.Op.SGE;
+            case GT -> CmpInstr.Op.SGT;
+            case LE -> CmpInstr.Op.SLE;
+            case LT -> CmpInstr.Op.SLT;
             default -> null;
         }, lVal, rVal) : new FcmpInstr(switch (cmpCond.type()) {
-            case EQ -> FcmpInstr.Type.OEQ;
-            case NE -> FcmpInstr.Type.UNE;
-            case GE -> FcmpInstr.Type.OGE;
-            case GT -> FcmpInstr.Type.OGT;
-            case LE -> FcmpInstr.Type.OLE;
-            case LT -> FcmpInstr.Type.OLT;
+            case EQ -> FcmpInstr.Op.OEQ;
+            case NE -> FcmpInstr.Op.UNE;
+            case GE -> FcmpInstr.Op.OGE;
+            case GT -> FcmpInstr.Op.OGT;
+            case LE -> FcmpInstr.Op.OLE;
+            case LT -> FcmpInstr.Op.OLT;
             default -> null;
         }, lVal, rVal);
         curBlock.addLast(cmpInstr);
@@ -545,28 +545,28 @@ public class LLVMParser {
         rVal = typeConversion(rVal, targetType);
         Instr instr = switch (binaryExp.type()) {
             case EQ, NE, GE, GT, LE, LT -> targetType == BasicType.I32 ? new CmpInstr(switch (binaryExp.type()) {
-                case EQ -> CmpInstr.Type.EQ;
-                case NE -> CmpInstr.Type.NE;
-                case GE -> CmpInstr.Type.SGE;
-                case GT -> CmpInstr.Type.SGT;
-                case LE -> CmpInstr.Type.SLE;
-                case LT -> CmpInstr.Type.SLT;
+                case EQ -> CmpInstr.Op.EQ;
+                case NE -> CmpInstr.Op.NE;
+                case GE -> CmpInstr.Op.SGE;
+                case GT -> CmpInstr.Op.SGT;
+                case LE -> CmpInstr.Op.SLE;
+                case LT -> CmpInstr.Op.SLT;
                 default -> null;
             }, lVal, rVal) : new FcmpInstr(switch (binaryExp.type()) {
-                case EQ -> FcmpInstr.Type.OEQ;
-                case NE -> FcmpInstr.Type.UNE;
-                case GE -> FcmpInstr.Type.OGE;
-                case GT -> FcmpInstr.Type.OGT;
-                case LE -> FcmpInstr.Type.OLE;
-                case LT -> FcmpInstr.Type.OLT;
+                case EQ -> FcmpInstr.Op.OEQ;
+                case NE -> FcmpInstr.Op.UNE;
+                case GE -> FcmpInstr.Op.OGE;
+                case GT -> FcmpInstr.Op.OGT;
+                case LE -> FcmpInstr.Op.OLE;
+                case LT -> FcmpInstr.Op.OLT;
                 default -> null;
             }, lVal, rVal);
             case ADD, SUB, MUL, DIV, MOD -> new BinaryInstr(switch (binaryExp.type()) {
-                case ADD -> targetType == BasicType.I32 ? BinaryInstr.Type.ADD : BinaryInstr.Type.FADD;
-                case SUB -> targetType == BasicType.I32 ? BinaryInstr.Type.SUB : BinaryInstr.Type.FSUB;
-                case DIV -> targetType == BasicType.I32 ? BinaryInstr.Type.SDIV : BinaryInstr.Type.FDIV;
-                case MUL -> targetType == BasicType.I32 ? BinaryInstr.Type.MUL : BinaryInstr.Type.FMUL;
-                case MOD -> BinaryInstr.Type.SREM;
+                case ADD -> targetType == BasicType.I32 ? BinaryInstr.Op.ADD : BinaryInstr.Op.FADD;
+                case SUB -> targetType == BasicType.I32 ? BinaryInstr.Op.SUB : BinaryInstr.Op.FSUB;
+                case DIV -> targetType == BasicType.I32 ? BinaryInstr.Op.SDIV : BinaryInstr.Op.FDIV;
+                case MUL -> targetType == BasicType.I32 ? BinaryInstr.Op.MUL : BinaryInstr.Op.FMUL;
+                case MOD -> BinaryInstr.Op.SREM;
                 default -> throw new IllegalStateException("Unexpected value: " + binaryExp.type());
             }, lVal, rVal);
             default -> throw new IllegalStateException("Unexpected value: " + binaryExp.type());
@@ -586,18 +586,18 @@ public class LLVMParser {
                     instr = new FnegInstr(nVal);
                 } else {
                     nVal = typeConversion(nVal, BasicType.I32);
-                    instr = new BinaryInstr(BinaryInstr.Type.SUB, new I32Constant(0), nVal);
+                    instr = new BinaryInstr(BinaryInstr.Op.SUB, new I32Constant(0), nVal);
                 }
                 curBlock.addLast(instr);
                 yield instr;
             }
             case L_NOT -> {
                 if (nVal.getType() == BasicType.I1) {
-                    Instr xorInstr = new BinaryInstr(BinaryInstr.Type.XOR, nVal, I1Constant.TRUE);
+                    Instr xorInstr = new BinaryInstr(BinaryInstr.Op.XOR, nVal, I1Constant.TRUE);
                     curBlock.addLast(xorInstr);
                     yield xorInstr;
                 }
-                Instr cmpInstr = new CmpInstr(CmpInstr.Type.EQ, nVal, new I32Constant(0));
+                Instr cmpInstr = new CmpInstr(CmpInstr.Op.EQ, nVal, new I32Constant(0));
                 curBlock.addLast(cmpInstr);
                 yield cmpInstr;
             }

@@ -10,6 +10,10 @@ public class I32Constant extends Constant {
         this.value = value;
     }
 
+    public int getValue() {
+        return value;
+    }
+
     @Override
     public String getTag() {
         return Integer.toString(value);

@@ -10,6 +10,10 @@ public class FloatConstant extends Constant {
         this.value = value;
     }
 
+    public float getValue() {
+        return value;
+    }
+
     @Override
     public String getTag() {
         return String.format("0x%x", Double.doubleToLongBits(value));

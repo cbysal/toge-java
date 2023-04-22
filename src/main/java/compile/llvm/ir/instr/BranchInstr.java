@@ -19,6 +19,18 @@ public class BranchInstr extends Instr {
         this.falseBlock = falseBlock;
     }
 
+    public Value getCond() {
+        return cond;
+    }
+
+    public BasicBlock getTrueBlock() {
+        return trueBlock;
+    }
+
+    public BasicBlock getFalseBlock() {
+        return falseBlock;
+    }
+
     @Override
     public String toString() {
         if (cond == null) {
