@@ -14,6 +14,7 @@ public class TaskParser {
     }
 
     private static final String C_SUFFIX = ".c";
+    private static final String SY_SUFFIX = ".sy";
     private static final String I_SUFFIX = ".i";
     private static final String S_SUFFIX = ".s";
     private static final String O_SUFFIX = ".o";
@@ -99,7 +100,7 @@ public class TaskParser {
         Path source = sources.get(0);
         String fileName = source.getFileName().toString();
         String suffix = fileName.substring(fileName.lastIndexOf('.'));
-        if (C_SUFFIX.equals(suffix)) {
+        if (C_SUFFIX.equals(suffix) || SY_SUFFIX.equals(suffix)) {
             task = new PreprocessTask(options, source, target);
         } else {
             throw new RuntimeException("Unprocessable file in target state " + targetState + ": " + source);
@@ -113,7 +114,7 @@ public class TaskParser {
         String prefix = fileName.substring(0, splitIndex);
         String suffix = fileName.substring(splitIndex);
         switch (suffix) {
-            case C_SUFFIX -> {
+            case C_SUFFIX, SY_SUFFIX -> {
                 Path iFile = FileUtil.makeTempFile(prefix, I_SUFFIX);
                 task = new PreprocessTask(options, source, iFile);
                 task = new CompileTask(options, iFile, target, task);
@@ -130,7 +131,7 @@ public class TaskParser {
         String prefix = fileName.substring(0, splitIndex);
         String suffix = fileName.substring(splitIndex);
         switch (suffix) {
-            case C_SUFFIX -> {
+            case C_SUFFIX, SY_SUFFIX -> {
                 Path iFile = FileUtil.makeTempFile(prefix, I_SUFFIX);
                 Path sFile = FileUtil.makeTempFile(prefix, S_SUFFIX);
                 task = new PreprocessTask(options, source, iFile);
@@ -156,7 +157,7 @@ public class TaskParser {
             String prefix = fileName.substring(0, splitIndex);
             String suffix = fileName.substring(splitIndex);
             switch (suffix) {
-                case C_SUFFIX -> {
+                case C_SUFFIX, SY_SUFFIX -> {
                     Path iFile = FileUtil.makeTempFile(prefix, I_SUFFIX);
                     Path sFile = FileUtil.makeTempFile(prefix, S_SUFFIX);
                     Path oFile = FileUtil.makeTempFile(prefix, O_SUFFIX);
