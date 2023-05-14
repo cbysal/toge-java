@@ -7,6 +7,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Preprocessor {
+    private static final Pattern ESCAPED_NEW_LINE_PATTERN = Pattern.compile("\\\\\\n");
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("//.*|/\\*[\\s\\S]*?\\*/");
     private boolean isProcessed;
     private final Path input, output;
     private String content;
@@ -37,10 +39,10 @@ public class Preprocessor {
     }
 
     private void replaceMacroDef() {
-        replaceBuiltInMacroFuncsWithLineNo();
+        replaceBuiltinMacroFuncWithLineNo();
     }
 
-    private void replaceBuiltInMacroFuncsWithLineNo() {
+    private void replaceBuiltinMacroFuncWithLineNo() {
         replaceMacroFuncWithLineNo("starttime", "_sysy_starttime");
         replaceMacroFuncWithLineNo("stoptime", "_sysy_stoptime");
     }
@@ -51,7 +53,7 @@ public class Preprocessor {
         StringBuilder result = new StringBuilder(content.length());
         while (matcher.find()) {
             int start = matcher.start();
-            long lineNo = content.chars().limit(start + 1).filter(c -> c == '\n').count() + 1;
+            long lineNo = content.substring(0, start + 1).lines().count();
             matcher.appendReplacement(result, String.format("%s(%d)", func, lineNo));
         }
         matcher.appendTail(result);
@@ -59,14 +61,12 @@ public class Preprocessor {
     }
 
     private void removeEscapedNewLine() {
-        Pattern pattern = Pattern.compile("\\\\\\n");
-        Matcher matcher = pattern.matcher(content);
+        Matcher matcher = ESCAPED_NEW_LINE_PATTERN.matcher(content);
         content = matcher.replaceAll("");
     }
 
     private void removeComment() {
-        Pattern pattern = Pattern.compile("//.*|/\\*[\\s\\S]*?\\*/");
-        Matcher matcher = pattern.matcher(content);
+        Matcher matcher = COMMENT_PATTERN.matcher(content);
         content = matcher.replaceAll("");
     }
 }
