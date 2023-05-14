@@ -19,17 +19,17 @@ public class TokenList implements Iterable<Token> {
     }
 
     // TODO replace peekType with match
-    public Token.Type peekType() {
+    public TokenType peekType() {
         return peekType(0);
     }
 
-    public Token.Type peekType(int overlook) {
+    public TokenType peekType(int overlook) {
         return tokens.get(head + overlook).getType();
     }
 
-    public Token expectAndFetch(Token.Type... types) {
+    public Token expectAndFetch(TokenType... types) {
         Token token = tokens.get(head++);
-        for (Token.Type type : types) {
+        for (TokenType type : types) {
             if (token.getType() == type) {
                 return token;
             }
@@ -37,12 +37,12 @@ public class TokenList implements Iterable<Token> {
         throw new RuntimeException("Expect " + Arrays.deepToString(types) + " , but get " + token.getType());
     }
 
-    public boolean match(Token.Type... types) {
-        Token.Type t = tokens.get(head).getType();
+    public boolean match(TokenType... types) {
+        TokenType t = tokens.get(head).getType();
         return Arrays.stream(types).anyMatch(type -> type == t);
     }
 
-    public boolean matchAndThenThrow(Token.Type type) {
+    public boolean matchAndThenThrow(TokenType type) {
         Token token = tokens.get(head);
         if (token.getType() == type) {
             head++;
@@ -52,17 +52,17 @@ public class TokenList implements Iterable<Token> {
     }
 
     public int nextInt() {
-        Token token = expectAndFetch(Token.Type.INT_LIT);
-        return ((IntToken) token).getInt(); // safe, because IntToken has the type INT_LIT
+        Token token = expectAndFetch(TokenType.INT_LIT);
+        return ((IntToken) token).getValue(); // safe, because IntToken has the type INT_LIT
     }
 
     public float nextFloat() {
-        Token token = expectAndFetch(Token.Type.FLOAT_LIT);
-        return ((FloatToken) token).getFloat(); // safe, because FloatToken has the type FLOAT_LIT
+        Token token = expectAndFetch(TokenType.FLOAT_LIT);
+        return ((FloatToken) token).getValue(); // safe, because FloatToken has the type FLOAT_LIT
     }
 
     public String nextIdentity() {
-        Token token = expectAndFetch(Token.Type.ID);
+        Token token = expectAndFetch(TokenType.ID);
         return ((IdToken) token).getId(); // safe, because IdToken has the type ID
     }
 

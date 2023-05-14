@@ -4,16 +4,16 @@ public class FloatToken extends Token {
     private final float value;
 
     FloatToken(float value) {
-        super(Type.FLOAT_LIT);
+        super(TokenType.FLOAT_LIT);
         this.value = value;
     }
 
-    public float getFloat() {
+    public float getValue() {
         return value;
     }
 
     @Override
     public String toString() {
-        return "FLOAT " + value;
+        return String.format("FLOAT %f", value);
     }
 }

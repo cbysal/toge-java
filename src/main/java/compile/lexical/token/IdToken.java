@@ -4,7 +4,7 @@ public class IdToken extends Token {
     private final String id;
 
     IdToken(String id) {
-        super(Type.ID);
+        super(TokenType.ID);
         this.id = id;
     }
 
@@ -14,6 +14,6 @@ public class IdToken extends Token {
 
     @Override
     public String toString() {
-        return "ID " + id;
+        return String.format("ID %s", id);
     }
 }

@@ -5,17 +5,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Token {
-    public enum Type {
-        ASSIGN, BREAK, COMMA, CONST, CONTINUE, DIV, ELSE, EQ, FLOAT, FLOAT_LIT, GE, GT, ID, IF, INT, INT_LIT, LB, LC,
-        LE, LT, L_AND, L_NOT, L_OR, LP, MINUS, MOD, MUL, NE, PLUS, RP, RB, RC, RETURN, SEMICOLON, VOID, WHILE
-    }
+    private static final Map<TokenType, Token> TOKEN_POOL =
+            Arrays.stream(TokenType.values()).collect(Collectors.toMap(type -> type, Token::new));
 
-    private static final Map<Type, Token> TOKEN_POOL =
-            Arrays.stream(Type.values()).collect(Collectors.toMap(type -> type, Token::new));
+    private final TokenType type;
 
-    private final Type type;
-
-    Token(Type type) {
+    Token(TokenType type) {
         this.type = type;
     }
 
@@ -31,11 +26,11 @@ public class Token {
         return new IdToken(id);
     }
 
-    public static Token valueOf(Type type) {
+    public static Token valueOf(TokenType type) {
         return TOKEN_POOL.get(type);
     }
 
-    public Type getType() {
+    public TokenType getType() {
         return type;
     }
 

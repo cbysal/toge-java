@@ -2,21 +2,76 @@ package compile.lexical;
 
 import compile.lexical.token.Token;
 import compile.lexical.token.TokenList;
+import compile.lexical.token.TokenType;
 
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 public class LexicalParser {
-    private static final Map<String, Token.Type> KEYWORDS = Map.of("break", Token.Type.BREAK, "const",
-            Token.Type.CONST, "continue", Token.Type.CONTINUE, "else", Token.Type.ELSE, "float", Token.Type.FLOAT,
-            "if", Token.Type.IF, "int", Token.Type.INT, "return", Token.Type.RETURN, "void", Token.Type.VOID, "while"
-            , Token.Type.WHILE);
+    private record DoubleCharCase(char secondChar, TokenType firstToken, TokenType secondToken) {
+    }
+
+    private static final Map<String, TokenType> KEYWORDS = Map.of("break", TokenType.BREAK, "const", TokenType.CONST,
+            "continue", TokenType.CONTINUE, "else", TokenType.ELSE, "float", TokenType.FLOAT, "if", TokenType.IF,
+            "int", TokenType.INT, "return", TokenType.RETURN, "void", TokenType.VOID, "while", TokenType.WHILE);
+    private static final boolean[] OCT_INT_CHARS = new boolean[128];
+    private static final boolean[] DEC_INT_CHARS = new boolean[128];
+    private static final boolean[] HEX_INT_CHARS = new boolean[128];
+    private static final boolean[] FLOAT_CHARS = new boolean[128];
+    private static final boolean[] ID_CHARS = new boolean[128];
     private static final Pattern DEC_INT_PATTERN = Pattern.compile("[1-9]\\d*");
     private static final Pattern FLOAT_PATTERN = Pattern.compile("(\\d+\\.\\d*|\\.\\d+)([Ee][+-]?\\d+)?|\\d+[Ee][" +
             "+-]?\\d+|0[Xx]([\\dA-Fa-f]+\\.[\\dA-Fa-f]*|\\.[\\dA-Fa-f]+)[Pp][+-]?\\d+");
     private static final Pattern ID_PATTERN = Pattern.compile("[A-Za-z_][\\dA-Za-z_]*");
     private static final Pattern HEX_INT_PATTERN = Pattern.compile("0[Xx][\\d|A-Fa-f]+");
     private static final Pattern OCT_INT_PATTERN = Pattern.compile("0[0-7]*");
+    private static final Map<Character, TokenType> SINGLE_CHAR_CASES = Map.ofEntries(Map.entry('%', TokenType.MOD),
+            Map.entry('(', TokenType.LP), Map.entry(')', TokenType.RP), Map.entry('*', TokenType.MUL), Map.entry('+',
+                    TokenType.PLUS), Map.entry(',', TokenType.COMMA), Map.entry('-', TokenType.MINUS), Map.entry('/',
+                    TokenType.DIV), Map.entry(';', TokenType.SEMICOLON), Map.entry('[', TokenType.LB), Map.entry(']',
+                    TokenType.RB), Map.entry('{', TokenType.LC), Map.entry('}', TokenType.RC));
+    private static final Map<Character, DoubleCharCase> DOUBLE_CHAR_CASES = Map.of('!', new DoubleCharCase('=',
+            TokenType.L_NOT, TokenType.NE), '&', new DoubleCharCase('&', null, TokenType.L_AND), '<',
+            new DoubleCharCase('=', TokenType.LT, TokenType.LE), '=', new DoubleCharCase('=', TokenType.ASSIGN,
+                    TokenType.EQ), '>', new DoubleCharCase('=', TokenType.GT, TokenType.GE), '|',
+            new DoubleCharCase('|', null, TokenType.L_OR));
+
+    static {
+        for (char c = '0'; c <= '9'; c++) {
+            if (c < '8') {
+                OCT_INT_CHARS[c] = true;
+            }
+            DEC_INT_CHARS[c] = true;
+            HEX_INT_CHARS[c] = true;
+            FLOAT_CHARS[c] = true;
+            ID_CHARS[c] = true;
+        }
+        for (char c = 'A'; c <= 'Z'; c++) {
+            if (c <= 'F') {
+                HEX_INT_CHARS[c] = true;
+                FLOAT_CHARS[c] = true;
+            }
+            ID_CHARS[c] = true;
+        }
+        for (char c = 'a'; c <= 'z'; c++) {
+            if (c <= 'f') {
+                HEX_INT_CHARS[c] = true;
+                FLOAT_CHARS[c] = true;
+            }
+            ID_CHARS[c] = true;
+        }
+        HEX_INT_CHARS['X'] = true;
+        HEX_INT_CHARS['x'] = true;
+        FLOAT_CHARS['P'] = true;
+        FLOAT_CHARS['p'] = true;
+        FLOAT_CHARS['X'] = true;
+        FLOAT_CHARS['x'] = true;
+        FLOAT_CHARS['.'] = true;
+        FLOAT_CHARS['+'] = true;
+        FLOAT_CHARS['-'] = true;
+        ID_CHARS['_'] = true;
+    }
 
     private boolean isProcessed;
     private int head;
@@ -44,46 +99,27 @@ public class LexicalParser {
     }
 
     private Token nextToken() {
-        skipWhilespace();
+        head = skipChars(head, Character::isWhitespace);
         if (head == content.length()) {
             return null;
         }
-        return switch (content.charAt(head)) {
-            case '!' -> matchDoubleCharToken('=', Token.Type.L_NOT, Token.Type.NE);
-            case '%' -> matchSingleCharToken(Token.Type.MOD);
-            case '&' -> matchDoubleCharToken('&', null, Token.Type.L_AND);
-            case '(' -> matchSingleCharToken(Token.Type.LP);
-            case ')' -> matchSingleCharToken(Token.Type.RP);
-            case '*' -> matchSingleCharToken(Token.Type.MUL);
-            case '+' -> matchSingleCharToken(Token.Type.PLUS);
-            case ',' -> matchSingleCharToken(Token.Type.COMMA);
-            case '-' -> matchSingleCharToken(Token.Type.MINUS);
-            case '/' -> matchSingleCharToken(Token.Type.DIV);
-            case ';' -> matchSingleCharToken(Token.Type.SEMICOLON);
-            case '<' -> matchDoubleCharToken('=', Token.Type.LT, Token.Type.LE);
-            case '=' -> matchDoubleCharToken('=', Token.Type.ASSIGN, Token.Type.EQ);
-            case '>' -> matchDoubleCharToken('=', Token.Type.GT, Token.Type.GE);
-            case '[' -> matchSingleCharToken(Token.Type.LB);
-            case ']' -> matchSingleCharToken(Token.Type.RB);
-            case '{' -> matchSingleCharToken(Token.Type.LC);
-            case '|' -> matchDoubleCharToken('|', null, Token.Type.L_OR);
-            case '}' -> matchSingleCharToken(Token.Type.RC);
-            default -> matchMultiCharToken();
-        };
-    }
-
-    private void skipWhilespace() {
-        while (head < content.length() && Character.isWhitespace(content.charAt(head))) {
-            head++;
+        if (SINGLE_CHAR_CASES.containsKey(content.charAt(head))) {
+            return matchSingleCharToken(SINGLE_CHAR_CASES.get(content.charAt(head)));
         }
+        if (DOUBLE_CHAR_CASES.containsKey(content.charAt(head))) {
+            DoubleCharCase doubleCharCase = DOUBLE_CHAR_CASES.get(content.charAt(head));
+            return matchDoubleCharToken(doubleCharCase.secondChar(), doubleCharCase.firstToken(),
+                    doubleCharCase.secondToken());
+        }
+        return matchMultiCharToken();
     }
 
-    private Token matchSingleCharToken(Token.Type type) {
+    private Token matchSingleCharToken(TokenType type) {
         head++;
         return Token.valueOf(type);
     }
 
-    private Token matchDoubleCharToken(char secondChar, Token.Type singleCharToken, Token.Type doubleCharToken) {
+    private Token matchDoubleCharToken(char secondChar, TokenType singleCharToken, TokenType doubleCharToken) {
         if (head + 1 < content.length() && content.charAt(head + 1) == secondChar) {
             head += 2;
             return Token.valueOf(doubleCharToken);
@@ -120,15 +156,8 @@ public class LexicalParser {
         throw new RuntimeException("Can not continue matching at position " + head);
     }
 
-    private static boolean isKeywordOrIdChar(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
-    }
-
     private Token tryMatchKeywordOrId() {
-        int tail = head;
-        while (tail < content.length() && isKeywordOrIdChar(content.charAt(tail))) {
-            tail++;
-        }
+        int tail = skipChars(head, c -> ID_CHARS[c]);
         String matched = content.substring(head, tail);
         if (!ID_PATTERN.matcher(matched).matches()) {
             return null;
@@ -140,15 +169,8 @@ public class LexicalParser {
         return Token.valueOf(matched);
     }
 
-    private static boolean isFloatChar(char c) {
-        return Character.isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') || c == 'P' || c == 'p' || c == 'X' || c == 'x' || c == '.' || c == '+' || c == '-';
-    }
-
     private Token tryMatchFloat() {
-        int tail = head;
-        while (tail < content.length() && isFloatChar(content.charAt(tail))) {
-            tail++;
-        }
+        int tail = skipChars(head, c -> FLOAT_CHARS[c]);
         String matched = content.substring(head, tail);
         if (!FLOAT_PATTERN.matcher(matched).matches()) {
             return null;
@@ -157,15 +179,8 @@ public class LexicalParser {
         return Token.valueOf(Float.parseFloat(matched));
     }
 
-    private static boolean isHexIntChar(char c) {
-        return Character.isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') || c == 'X' || c == 'x';
-    }
-
     private Token tryMatchHexInt() {
-        int tail = head;
-        while (tail < content.length() && isHexIntChar(content.charAt(tail))) {
-            tail++;
-        }
+        int tail = skipChars(head, c -> HEX_INT_CHARS[c]);
         String matched = content.substring(head, tail);
         if (!HEX_INT_PATTERN.matcher(matched).matches()) {
             return null;
@@ -174,15 +189,8 @@ public class LexicalParser {
         return Token.valueOf(Integer.parseInt(matched, 2, matched.length(), 16));
     }
 
-    private static boolean isDecIntChar(char c) {
-        return Character.isDigit(c);
-    }
-
     private Token tryMatchDecInt() {
-        int tail = head;
-        while (tail < content.length() && isDecIntChar(content.charAt(tail))) {
-            tail++;
-        }
+        int tail = skipChars(head, c -> DEC_INT_CHARS[c]);
         String matched = content.substring(head, tail);
         if (!DEC_INT_PATTERN.matcher(matched).matches()) {
             return null;
@@ -191,15 +199,8 @@ public class LexicalParser {
         return Token.valueOf(Integer.parseInt(matched));
     }
 
-    private static boolean isOctIntChar(char c) {
-        return c >= '0' && c < '8';
-    }
-
     private Token tryMatchOctInt() {
-        int tail = head;
-        while (tail < content.length() && isOctIntChar(content.charAt(tail))) {
-            tail++;
-        }
+        int tail = skipChars(head, c -> OCT_INT_CHARS[c]);
         String matched = content.substring(head, tail);
         if (!OCT_INT_PATTERN.matcher(matched).matches()) {
             return null;
@@ -211,5 +212,12 @@ public class LexicalParser {
         // number. e.g. 012, that is 1 * 8 + 2 = 10, but with the following method call, it will be 0 * 64 + 1 * 8 + 2
         // = 10. That is wrong in logic, but is right in result.
         return Token.valueOf(Integer.parseInt(matched, 8));
+    }
+
+    private int skipChars(int index, Predicate<Character> predicate) {
+        while (index < content.length() && predicate.test(content.charAt(index))) {
+            index++;
+        }
+        return index;
     }
 }

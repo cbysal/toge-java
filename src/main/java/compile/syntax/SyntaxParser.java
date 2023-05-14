@@ -1,7 +1,7 @@
 package compile.syntax;
 
-import compile.lexical.token.Token;
 import compile.lexical.token.TokenList;
+import compile.lexical.token.TokenType;
 import compile.symbol.*;
 import compile.syntax.ast.*;
 
@@ -37,7 +37,7 @@ public class SyntaxParser {
             switch (tokens.peekType()) {
                 case CONST -> compUnits.addAll(parseConstDef());
                 case FLOAT, INT, VOID -> {
-                    if (tokens.peekType(2) == Token.Type.LP) {
+                    if (tokens.peekType(2) == TokenType.LP) {
                         compUnits.add(parseFuncDef());
                     } else {
                         compUnits.addAll(parseGlobalDef());
@@ -51,17 +51,17 @@ public class SyntaxParser {
 
     private List<ConstDefAST> parseConstDef() {
         List<ConstDefAST> constDef = new ArrayList<>();
-        tokens.expectAndFetch(Token.Type.CONST);
-        boolean isFloat = switch (tokens.expectAndFetch(Token.Type.FLOAT, Token.Type.INT).getType()) {
+        tokens.expectAndFetch(TokenType.CONST);
+        boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
             case FLOAT -> true;
             case INT -> false;
             default -> throw new RuntimeException();
         };
         do {
             String name = tokens.nextIdentity();
-            if (tokens.match(Token.Type.LB)) {
+            if (tokens.match(TokenType.LB)) {
                 List<Integer> dimensions = parseDimensionDef();
-                tokens.expectAndFetch(Token.Type.ASSIGN);
+                tokens.expectAndFetch(TokenType.ASSIGN);
                 InitValAST initVal = parseInitVal();
                 Map<Integer, ExpAST> exps = new HashMap<>();
                 allocInitVal(dimensions, exps, 0, initVal);
@@ -75,7 +75,7 @@ public class SyntaxParser {
                                     exp -> exp.getValue().calc().getInt())))));
                 }
             } else {
-                tokens.expectAndFetch(Token.Type.ASSIGN);
+                tokens.expectAndFetch(TokenType.ASSIGN);
                 ExpAST rVal = parseAddSubExp();
                 Value value = rVal.calc();
                 if (isFloat) {
@@ -86,14 +86,14 @@ public class SyntaxParser {
                             (int) value.getFloat() : value.getInt())));
                 }
             }
-            tokens.matchAndThenThrow(Token.Type.COMMA);
-        } while (tokens.peekType() != Token.Type.SEMICOLON);
-        tokens.expectAndFetch(Token.Type.SEMICOLON);
+            tokens.matchAndThenThrow(TokenType.COMMA);
+        } while (tokens.peekType() != TokenType.SEMICOLON);
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return constDef;
     }
 
     private List<GlobalDefAST> parseGlobalDef() {
-        boolean isFloat = switch (tokens.expectAndFetch(Token.Type.FLOAT, Token.Type.INT).getType()) {
+        boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
             case FLOAT -> true;
             case INT -> false;
             default -> throw new RuntimeException();
@@ -101,9 +101,9 @@ public class SyntaxParser {
         List<GlobalDefAST> globalDefs = new ArrayList<>();
         do {
             String name = tokens.nextIdentity();
-            if (tokens.match(Token.Type.LB)) {
+            if (tokens.match(TokenType.LB)) {
                 List<Integer> dimensions = parseDimensionDef();
-                if (tokens.matchAndThenThrow(Token.Type.ASSIGN)) {
+                if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
                     InitValAST initVal = parseInitVal();
                     Map<Integer, ExpAST> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
@@ -121,7 +121,7 @@ public class SyntaxParser {
                             new HashMap<>())));
                 }
             } else {
-                if (tokens.matchAndThenThrow(Token.Type.ASSIGN)) {
+                if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
                     ExpAST rVal = parseAddSubExp();
                     if (isFloat) {
                         globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(true, name, rVal.calc().getFloat())));
@@ -132,13 +132,13 @@ public class SyntaxParser {
                     globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(isFloat, name, 0)));
                 }
             }
-            tokens.matchAndThenThrow(Token.Type.COMMA);
-        } while (!tokens.matchAndThenThrow(Token.Type.SEMICOLON));
+            tokens.matchAndThenThrow(TokenType.COMMA);
+        } while (!tokens.matchAndThenThrow(TokenType.SEMICOLON));
         return globalDefs;
     }
 
     private List<StmtAST> parseLocalDef() {
-        boolean isFloat = switch (tokens.expectAndFetch(Token.Type.FLOAT, Token.Type.INT).getType()) {
+        boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
             case FLOAT -> true;
             case INT -> false;
             default -> throw new RuntimeException();
@@ -146,11 +146,11 @@ public class SyntaxParser {
         List<StmtAST> stmts = new ArrayList<>();
         do {
             String name = tokens.nextIdentity();
-            if (tokens.match(Token.Type.LB)) {
+            if (tokens.match(TokenType.LB)) {
                 List<Integer> dimensions = parseDimensionDef();
                 LocalSymbol symbol = symbolTable.makeLocal(isFloat, name, dimensions);
                 stmts.add(new LocalDefAST(symbol));
-                if (tokens.matchAndThenThrow(Token.Type.ASSIGN)) {
+                if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
                     InitValAST initVal = parseInitVal();
                     Map<Integer, ExpAST> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
@@ -169,29 +169,29 @@ public class SyntaxParser {
             } else {
                 LocalSymbol symbol = symbolTable.makeLocal(isFloat, name);
                 stmts.add(new LocalDefAST(symbol));
-                if (tokens.matchAndThenThrow(Token.Type.ASSIGN)) {
+                if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
                     LValAST lVal = new LValAST(symbol, List.of());
                     ExpAST rVal = parseAddSubExp();
                     stmts.add(new AssignStmtAST(lVal, rVal));
                 }
             }
-        } while (tokens.matchAndThenThrow(Token.Type.COMMA));
-        tokens.expectAndFetch(Token.Type.SEMICOLON);
+        } while (tokens.matchAndThenThrow(TokenType.COMMA));
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return stmts;
     }
 
     private List<Integer> parseDimensionDef() {
         List<Integer> dimensions = new ArrayList<>();
-        while (tokens.matchAndThenThrow(Token.Type.LB)) {
+        while (tokens.matchAndThenThrow(TokenType.LB)) {
             dimensions.add(parseAddSubExp().calc().getInt());
-            tokens.expectAndFetch(Token.Type.RB);
+            tokens.expectAndFetch(TokenType.RB);
         }
         return dimensions;
     }
 
     private CompUnitAST parseFuncDef() {
         boolean hasRet, isFloat;
-        switch (tokens.expectAndFetch(Token.Type.FLOAT, Token.Type.INT, Token.Type.VOID).getType()) {
+        switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT, TokenType.VOID).getType()) {
             case FLOAT -> {
                 hasRet = true;
                 isFloat = true;
@@ -216,41 +216,41 @@ public class SyntaxParser {
     }
 
     private void parseFuncDefParams(FuncSymbol func) {
-        tokens.expectAndFetch(Token.Type.LP);
-        while (!tokens.matchAndThenThrow(Token.Type.RP)) {
+        tokens.expectAndFetch(TokenType.LP);
+        while (!tokens.matchAndThenThrow(TokenType.RP)) {
             func.addParam(parseFuncDefParam());
-            if (tokens.matchAndThenThrow(Token.Type.RP)) {
+            if (tokens.matchAndThenThrow(TokenType.RP)) {
                 break;
             }
-            tokens.expectAndFetch(Token.Type.COMMA);
+            tokens.expectAndFetch(TokenType.COMMA);
         }
     }
 
     private ParamSymbol parseFuncDefParam() {
-        boolean isFloat = switch (tokens.expectAndFetch(Token.Type.FLOAT, Token.Type.INT).getType()) {
+        boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
             case FLOAT -> true;
             case INT -> false;
             default -> throw new RuntimeException();
         };
         String name = tokens.nextIdentity();
-        if (!tokens.matchAndThenThrow(Token.Type.LB)) {
+        if (!tokens.matchAndThenThrow(TokenType.LB)) {
             return symbolTable.makeParam(isFloat, name);
         }
-        tokens.expectAndFetch(Token.Type.RB);
+        tokens.expectAndFetch(TokenType.RB);
         List<Integer> dimensions = new ArrayList<>();
         dimensions.add(-1);
-        while (tokens.matchAndThenThrow(Token.Type.LB)) {
+        while (tokens.matchAndThenThrow(TokenType.LB)) {
             ExpAST exp = parseAddSubExp();
             dimensions.add(exp.calc().getInt());
-            tokens.matchAndThenThrow(Token.Type.RB);
+            tokens.matchAndThenThrow(TokenType.RB);
         }
         return symbolTable.makeParam(isFloat, name, dimensions);
     }
 
     private BlockStmtAST parseBlock() {
         List<StmtAST> stmts = new ArrayList<>();
-        tokens.expectAndFetch(Token.Type.LC);
-        while (!tokens.matchAndThenThrow(Token.Type.RC)) {
+        tokens.expectAndFetch(TokenType.LC);
+        while (!tokens.matchAndThenThrow(TokenType.RC)) {
             stmts.addAll(parseStmt());
         }
         return new BlockStmtAST(stmts);
@@ -265,8 +265,8 @@ public class SyntaxParser {
             case ID -> {
                 int lookahead = 0;
                 boolean isAssignStmt = false;
-                while (tokens.peekType(lookahead) != Token.Type.SEMICOLON) {
-                    if (tokens.peekType(lookahead) == Token.Type.ASSIGN) {
+                while (tokens.peekType(lookahead) != TokenType.SEMICOLON) {
+                    if (tokens.peekType(lookahead) == TokenType.ASSIGN) {
                         isAssignStmt = true;
                         break;
                     }
@@ -305,7 +305,7 @@ public class SyntaxParser {
     private ExpAST parseLOrExp() {
         List<ExpAST> exps = new ArrayList<>();
         exps.add(parseLAndExp());
-        while (tokens.matchAndThenThrow(Token.Type.L_OR)) {
+        while (tokens.matchAndThenThrow(TokenType.L_OR)) {
             exps.add(parseLAndExp());
         }
         ExpAST root = exps.get(0);
@@ -318,7 +318,7 @@ public class SyntaxParser {
     private ExpAST parseLAndExp() {
         List<ExpAST> exps = new ArrayList<>();
         exps.add(parseEqNeExp());
-        while (tokens.matchAndThenThrow(Token.Type.L_AND)) {
+        while (tokens.matchAndThenThrow(TokenType.L_AND)) {
             exps.add(parseEqNeExp());
         }
         ExpAST root = exps.get(0);
@@ -332,8 +332,8 @@ public class SyntaxParser {
         List<BinaryExpAST.Type> types = new ArrayList<>();
         List<ExpAST> exps = new ArrayList<>();
         exps.add(parseGeGtLeLtExp());
-        while (tokens.match(Token.Type.EQ, Token.Type.NE)) {
-            types.add(switch (tokens.expectAndFetch(Token.Type.EQ, Token.Type.NE).getType()) {
+        while (tokens.match(TokenType.EQ, TokenType.NE)) {
+            types.add(switch (tokens.expectAndFetch(TokenType.EQ, TokenType.NE).getType()) {
                 case EQ -> BinaryExpAST.Type.EQ;
                 case NE -> BinaryExpAST.Type.NE;
                 default -> throw new RuntimeException();
@@ -351,8 +351,8 @@ public class SyntaxParser {
         List<BinaryExpAST.Type> types = new ArrayList<>();
         List<ExpAST> exps = new ArrayList<>();
         exps.add(parseAddSubExp());
-        while (tokens.match(Token.Type.GE, Token.Type.GT, Token.Type.LE, Token.Type.LT)) {
-            types.add(switch (tokens.expectAndFetch(Token.Type.GE, Token.Type.GT, Token.Type.LE, Token.Type.LT).getType()) {
+        while (tokens.match(TokenType.GE, TokenType.GT, TokenType.LE, TokenType.LT)) {
+            types.add(switch (tokens.expectAndFetch(TokenType.GE, TokenType.GT, TokenType.LE, TokenType.LT).getType()) {
                 case GE -> BinaryExpAST.Type.GE;
                 case GT -> BinaryExpAST.Type.GT;
                 case LE -> BinaryExpAST.Type.LE;
@@ -372,8 +372,8 @@ public class SyntaxParser {
         List<BinaryExpAST.Type> types = new ArrayList<>();
         List<ExpAST> exps = new ArrayList<>();
         exps.add(parseMulDivModExp());
-        while (tokens.match(Token.Type.PLUS, Token.Type.MINUS)) {
-            types.add(switch (tokens.expectAndFetch(Token.Type.PLUS, Token.Type.MINUS).getType()) {
+        while (tokens.match(TokenType.PLUS, TokenType.MINUS)) {
+            types.add(switch (tokens.expectAndFetch(TokenType.PLUS, TokenType.MINUS).getType()) {
                 case PLUS -> BinaryExpAST.Type.ADD;
                 case MINUS -> BinaryExpAST.Type.SUB;
                 default -> throw new RuntimeException();
@@ -391,8 +391,8 @@ public class SyntaxParser {
         List<BinaryExpAST.Type> types = new ArrayList<>();
         List<ExpAST> exps = new ArrayList<>();
         exps.add(parseUnary());
-        while (tokens.match(Token.Type.MUL, Token.Type.DIV, Token.Type.MOD)) {
-            types.add(switch (tokens.expectAndFetch(Token.Type.MUL, Token.Type.DIV, Token.Type.MOD).getType()) {
+        while (tokens.match(TokenType.MUL, TokenType.DIV, TokenType.MOD)) {
+            types.add(switch (tokens.expectAndFetch(TokenType.MUL, TokenType.DIV, TokenType.MOD).getType()) {
                 case MUL -> BinaryExpAST.Type.MUL;
                 case DIV -> BinaryExpAST.Type.DIV;
                 case MOD -> BinaryExpAST.Type.MOD;
@@ -411,7 +411,7 @@ public class SyntaxParser {
         return switch (tokens.peekType()) {
             case FLOAT_LIT -> new FloatLitExpAST(tokens.nextFloat());
             case ID -> {
-                if (tokens.peekType(1) == Token.Type.LP) {
+                if (tokens.peekType(1) == TokenType.LP) {
                     yield parseFuncCallExp();
                 } else {
                     yield parseVarExpAST();
@@ -419,21 +419,21 @@ public class SyntaxParser {
             }
             case INT_LIT -> new IntLitExpAST(tokens.nextInt());
             case L_NOT -> {
-                tokens.expectAndFetch(Token.Type.L_NOT);
+                tokens.expectAndFetch(TokenType.L_NOT);
                 yield new UnaryExpAST(UnaryExpAST.Type.L_NOT, parseUnary());
             }
             case LP -> {
-                tokens.expectAndFetch(Token.Type.LP);
+                tokens.expectAndFetch(TokenType.LP);
                 ExpAST exp = parseAddSubExp();
-                tokens.expectAndFetch(Token.Type.RP);
+                tokens.expectAndFetch(TokenType.RP);
                 yield exp;
             }
             case MINUS -> {
-                tokens.expectAndFetch(Token.Type.MINUS);
+                tokens.expectAndFetch(TokenType.MINUS);
                 yield new UnaryExpAST(UnaryExpAST.Type.NEG, parseUnary());
             }
             case PLUS -> {
-                tokens.expectAndFetch(Token.Type.PLUS);
+                tokens.expectAndFetch(TokenType.PLUS);
                 yield parseUnary();
             }
             default -> throw new RuntimeException();
@@ -442,74 +442,74 @@ public class SyntaxParser {
 
     private StmtAST parseAssignStmt() {
         LValAST lVal = parseLVal();
-        tokens.expectAndFetch(Token.Type.ASSIGN);
+        tokens.expectAndFetch(TokenType.ASSIGN);
         ExpAST rVal = parseAddSubExp();
-        tokens.expectAndFetch(Token.Type.SEMICOLON);
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return new AssignStmtAST(lVal, rVal);
     }
 
     private BlankStmtAST parseBlankStmt() {
-        tokens.expectAndFetch(Token.Type.SEMICOLON);
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return new BlankStmtAST();
     }
 
     private BreakStmtAST parseBreakStmt() {
-        tokens.expectAndFetch(Token.Type.BREAK);
-        tokens.expectAndFetch(Token.Type.SEMICOLON);
+        tokens.expectAndFetch(TokenType.BREAK);
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return new BreakStmtAST();
     }
 
     private ContinueStmtAST parseContinueStmt() {
-        tokens.expectAndFetch(Token.Type.CONTINUE);
-        tokens.expectAndFetch(Token.Type.SEMICOLON);
+        tokens.expectAndFetch(TokenType.CONTINUE);
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return new ContinueStmtAST();
     }
 
     private ExpAST parseCond() {
-        tokens.expectAndFetch(Token.Type.LP);
+        tokens.expectAndFetch(TokenType.LP);
         ExpAST cond = parseLOrExp();
-        tokens.expectAndFetch(Token.Type.RP);
+        tokens.expectAndFetch(TokenType.RP);
         return cond;
     }
 
     private List<ExpAST> parseDimensionExp() {
         List<ExpAST> dimensions = new ArrayList<>();
-        while (tokens.matchAndThenThrow(Token.Type.LB)) {
+        while (tokens.matchAndThenThrow(TokenType.LB)) {
             dimensions.add(parseAddSubExp());
-            tokens.expectAndFetch(Token.Type.RB);
+            tokens.expectAndFetch(TokenType.RB);
         }
         return dimensions;
     }
 
     private ExpStmtAST parseExpStmt() {
         ExpStmtAST expStmt = new ExpStmtAST(parseAddSubExp());
-        tokens.expectAndFetch(Token.Type.SEMICOLON);
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return expStmt;
     }
 
     private FuncCallExpAST parseFuncCallExp() {
         FuncSymbol func = symbolTable.getFunc(tokens.nextIdentity());
-        tokens.expectAndFetch(Token.Type.LP);
+        tokens.expectAndFetch(TokenType.LP);
         List<ExpAST> params = new ArrayList<>();
-        while (!tokens.matchAndThenThrow(Token.Type.RP)) {
+        while (!tokens.matchAndThenThrow(TokenType.RP)) {
             params.add(parseAddSubExp());
-            if (tokens.matchAndThenThrow(Token.Type.RP)) {
+            if (tokens.matchAndThenThrow(TokenType.RP)) {
                 break;
             }
-            tokens.expectAndFetch(Token.Type.COMMA);
+            tokens.expectAndFetch(TokenType.COMMA);
         }
         return new FuncCallExpAST(func, params);
     }
 
     private IfStmtAST parseIfStmt() {
-        tokens.expectAndFetch(Token.Type.IF);
+        tokens.expectAndFetch(TokenType.IF);
         ExpAST cond = parseCond();
         List<? extends StmtAST> stmts = parseStmt();
         if (stmts.size() != 1) {
             throw new RuntimeException();
         }
         StmtAST stmt1 = stmts.get(0);
-        if (!tokens.matchAndThenThrow(Token.Type.ELSE)) {
+        if (!tokens.matchAndThenThrow(TokenType.ELSE)) {
             return new IfStmtAST(cond, stmt1, null);
         }
         stmts = parseStmt();
@@ -522,24 +522,24 @@ public class SyntaxParser {
 
     private InitValAST parseInitVal() {
         List<ExpAST> exps = new ArrayList<>();
-        tokens.expectAndFetch(Token.Type.LC);
-        if (tokens.matchAndThenThrow(Token.Type.RC)) {
+        tokens.expectAndFetch(TokenType.LC);
+        if (tokens.matchAndThenThrow(TokenType.RC)) {
             return new InitValAST(exps);
         }
         do {
-            if (tokens.match(Token.Type.LC)) {
+            if (tokens.match(TokenType.LC)) {
                 exps.add(parseInitVal());
             } else {
                 exps.add(parseAddSubExp());
             }
-        } while (tokens.matchAndThenThrow(Token.Type.COMMA));
-        tokens.expectAndFetch(Token.Type.RC);
+        } while (tokens.matchAndThenThrow(TokenType.COMMA));
+        tokens.expectAndFetch(TokenType.RC);
         return new InitValAST(exps);
     }
 
     private LValAST parseLVal() {
         String name = tokens.nextIdentity();
-        if (tokens.match(Token.Type.LB)) {
+        if (tokens.match(TokenType.LB)) {
             List<ExpAST> dimensions = parseDimensionExp();
             return new LValAST(symbolTable.getData(name), dimensions);
         }
@@ -547,18 +547,18 @@ public class SyntaxParser {
     }
 
     private StmtAST parseRetStmt() {
-        tokens.expectAndFetch(Token.Type.RETURN);
-        if (tokens.matchAndThenThrow(Token.Type.SEMICOLON)) {
+        tokens.expectAndFetch(TokenType.RETURN);
+        if (tokens.matchAndThenThrow(TokenType.SEMICOLON)) {
             return new RetStmtAST(null);
         }
         ExpAST retVal = parseAddSubExp();
-        tokens.expectAndFetch(Token.Type.SEMICOLON);
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return new RetStmtAST(retVal);
     }
 
     private ExpAST parseVarExpAST() {
         String name = tokens.nextIdentity();
-        if (tokens.match(Token.Type.LB)) {
+        if (tokens.match(TokenType.LB)) {
             List<ExpAST> dimensions = parseDimensionExp();
             return new VarExpAST(symbolTable.getData(name), dimensions);
         }
@@ -566,7 +566,7 @@ public class SyntaxParser {
     }
 
     private WhileStmtAST parseWhileStmt() {
-        tokens.expectAndFetch(Token.Type.WHILE);
+        tokens.expectAndFetch(TokenType.WHILE);
         ExpAST cond = parseCond();
         List<? extends StmtAST> stmts = parseStmt();
         if (stmts.size() != 1) {
