@@ -1,10 +1,10 @@
 package compile;
 
 import client.option.OptionPool;
-import codegen.CodeGenerator;
-import codegen.machine.DataItem;
-import codegen.machine.Function;
-import codegen.machine.TextItem;
+import compile.codegen.CodeGenerator;
+import compile.codegen.machine.DataItem;
+import compile.codegen.machine.Function;
+import compile.codegen.machine.TextItem;
 import compile.lexical.LexicalParser;
 import compile.lexical.token.TokenList;
 import compile.llvm.LLVMParser;
