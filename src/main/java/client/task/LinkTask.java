@@ -22,7 +22,7 @@ public class LinkTask extends Task {
         super.run();
         List<String> command = new ArrayList<>();
         if (!options.containsKey(OptionPool.CC)) {
-            throw new RuntimeException("Link task need a third party linker. Please specify a linker with option: " + "--cc");
+            throw new RuntimeException("No linker! Please specify a linker with option: --cc");
         }
         String linker = options.get(OptionPool.CC);
         command.add(linker);

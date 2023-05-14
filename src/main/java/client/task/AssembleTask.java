@@ -25,7 +25,7 @@ public class AssembleTask extends Task {
     public void run() {
         super.run();
         if (!options.containsKey(OptionPool.CC)) {
-            throw new RuntimeException("Assemble task need a third party assembler. Please specify a assembler with " + "option: --cc");
+            throw new RuntimeException("No assembler! Please specify a assembler with option: --cc");
         }
         String assembler = options.get(OptionPool.CC);
         List<String> command = List.of(assembler, "-c", sFile.toString(), "-o", oFile.toString());

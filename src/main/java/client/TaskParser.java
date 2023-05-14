@@ -53,20 +53,7 @@ public class TaskParser {
                 case 'S' -> setCompileState(TargetState.COMPILE);
                 case 'c' -> setCompileState(TargetState.ASSEMBLE);
                 case 'o' -> setTarget(Path.of(args[++i]));
-                case '-' -> {
-                    int splitIndex = args[i].indexOf('=');
-                    if (splitIndex < 0) {
-                        if (i + 1 < args.length && args[i + 1].charAt(0) != '-') {
-                            options.put(args[i].substring(2), args[i + 1]);
-                            continue;
-                        }
-                        options.put(args[i].substring(2), null);
-                    } else {
-                        String key = args[i].substring(2, splitIndex);
-                        String value = args[i].substring(splitIndex + 1);
-                        options.put(key, value);
-                    }
-                }
+                case '-' -> setExtraOptions(args[i].substring(2));
                 default -> throw new RuntimeException("Unsupported option: " + args[i]);
             }
         }
@@ -84,6 +71,17 @@ public class TaskParser {
             throw new RuntimeException("Multi output files: " + this.target + " & " + target + "!");
         }
         this.target = target;
+    }
+
+    private void setExtraOptions(String arg) {
+        int splitIndex = arg.indexOf('=');
+        if (splitIndex < 0) {
+            options.put(arg, null);
+        } else {
+            String key = arg.substring(0, splitIndex);
+            String value = arg.substring(splitIndex + 1);
+            options.put(key, value);
+        }
     }
 
     private void makeTasks() {
@@ -157,36 +155,46 @@ public class TaskParser {
             String prefix = fileName.substring(0, splitIndex);
             String suffix = fileName.substring(splitIndex);
             switch (suffix) {
-                case C_SUFFIX, SY_SUFFIX -> {
-                    Path iFile = FileUtil.makeTempFile(prefix, I_SUFFIX);
-                    Path sFile = FileUtil.makeTempFile(prefix, S_SUFFIX);
-                    Path oFile = FileUtil.makeTempFile(prefix, O_SUFFIX);
-                    task = new PreprocessTask(options, source, iFile);
-                    task = new CompileTask(options, iFile, sFile, task);
-                    task = new AssembleTask(options, sFile, oFile, task);
-                    binaryFiles.add(oFile);
-                    assembleTasks.add(task);
-                }
-                case I_SUFFIX -> {
-                    Path sFile = FileUtil.makeTempFile(prefix, S_SUFFIX);
-                    Path oFile = FileUtil.makeTempFile(prefix, O_SUFFIX);
-                    task = new CompileTask(options, source, sFile);
-                    task = new AssembleTask(options, sFile, oFile, task);
-                    binaryFiles.add(oFile);
-                    assembleTasks.add(task);
-                }
-                case S_SUFFIX -> {
-                    Path oFile = FileUtil.makeTempFile(prefix, O_SUFFIX);
-                    task = new AssembleTask(options, source, oFile);
-                    binaryFiles.add(oFile);
-                    assembleTasks.add(task);
-                }
-                case O_SUFFIX, A_SUFFIX, SO_SUFFIX -> binaryFiles.add(source);
+                case C_SUFFIX, SY_SUFFIX -> handleCFile(binaryFiles, assembleTasks, source, prefix);
+                case I_SUFFIX -> handleIFile(binaryFiles, assembleTasks, source, prefix);
+                case S_SUFFIX -> handleSFile(binaryFiles, assembleTasks, source, prefix);
+                case O_SUFFIX, A_SUFFIX, SO_SUFFIX -> handleOFile(binaryFiles, source);
                 default ->
                         throw new RuntimeException("Unprocessable file in target state " + targetState + ": " + source);
             }
         }
         task = new LinkTask(options, binaryFiles, target, assembleTasks);
+    }
+
+    private void handleCFile(List<Path> binaryFiles, List<Task> assembleTasks, Path source, String prefix) {
+        Path iFile = FileUtil.makeTempFile(prefix, I_SUFFIX);
+        Path sFile = FileUtil.makeTempFile(prefix, S_SUFFIX);
+        Path oFile = FileUtil.makeTempFile(prefix, O_SUFFIX);
+        task = new PreprocessTask(options, source, iFile);
+        task = new CompileTask(options, iFile, sFile, task);
+        task = new AssembleTask(options, sFile, oFile, task);
+        binaryFiles.add(oFile);
+        assembleTasks.add(task);
+    }
+
+    private void handleIFile(List<Path> binaryFiles, List<Task> assembleTasks, Path source, String prefix) {
+        Path sFile = FileUtil.makeTempFile(prefix, S_SUFFIX);
+        Path oFile = FileUtil.makeTempFile(prefix, O_SUFFIX);
+        task = new CompileTask(options, source, sFile);
+        task = new AssembleTask(options, sFile, oFile, task);
+        binaryFiles.add(oFile);
+        assembleTasks.add(task);
+    }
+
+    private void handleSFile(List<Path> binaryFiles, List<Task> assembleTasks, Path source, String prefix) {
+        Path oFile = FileUtil.makeTempFile(prefix, O_SUFFIX);
+        task = new AssembleTask(options, source, oFile);
+        binaryFiles.add(oFile);
+        assembleTasks.add(task);
+    }
+
+    private static void handleOFile(List<Path> binaryFiles, Path source) {
+        binaryFiles.add(source);
     }
 
     public Task getTask() {
