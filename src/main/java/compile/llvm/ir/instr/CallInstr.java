@@ -14,6 +14,11 @@ public class CallInstr extends Instr {
         super(type);
         this.func = func;
         this.params = params;
+        for (Value param : params) {
+            if (param instanceof Instr instr) {
+                instr.addUse(this);
+            }
+        }
     }
 
     public String getFunc() {

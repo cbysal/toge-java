@@ -9,6 +9,9 @@ public class FptosiInstr extends Instr {
     public FptosiInstr(Value base) {
         super(BasicType.I32);
         this.base = base;
+        if (base instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     public Value getBase() {

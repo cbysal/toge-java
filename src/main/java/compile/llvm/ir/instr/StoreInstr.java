@@ -11,6 +11,12 @@ public class StoreInstr extends Instr {
         super(BasicType.VOID);
         this.src = src;
         this.dst = dst;
+        if (src instanceof Instr instr) {
+            instr.addUse(this);
+        }
+        if (dst instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     public Value getSrc() {

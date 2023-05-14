@@ -9,6 +9,9 @@ public class ZextInstr extends Instr {
     public ZextInstr(Type type, Value value) {
         super(type);
         this.value = value;
+        if (value instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     public Value getValue() {

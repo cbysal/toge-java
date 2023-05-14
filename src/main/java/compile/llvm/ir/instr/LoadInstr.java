@@ -9,6 +9,9 @@ public class LoadInstr extends Instr {
     public LoadInstr(Value src) {
         super(((PointerType) src.getType()).base()); // src must be with PointerType
         this.src = src;
+        if (src instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     public Value getSrc() {

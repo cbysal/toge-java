@@ -9,6 +9,9 @@ public class FnegInstr extends Instr {
     public FnegInstr(Value base) {
         super(BasicType.FLOAT);
         this.base = base;
+        if (base instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     public Value getBase() {

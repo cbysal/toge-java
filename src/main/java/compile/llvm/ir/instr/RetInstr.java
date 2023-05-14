@@ -13,6 +13,9 @@ public class RetInstr extends Instr {
     public RetInstr(Value retValue) {
         super(BasicType.VOID);
         this.retValue = retValue;
+        if (retValue instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     public Value getRetValue() {

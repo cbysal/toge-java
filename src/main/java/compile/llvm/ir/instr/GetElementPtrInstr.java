@@ -21,6 +21,15 @@ public class GetElementPtrInstr extends Instr {
         this.base = base;
         this.offset = offset;
         this.index = index;
+        if (base instanceof Instr instr) {
+            instr.addUse(this);
+        }
+        if (offset instanceof Instr instr) {
+            instr.addUse(this);
+        }
+        if (index instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     private static Type processType(Type type) {

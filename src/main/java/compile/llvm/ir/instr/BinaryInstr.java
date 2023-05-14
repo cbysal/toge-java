@@ -15,6 +15,12 @@ public class BinaryInstr extends Instr {
         this.op = op;
         this.lVal = lVal;
         this.rVal = rVal;
+        if (lVal instanceof Instr instr) {
+            instr.addUse(this);
+        }
+        if (rVal instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     public Op getOp() {

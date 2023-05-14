@@ -17,6 +17,9 @@ public class BranchInstr extends Instr {
         this.cond = cond;
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
+        if (cond instanceof Instr instr) {
+            instr.addUse(this);
+        }
     }
 
     public Value getCond() {
