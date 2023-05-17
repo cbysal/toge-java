@@ -1,21 +1,18 @@
 package compile.syntax.ast;
 
 import compile.symbol.DataSymbol;
-import compile.symbol.InitializedDataSymbol;
+import compile.symbol.GlobalSymbol;
 
 import java.util.List;
 
 public record VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) implements ExpAST {
     @Override
     public Number calc() {
-        if (symbol instanceof InitializedDataSymbol symbol) {
+        if (symbol instanceof GlobalSymbol symbol) {
             if (dimensions.isEmpty()) {
-                if (symbol.isFloat()) {
-                    return symbol.getFloat();
-                }
-                return symbol.getInt();
+                return symbol.getValue();
             }
-            if (symbol.getDimensionSize() != dimensions.size()) {
+            if (symbol.getDimensions().size() != dimensions.size()) {
                 throw new RuntimeException();
             }
             int offset = 0;
@@ -23,10 +20,7 @@ public record VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) implements E
             for (int i = 0; i < dimensions.size(); i++) {
                 offset = offset * dimensionSizes.get(i) + dimensions.get(i).calc().intValue();
             }
-            if (symbol.isFloat()) {
-                return symbol.getFloat(offset);
-            }
-            return symbol.getInt(offset);
+            return symbol.getValue(offset);
         }
         throw new RuntimeException("Can not calculate symbol: " + symbol.getName());
     }

@@ -82,11 +82,9 @@ public class SyntaxParser {
                 ExpAST rVal = parseAddSubExp();
                 Number value = rVal.calc();
                 if (isFloat) {
-                    constDef.add(new ConstDefAST(symbolTable.makeConst(true, name, value instanceof Integer ?
-                            value.intValue() : value.floatValue())));
+                    constDef.add(new ConstDefAST(symbolTable.makeConst(name, value.floatValue())));
                 } else {
-                    constDef.add(new ConstDefAST(symbolTable.makeConst(false, name, value instanceof Integer ?
-                            value.intValue() : (int) value.floatValue())));
+                    constDef.add(new ConstDefAST(symbolTable.makeConst(name, value.intValue())));
                 }
             }
             tokens.matchAndThenThrow(TokenType.COMMA);
@@ -127,12 +125,12 @@ public class SyntaxParser {
                 if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
                     ExpAST rVal = parseAddSubExp();
                     if (isFloat) {
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(true, name, rVal.calc().floatValue())));
+                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(name, rVal.calc().floatValue())));
                     } else {
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(false, name, rVal.calc().intValue())));
+                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(name, rVal.calc().intValue())));
                     }
                 } else {
-                    globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(isFloat, name, 0)));
+                    globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(name, 0)));
                 }
             }
             tokens.matchAndThenThrow(TokenType.COMMA);

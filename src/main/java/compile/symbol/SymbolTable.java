@@ -87,20 +87,14 @@ public class SymbolTable extends MapStack<String, Symbol> {
         putFirst("memset", func);
     }
 
-    public ConstSymbol makeConst(boolean isFloat, String name, float value) {
-        ConstSymbol symbol = new ConstSymbol(isFloat, name, value);
+    public GlobalSymbol makeConst(String name, Number value) {
+        GlobalSymbol symbol = new GlobalSymbol(true, name, value);
         putLast(name, symbol);
         return symbol;
     }
 
-    public ConstSymbol makeConst(boolean isFloat, String name, int value) {
-        ConstSymbol symbol = new ConstSymbol(isFloat, name, value);
-        putLast(name, symbol);
-        return symbol;
-    }
-
-    public ConstSymbol makeConst(boolean isFloat, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
-        ConstSymbol symbol = new ConstSymbol(isFloat, name, dimensions, values);
+    public GlobalSymbol makeConst(boolean isFloat, String name, List<Integer> dimensions, Map<Integer, Number> values) {
+        GlobalSymbol symbol = new GlobalSymbol(true, isFloat, name, dimensions, values);
         putLast(name, symbol);
         return symbol;
     }
@@ -117,21 +111,15 @@ public class SymbolTable extends MapStack<String, Symbol> {
         return symbol;
     }
 
-    public GlobalSymbol makeGlobal(boolean isFloat, String name, float value) {
-        GlobalSymbol symbol = new GlobalSymbol(isFloat, name, value);
-        putFirst(name, symbol);
-        return symbol;
-    }
-
-    public GlobalSymbol makeGlobal(boolean isFloat, String name, int value) {
-        GlobalSymbol symbol = new GlobalSymbol(isFloat, name, value);
+    public GlobalSymbol makeGlobal(String name, Number value) {
+        GlobalSymbol symbol = new GlobalSymbol(false, name, value);
         putFirst(name, symbol);
         return symbol;
     }
 
     public GlobalSymbol makeGlobal(boolean isFloat, String name, List<Integer> dimensions,
-                                   Map<Integer, Integer> values) {
-        GlobalSymbol symbol = new GlobalSymbol(isFloat, name, dimensions, values);
+                                   Map<Integer, Number> values) {
+        GlobalSymbol symbol = new GlobalSymbol(false, isFloat, name, dimensions, values);
         putFirst(name, symbol);
         return symbol;
     }

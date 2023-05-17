@@ -1,7 +1,6 @@
 package compile.llvm;
 
 import compile.llvm.ir.Module;
-import compile.llvm.ir.Value;
 import compile.llvm.ir.*;
 import compile.llvm.ir.constant.*;
 import compile.llvm.ir.instr.*;
@@ -9,7 +8,10 @@ import compile.llvm.ir.type.ArrayType;
 import compile.llvm.ir.type.BasicType;
 import compile.llvm.ir.type.PointerType;
 import compile.llvm.ir.type.Type;
-import compile.symbol.*;
+import compile.symbol.FuncSymbol;
+import compile.symbol.GlobalSymbol;
+import compile.symbol.LocalSymbol;
+import compile.symbol.ParamSymbol;
 import compile.syntax.ast.*;
 
 import java.util.*;
@@ -126,14 +128,14 @@ public class LLVMParser {
     }
 
     private void visitConstDef(ConstDefAST constDef) {
-        ConstSymbol constSymbol = constDef.symbol();
+        GlobalSymbol constSymbol = constDef.symbol();
         String name = constSymbol.getName();
         Global global;
         if (constSymbol.isSingle()) {
-            global = new Global(name, constSymbol.isFloat() ? new FloatConstant(constSymbol.getFloat()) :
-                    new I32Constant(constSymbol.getInt()));
+            global = new Global(name, constSymbol.isFloat() ? new FloatConstant(constSymbol.getValue().floatValue())
+                    : new I32Constant(constSymbol.getValue().intValue()));
         } else {
-            global = parseInitializedDataSymbol(constSymbol);
+            global = parseGlobalSymbol(constSymbol);
         }
         module.addGlobal(global);
         symbolTable.putFirst(name, global);
@@ -144,10 +146,11 @@ public class LLVMParser {
         String name = globalSymbol.getName();
         Global global;
         if (globalSymbol.isSingle()) {
-            global = new Global(name, globalSymbol.isFloat() ? new FloatConstant(globalSymbol.getFloat()) :
-                    new I32Constant(globalSymbol.getInt()));
+            global = new Global(name, globalSymbol.isFloat() ?
+                    new FloatConstant(globalSymbol.getValue().floatValue()) :
+                    new I32Constant(globalSymbol.getValue().intValue()));
         } else {
-            global = parseInitializedDataSymbol(globalSymbol);
+            global = parseGlobalSymbol(globalSymbol);
         }
         module.addGlobal(global);
         symbolTable.putFirst(name, global);
@@ -166,15 +169,15 @@ public class LLVMParser {
     }
 
     // TODO optimize performance, kill the ugly whole range
-    private Global parseInitializedDataSymbol(InitializedDataSymbol symbol) {
+    private Global parseGlobalSymbol(GlobalSymbol symbol) {
         List<Integer> dimensions = symbol.getDimensions();
         int total = dimensions.stream().reduce(1, (i1, i2) -> i1 * i2);
         List<Constant> values = new ArrayList<>(total);
         Type type = symbol.isFloat() ? BasicType.FLOAT : BasicType.I32;
         for (int i = 0; i < total; i++) {
             if (symbol.getValues().containsKey(i)) {
-                values.add(symbol.isFloat() ? new FloatConstant(Float.intBitsToFloat(symbol.getValues().get(i))) :
-                        new I32Constant(symbol.getValues().get(i)));
+                values.add(symbol.isFloat() ? new FloatConstant(symbol.getValue(i).floatValue()) :
+                        new I32Constant(symbol.getValue(i).intValue()));
             } else {
                 values.add(new ZeroConstant(type));
             }
@@ -606,36 +609,37 @@ public class LLVMParser {
 
     // TODO too much duplicated code, extract the commons
     private Value visitVarExp(VarExpAST varExp) {
-        if (varExp.symbol() instanceof ConstSymbol constSymbol) {
-            Value ptr = module.getGlobal(constSymbol.getName());
-            List<ExpAST> dimensions = varExp.dimensions();
-            for (ExpAST dimension : dimensions) {
-                Value index = visitExp(dimension);
-                Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
-                curBlock.addLast(ptrInstr);
-                ptr = ptrInstr;
-            }
-            Instr instr = new LoadInstr(ptr);
-            curBlock.addLast(instr);
-            return instr;
-        }
-        if (varExp.symbol() instanceof GlobalSymbol globalSymbol) {
-            Value ptr = module.getGlobal(globalSymbol.getName());
-            List<ExpAST> dimensions = varExp.dimensions();
-            for (ExpAST dimension : dimensions) {
-                Value index = visitExp(dimension);
-                Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
-                curBlock.addLast(ptrInstr);
-                ptr = ptrInstr;
-            }
-            Instr instr;
-            if (varExp.dimensions().size() == globalSymbol.getDimensions().size()) {
-                instr = new LoadInstr(ptr);
+        if (varExp.symbol() instanceof GlobalSymbol symbol) {
+            if (symbol.isConst()) {
+                Value ptr = module.getGlobal(symbol.getName());
+                List<ExpAST> dimensions = varExp.dimensions();
+                for (ExpAST dimension : dimensions) {
+                    Value index = visitExp(dimension);
+                    Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
+                    curBlock.addLast(ptrInstr);
+                    ptr = ptrInstr;
+                }
+                Instr instr = new LoadInstr(ptr);
+                curBlock.addLast(instr);
+                return instr;
             } else {
-                instr = new GetElementPtrInstr(ptr, new I32Constant(0), new I32Constant(0));
+                Value ptr = module.getGlobal(symbol.getName());
+                List<ExpAST> dimensions = varExp.dimensions();
+                for (ExpAST dimension : dimensions) {
+                    Value index = visitExp(dimension);
+                    Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
+                    curBlock.addLast(ptrInstr);
+                    ptr = ptrInstr;
+                }
+                Instr instr;
+                if (varExp.dimensions().size() == symbol.getDimensions().size()) {
+                    instr = new LoadInstr(ptr);
+                } else {
+                    instr = new GetElementPtrInstr(ptr, new I32Constant(0), new I32Constant(0));
+                }
+                curBlock.addLast(instr);
+                return instr;
             }
-            curBlock.addLast(instr);
-            return instr;
         }
         if (varExp.symbol() instanceof ParamSymbol paramSymbol) {
             Value ptr = symbolTable.getValue(paramSymbol.getName());

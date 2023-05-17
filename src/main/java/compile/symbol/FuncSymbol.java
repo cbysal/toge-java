@@ -2,6 +2,7 @@ package compile.symbol;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringJoiner;
 
 public class FuncSymbol extends Symbol {
     private final boolean hasRet;
@@ -20,6 +21,10 @@ public class FuncSymbol extends Symbol {
         this.hasRet = hasRet;
     }
 
+    public boolean hasRet() {
+        return hasRet;
+    }
+
     public void addParam(ParamSymbol param) {
         params.add(param);
     }
@@ -28,23 +33,13 @@ public class FuncSymbol extends Symbol {
         return params;
     }
 
-    public boolean hasRet() {
-        return hasRet;
-    }
-
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(hasRet ? (isFloat ? "float " : "int ") : "void ").append(name).append('(');
-        boolean isFirst = true;
-        for (ParamSymbol param : params) {
-            if (!isFirst) {
-                builder.append(", ");
-            }
-            isFirst = false;
-            builder.append(param);
-        }
-        builder.append(')');
+        builder.append(hasRet ? (isFloat ? "float " : "int ") : "void ").append(name);
+        StringJoiner joiner = new StringJoiner(", ", "(", ")");
+        params.forEach(param -> joiner.add(param.toString()));
+        builder.append(joiner);
         return builder.toString();
     }
 }

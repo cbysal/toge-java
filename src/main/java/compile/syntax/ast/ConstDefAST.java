@@ -1,8 +1,8 @@
 package compile.syntax.ast;
 
-import compile.symbol.ConstSymbol;
+import compile.symbol.GlobalSymbol;
 
-public record ConstDefAST(ConstSymbol symbol) implements CompUnitAST, StmtAST {
+public record ConstDefAST(GlobalSymbol symbol) implements CompUnitAST, StmtAST {
     @Override
     public void print(int depth) {
         System.out.println("  ".repeat(depth) + "ConstDef " + symbol);

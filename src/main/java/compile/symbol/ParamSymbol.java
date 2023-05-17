@@ -4,7 +4,7 @@ import java.util.List;
 
 public class ParamSymbol extends DataSymbol {
     ParamSymbol(boolean isFloat, String name) {
-        super(isFloat, name);
+        this(isFloat, name, List.of());
     }
 
     ParamSymbol(boolean isFloat, String name, List<Integer> dimensions) {
