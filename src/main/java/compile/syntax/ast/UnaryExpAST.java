@@ -1,39 +1,22 @@
 package compile.syntax.ast;
 
-import compile.symbol.Value;
-
 public record UnaryExpAST(compile.syntax.ast.UnaryExpAST.Type type, ExpAST next) implements ExpAST {
     public enum Type {
         F2I, I2F, L_NOT, NEG
     }
 
     @Override
-    public Value calc() {
-        Value nVal = next.calc();
+    public Number calc() {
+        Number nVal = next.calc();
         return switch (type) {
-            case F2I -> {
-                if (!nVal.isFloat()) {
-                    throw new RuntimeException();
-                }
-                yield new Value((int) nVal.getFloat());
-            }
-            case I2F -> {
-                if (nVal.isFloat()) {
-                    throw new RuntimeException();
-                }
-                yield new Value((float) nVal.getInt());
-            }
-            case L_NOT -> {
-                if (nVal.isFloat()) {
-                    yield new Value(nVal.getFloat() == 0.0f);
-                }
-                yield new Value(nVal.getInt() == 0);
-            }
+            case F2I -> nVal.intValue();
+            case I2F -> nVal.floatValue();
+            case L_NOT -> nVal.intValue() == 0 ? 1 : 0;
             case NEG -> {
-                if (nVal.isFloat()) {
-                    yield new Value(-nVal.getFloat());
+                if (nVal instanceof Integer) {
+                    yield -nVal.intValue();
                 }
-                yield new Value(-nVal.getInt());
+                yield -nVal.floatValue();
             }
         };
     }

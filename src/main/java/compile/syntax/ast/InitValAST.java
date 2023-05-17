@@ -1,7 +1,5 @@
 package compile.syntax.ast;
 
-import compile.symbol.Value;
-
 import java.util.Iterator;
 import java.util.List;
 import java.util.Spliterator;
@@ -9,7 +7,7 @@ import java.util.function.Consumer;
 
 public record InitValAST(List<ExpAST> exps) implements ExpAST, Iterable<ExpAST> {
     @Override
-    public Value calc() {
+    public Number calc() {
         return null;
     }
 

@@ -2,7 +2,10 @@ package compile.syntax;
 
 import compile.lexical.token.TokenList;
 import compile.lexical.token.TokenType;
-import compile.symbol.*;
+import compile.symbol.FuncSymbol;
+import compile.symbol.LocalSymbol;
+import compile.symbol.ParamSymbol;
+import compile.symbol.SymbolTable;
 import compile.syntax.ast.*;
 
 import java.util.ArrayList;
@@ -68,22 +71,22 @@ public class SyntaxParser {
                 if (isFloat) {
                     constDef.add(new ConstDefAST(symbolTable.makeConst(true, name, dimensions,
                             exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                    exp -> Float.floatToIntBits(exp.getValue().calc().getFloat()))))));
+                                    exp -> Float.floatToIntBits(exp.getValue().calc().floatValue()))))));
                 } else {
                     constDef.add(new ConstDefAST(symbolTable.makeConst(false, name, dimensions,
                             exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                    exp -> exp.getValue().calc().getInt())))));
+                                    exp -> exp.getValue().calc().intValue())))));
                 }
             } else {
                 tokens.expectAndFetch(TokenType.ASSIGN);
                 ExpAST rVal = parseAddSubExp();
-                Value value = rVal.calc();
+                Number value = rVal.calc();
                 if (isFloat) {
-                    constDef.add(new ConstDefAST(symbolTable.makeConst(true, name, value.isFloat() ?
-                            value.getFloat() : value.getInt())));
+                    constDef.add(new ConstDefAST(symbolTable.makeConst(true, name, value instanceof Integer ?
+                            value.intValue() : value.floatValue())));
                 } else {
-                    constDef.add(new ConstDefAST(symbolTable.makeConst(false, name, value.isFloat() ?
-                            (int) value.getFloat() : value.getInt())));
+                    constDef.add(new ConstDefAST(symbolTable.makeConst(false, name, value instanceof Integer ?
+                            value.intValue() : (int) value.floatValue())));
                 }
             }
             tokens.matchAndThenThrow(TokenType.COMMA);
@@ -110,11 +113,11 @@ public class SyntaxParser {
                     if (isFloat) {
                         globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(true, name, dimensions,
                                 exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                        exp -> Float.floatToIntBits(exp.getValue().calc().getFloat()))))));
+                                        exp -> Float.floatToIntBits(exp.getValue().calc().floatValue()))))));
                     } else {
                         globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(false, name, dimensions,
                                 exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                        exp -> exp.getValue().calc().getInt())))));
+                                        exp -> exp.getValue().calc().intValue())))));
                     }
                 } else {
                     globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(isFloat, name, dimensions,
@@ -124,9 +127,9 @@ public class SyntaxParser {
                 if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
                     ExpAST rVal = parseAddSubExp();
                     if (isFloat) {
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(true, name, rVal.calc().getFloat())));
+                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(true, name, rVal.calc().floatValue())));
                     } else {
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(false, name, rVal.calc().getInt())));
+                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(false, name, rVal.calc().intValue())));
                     }
                 } else {
                     globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(isFloat, name, 0)));
@@ -183,7 +186,7 @@ public class SyntaxParser {
     private List<Integer> parseDimensionDef() {
         List<Integer> dimensions = new ArrayList<>();
         while (tokens.matchAndThenThrow(TokenType.LB)) {
-            dimensions.add(parseAddSubExp().calc().getInt());
+            dimensions.add(parseAddSubExp().calc().intValue());
             tokens.expectAndFetch(TokenType.RB);
         }
         return dimensions;
@@ -241,7 +244,7 @@ public class SyntaxParser {
         dimensions.add(-1);
         while (tokens.matchAndThenThrow(TokenType.LB)) {
             ExpAST exp = parseAddSubExp();
-            dimensions.add(exp.calc().getInt());
+            dimensions.add(exp.calc().intValue());
             tokens.matchAndThenThrow(TokenType.RB);
         }
         return symbolTable.makeParam(isFloat, name, dimensions);
