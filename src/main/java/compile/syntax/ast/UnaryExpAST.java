@@ -1,24 +1,34 @@
 package compile.syntax.ast;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.UnaryOperator;
+
 public record UnaryExpAST(compile.syntax.ast.UnaryExpAST.Type type, ExpAST next) implements ExpAST {
     public enum Type {
         F2I, I2F, L_NOT, NEG
     }
 
+    private static final Map<Type, UnaryOperator<Number>> CALC_OPS;
+
+    static {
+        Map<Type, UnaryOperator<Number>> calcOps = new HashMap<>();
+        calcOps.put(Type.F2I, Number::intValue);
+        calcOps.put(Type.I2F, Number::floatValue);
+        calcOps.put(Type.L_NOT, val -> val.intValue() == 0 ? 1 : 0);
+        calcOps.put(Type.NEG, val -> {
+            if (val instanceof Integer) {
+                return -val.intValue();
+            }
+            return -val.floatValue();
+        });
+        CALC_OPS = calcOps;
+    }
+
     @Override
     public Number calc() {
         Number nVal = next.calc();
-        return switch (type) {
-            case F2I -> nVal.intValue();
-            case I2F -> nVal.floatValue();
-            case L_NOT -> nVal.intValue() == 0 ? 1 : 0;
-            case NEG -> {
-                if (nVal instanceof Integer) {
-                    yield -nVal.intValue();
-                }
-                yield -nVal.floatValue();
-            }
-        };
+        return CALC_OPS.get(type).apply(nVal);
     }
 
     @Override

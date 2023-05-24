@@ -8,14 +8,11 @@ import compile.symbol.ParamSymbol;
 import compile.symbol.SymbolTable;
 import compile.syntax.ast.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class SyntaxParser {
-    private boolean isProcessed = false;
+    private boolean isProcessed;
     private final SymbolTable symbolTable;
     private final TokenList tokens;
 
@@ -38,12 +35,12 @@ public class SyntaxParser {
         List<CompUnitAST> compUnits = new ArrayList<>();
         while (tokens.hasNext()) {
             switch (tokens.peekType()) {
-                case CONST -> compUnits.addAll(parseConstDef());
+                case CONST -> compUnits.addAll(parseConstDecl());
                 case FLOAT, INT, VOID -> {
                     if (tokens.peekType(2) == TokenType.LP) {
                         compUnits.add(parseFuncDef());
                     } else {
-                        compUnits.addAll(parseGlobalDef());
+                        compUnits.addAll(parseGlobalDecl());
                     }
                 }
                 default -> throw new RuntimeException();
@@ -52,8 +49,8 @@ public class SyntaxParser {
         rootAST = new RootAST(compUnits);
     }
 
-    private List<ConstDefAST> parseConstDef() {
-        List<ConstDefAST> constDef = new ArrayList<>();
+    private List<ConstDefAST> parseConstDecl() {
+        List<ConstDefAST> constDefs = new ArrayList<>();
         tokens.expectAndFetch(TokenType.CONST);
         boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
             case FLOAT -> true;
@@ -61,39 +58,35 @@ public class SyntaxParser {
             default -> throw new RuntimeException();
         };
         do {
-            String name = tokens.nextIdentity();
-            if (tokens.match(TokenType.LB)) {
-                List<Integer> dimensions = parseDimensionDef();
-                tokens.expectAndFetch(TokenType.ASSIGN);
-                InitValAST initVal = parseInitVal();
-                Map<Integer, ExpAST> exps = new HashMap<>();
-                allocInitVal(dimensions, exps, 0, initVal);
-                if (isFloat) {
-                    constDef.add(new ConstDefAST(symbolTable.makeConst(true, name, dimensions,
-                            exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                    exp -> Float.floatToIntBits(exp.getValue().calc().floatValue()))))));
-                } else {
-                    constDef.add(new ConstDefAST(symbolTable.makeConst(false, name, dimensions,
-                            exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                    exp -> exp.getValue().calc().intValue())))));
-                }
-            } else {
-                tokens.expectAndFetch(TokenType.ASSIGN);
-                ExpAST rVal = parseAddSubExp();
-                Number value = rVal.calc();
-                if (isFloat) {
-                    constDef.add(new ConstDefAST(symbolTable.makeConst(name, value.floatValue())));
-                } else {
-                    constDef.add(new ConstDefAST(symbolTable.makeConst(name, value.intValue())));
-                }
-            }
-            tokens.matchAndThenThrow(TokenType.COMMA);
-        } while (tokens.peekType() != TokenType.SEMICOLON);
+            ConstDefAST constDef = parseConstDef(isFloat);
+            constDefs.add(constDef);
+        } while (tokens.matchAndThenThrow(TokenType.COMMA));
         tokens.expectAndFetch(TokenType.SEMICOLON);
-        return constDef;
+        return constDefs;
     }
 
-    private List<GlobalDefAST> parseGlobalDef() {
+    private ConstDefAST parseConstDef(boolean isFloat) {
+        String name = tokens.nextIdentity();
+        if (tokens.match(TokenType.LB)) {
+            List<Integer> dimensions = parseDimensionDef();
+            tokens.expectAndFetch(TokenType.ASSIGN);
+            InitValAST initVal = parseInitVal();
+            Map<Integer, ExpAST> exps = allocInitVal(initVal, dimensions);
+            return new ConstDefAST(symbolTable.makeConst(isFloat, name, dimensions,
+                    exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+                            exp -> exp.getValue().calc()))));
+        }
+        tokens.expectAndFetch(TokenType.ASSIGN);
+        ExpAST rVal = parseAddSubExp();
+        Number value = rVal.calc();
+        if (isFloat) {
+            return new ConstDefAST(symbolTable.makeConst(name, value.floatValue()));
+        } else {
+            return new ConstDefAST(symbolTable.makeConst(name, value.intValue()));
+        }
+    }
+
+    private List<GlobalDefAST> parseGlobalDecl() {
         boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
             case FLOAT -> true;
             case INT -> false;
@@ -101,44 +94,39 @@ public class SyntaxParser {
         };
         List<GlobalDefAST> globalDefs = new ArrayList<>();
         do {
-            String name = tokens.nextIdentity();
-            if (tokens.match(TokenType.LB)) {
-                List<Integer> dimensions = parseDimensionDef();
-                if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
-                    InitValAST initVal = parseInitVal();
-                    Map<Integer, ExpAST> exps = new HashMap<>();
-                    allocInitVal(dimensions, exps, 0, initVal);
-                    if (isFloat) {
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(true, name, dimensions,
-                                exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                        exp -> Float.floatToIntBits(exp.getValue().calc().floatValue()))))));
-                    } else {
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(false, name, dimensions,
-                                exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                        exp -> exp.getValue().calc().intValue())))));
-                    }
-                } else {
-                    globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(isFloat, name, dimensions,
-                            new HashMap<>())));
-                }
-            } else {
-                if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
-                    ExpAST rVal = parseAddSubExp();
-                    if (isFloat) {
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(name, rVal.calc().floatValue())));
-                    } else {
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(name, rVal.calc().intValue())));
-                    }
-                } else {
-                    globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(name, 0)));
-                }
-            }
-            tokens.matchAndThenThrow(TokenType.COMMA);
-        } while (!tokens.matchAndThenThrow(TokenType.SEMICOLON));
+            GlobalDefAST globalDef = parseGlobalDef(isFloat);
+            globalDefs.add(globalDef);
+        } while (tokens.matchAndThenThrow(TokenType.COMMA));
+        tokens.expectAndFetch(TokenType.SEMICOLON);
         return globalDefs;
     }
 
-    private List<StmtAST> parseLocalDef() {
+    private GlobalDefAST parseGlobalDef(boolean isFloat) {
+        String name = tokens.nextIdentity();
+        if (tokens.match(TokenType.LB)) {
+            List<Integer> dimensions = parseDimensionDef();
+            if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
+                InitValAST initVal = parseInitVal();
+                Map<Integer, ExpAST> exps = allocInitVal(initVal, dimensions);
+                return new GlobalDefAST(symbolTable.makeGlobal(isFloat, name, dimensions,
+                        exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+                                exp -> exp.getValue().calc()))));
+            } else {
+                return new GlobalDefAST(symbolTable.makeGlobal(isFloat, name, dimensions, new HashMap<>()));
+            }
+        }
+        if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
+            ExpAST rVal = parseAddSubExp();
+            if (isFloat) {
+                return new GlobalDefAST(symbolTable.makeGlobal(name, rVal.calc().floatValue()));
+            } else {
+                return new GlobalDefAST(symbolTable.makeGlobal(name, rVal.calc().intValue()));
+            }
+        }
+        return new GlobalDefAST(symbolTable.makeGlobal(name, 0));
+    }
+
+    private List<StmtAST> parseLocalDecl() {
         boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
             case FLOAT -> true;
             case INT -> false;
@@ -146,38 +134,44 @@ public class SyntaxParser {
         };
         List<StmtAST> stmts = new ArrayList<>();
         do {
-            String name = tokens.nextIdentity();
-            if (tokens.match(TokenType.LB)) {
-                List<Integer> dimensions = parseDimensionDef();
-                LocalSymbol symbol = symbolTable.makeLocal(isFloat, name, dimensions);
-                stmts.add(new LocalDefAST(symbol));
-                if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
-                    InitValAST initVal = parseInitVal();
-                    Map<Integer, ExpAST> exps = new HashMap<>();
-                    allocInitVal(dimensions, exps, 0, initVal);
-                    int totalSize = dimensions.stream().reduce(1, (i1, i2) -> i1 * i2);
-                    for (int i = 0; i < totalSize; i++) {
-                        ExpAST[] dimensionExps = new ExpAST[dimensions.size()];
-                        int t = i;
-                        for (int j = dimensions.size() - 1; j >= 0; j--) {
-                            dimensionExps[j] = new IntLitExpAST(t % dimensions.get(j));
-                            t /= dimensions.get(j);
-                        }
-                        ExpAST exp = exps.getOrDefault(i, new IntLitExpAST(0));
-                        stmts.add(new AssignStmtAST(new LValAST(symbol, List.of(dimensionExps)), exp));
-                    }
-                }
-            } else {
-                LocalSymbol symbol = symbolTable.makeLocal(isFloat, name);
-                stmts.add(new LocalDefAST(symbol));
-                if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
-                    LValAST lVal = new LValAST(symbol, List.of());
-                    ExpAST rVal = parseAddSubExp();
-                    stmts.add(new AssignStmtAST(lVal, rVal));
-                }
-            }
+            List<StmtAST> newStmts = parseLocalDef(isFloat);
+            stmts.addAll(newStmts);
         } while (tokens.matchAndThenThrow(TokenType.COMMA));
         tokens.expectAndFetch(TokenType.SEMICOLON);
+        return stmts;
+    }
+
+    private List<StmtAST> parseLocalDef(boolean isFloat) {
+        List<StmtAST> stmts = new ArrayList<>();
+        String name = tokens.nextIdentity();
+        if (tokens.match(TokenType.LB)) {
+            List<Integer> dimensions = parseDimensionDef();
+            LocalSymbol symbol = symbolTable.makeLocal(isFloat, name, dimensions);
+            stmts.add(new LocalDefAST(symbol));
+            if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
+                InitValAST initVal = parseInitVal();
+                Map<Integer, ExpAST> exps = allocInitVal(initVal, dimensions);
+                int totalSize = dimensions.stream().reduce(1, Math::multiplyExact);
+                for (int i = 0; i < totalSize; i++) {
+                    ExpAST[] dimensionExps = new ExpAST[dimensions.size()];
+                    int t = i;
+                    for (int j = dimensions.size() - 1; j >= 0; j--) {
+                        dimensionExps[j] = new IntLitExpAST(t % dimensions.get(j));
+                        t /= dimensions.get(j);
+                    }
+                    ExpAST exp = exps.getOrDefault(i, new IntLitExpAST(0));
+                    stmts.add(new AssignStmtAST(new LValAST(symbol, List.of(dimensionExps)), exp));
+                }
+            }
+        } else {
+            LocalSymbol symbol = symbolTable.makeLocal(isFloat, name);
+            stmts.add(new LocalDefAST(symbol));
+            if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
+                LValAST lVal = new LValAST(symbol, List.of());
+                ExpAST rVal = parseAddSubExp();
+                stmts.add(new AssignStmtAST(lVal, rVal));
+            }
+        }
         return stmts;
     }
 
@@ -260,9 +254,9 @@ public class SyntaxParser {
     private List<? extends StmtAST> parseStmt() {
         return switch (tokens.peekType()) {
             case BREAK -> List.of(parseBreakStmt());
-            case CONST -> parseConstDef();
+            case CONST -> parseConstDecl();
             case CONTINUE -> List.of(parseContinueStmt());
-            case FLOAT, INT -> parseLocalDef();
+            case FLOAT, INT -> parseLocalDecl();
             case ID -> {
                 int lookahead = 0;
                 boolean isAssignStmt = false;
@@ -577,42 +571,28 @@ public class SyntaxParser {
         return new WhileStmtAST(cond, body);
     }
 
-    private static void allocInitVal(List<Integer> dimensions, Map<Integer, ExpAST> exps, int base, ExpAST src) {
-        if (dimensions.isEmpty()) {
-            while (src instanceof InitValAST initVal) {
-                src = initVal.isEmpty() ? null : initVal.get(0);
-            }
-            if (src != null) {
-                exps.put(base, src);
-            }
-            return;
+    private static Map<Integer, ExpAST> allocInitVal(ExpAST src, List<Integer> dimensions) {
+        record Task(ExpAST exp, int index, int off) {
         }
-        int[] index = new int[dimensions.size()];
-        for (ExpAST exp : (InitValAST) src) {
-            if (exp instanceof InitValAST) {
-                int d = Integer.max(dimensions.lastIndexOf(0), 0);
-                int offset = 0;
-                for (int i = 0; i < dimensions.size(); i++) {
-                    offset = offset * dimensions.get(i) + (i <= d ? index[i] : 0);
+        Map<Integer, ExpAST> result = new HashMap<>();
+        Queue<Task> tasks = new ArrayDeque<>();
+        tasks.offer(new Task(src, 1, 0));
+        while (!tasks.isEmpty()) {
+            Task task = tasks.poll();
+            int dim = dimensions.stream().skip(task.index()).reduce(1, Math::multiplyExact);
+            int offset = task.off();
+            for (ExpAST exp : (InitValAST) task.exp()) {
+                if (exp instanceof InitValAST) {
+                    offset = (offset + dim - 1) / dim * dim;
+                    tasks.offer(new Task(exp, task.index() + 1, offset));
+                    offset += dim;
+                } else {
+                    result.put(offset, exp);
+                    offset++;
                 }
-                allocInitVal(dimensions.subList(d + 1, dimensions.size()), exps, base + offset, exp);
-                index[d]++;
-            } else {
-                int offset = 0;
-                for (int i = 0; i < dimensions.size(); i++) {
-                    offset = offset * dimensions.get(i) + index[i];
-                }
-                exps.put(base + offset, exp);
-                index[index.length - 1]++;
-            }
-            for (int i = dimensions.size() - 1; i >= 0 && index[i] >= dimensions.get(i); i--) {
-                index[i] = 0;
-                if (i == 0) {
-                    return;
-                }
-                index[i - 1]++;
             }
         }
+        return result;
     }
 
     public RootAST getRootAST() {

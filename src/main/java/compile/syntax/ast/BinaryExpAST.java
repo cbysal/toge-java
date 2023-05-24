@@ -1,84 +1,94 @@
 package compile.syntax.ast;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.BinaryOperator;
+
 public record BinaryExpAST(compile.syntax.ast.BinaryExpAST.Type type, ExpAST left, ExpAST right) implements ExpAST {
     public enum Type {
         L_OR, L_AND, EQ, NE, GE, GT, LE, LT, ADD, SUB, MUL, DIV, MOD
+    }
+
+    private static final Map<Type, BinaryOperator<Number>> CALC_OPS;
+
+    static {
+        Map<Type, BinaryOperator<Number>> calcOps = new HashMap<>();
+        calcOps.put(Type.L_OR, (val1, val2) -> val1.intValue() != 0 || val2.intValue() != 0 ? 1 : 0);
+        calcOps.put(Type.L_AND, (val1, val2) -> val1.intValue() != 0 && val2.intValue() != 0 ? 1 : 0);
+        calcOps.put(Type.EQ, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() == val2.intValue() ? 1 : 0;
+            }
+            return Float.compare(val1.floatValue(), val2.floatValue()) == 0 ? 1 : 0;
+        });
+        calcOps.put(Type.NE, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() != val2.intValue() ? 1 : 0;
+            }
+            return Float.compare(val1.floatValue(), val2.floatValue()) != 0 ? 1 : 0;
+        });
+        calcOps.put(Type.GE, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() >= val2.intValue() ? 1 : 0;
+            }
+            return Float.compare(val1.floatValue(), val2.floatValue()) >= 0 ? 1 : 0;
+        });
+        calcOps.put(Type.GT, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() > val2.intValue() ? 1 : 0;
+            }
+            return Float.compare(val1.floatValue(), val2.floatValue()) > 0 ? 1 : 0;
+        });
+        calcOps.put(Type.LE, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() <= val2.intValue() ? 1 : 0;
+            }
+            return Float.compare(val1.floatValue(), val2.floatValue()) <= 0 ? 1 : 0;
+        });
+        calcOps.put(Type.LT, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() < val2.intValue() ? 1 : 0;
+            }
+            return Float.compare(val1.floatValue(), val2.floatValue()) < 0 ? 1 : 0;
+        });
+        calcOps.put(Type.ADD, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() + val2.intValue();
+            }
+            return val1.floatValue() + val2.floatValue();
+        });
+        calcOps.put(Type.SUB, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() - val2.intValue();
+            }
+            return val1.floatValue() - val2.floatValue();
+        });
+        calcOps.put(Type.MUL, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() * val2.intValue();
+            }
+            return val1.floatValue() * val2.floatValue();
+        });
+        calcOps.put(Type.DIV, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() / val2.intValue();
+            }
+            return val1.floatValue() / val2.floatValue();
+        });
+        calcOps.put(Type.MOD, (val1, val2) -> {
+            if (val1 instanceof Integer && val2 instanceof Integer) {
+                return val1.intValue() % val2.intValue();
+            }
+            return val1.floatValue() % val2.floatValue();
+        });
+        CALC_OPS = calcOps;
     }
 
     @Override
     public Number calc() {
         Number lVal = left.calc();
         Number rVal = right.calc();
-        return switch (type) {
-            case L_OR -> lVal.intValue() != 0 || rVal.intValue() != 0 ? 1 : 0;
-            case L_AND -> lVal.intValue() != 0 && rVal.intValue() != 0 ? 1 : 0;
-            case EQ -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() == rVal.intValue() ? 1 : 0;
-                }
-                yield lVal.floatValue() == rVal.floatValue() ? 1 : 0;
-            }
-            case NE -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() != rVal.intValue() ? 1 : 0;
-                }
-                yield Float.compare(lVal.floatValue(), rVal.floatValue()) != 0 ? 1 : 0;
-            }
-            case GE -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() >= rVal.intValue() ? 1 : 0;
-                }
-                yield Float.compare(lVal.floatValue(), rVal.floatValue()) >= 0 ? 1 : 0;
-            }
-            case GT -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() > rVal.intValue() ? 1 : 0;
-                }
-                yield Float.compare(lVal.floatValue(), rVal.floatValue()) > 0 ? 1 : 0;
-            }
-            case LE -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() <= rVal.intValue() ? 1 : 0;
-                }
-                yield Float.compare(lVal.floatValue(), rVal.floatValue()) <= 0 ? 1 : 0;
-            }
-            case LT -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() < rVal.intValue() ? 1 : 0;
-                }
-                yield Float.compare(lVal.floatValue(), rVal.floatValue()) < 0 ? 1 : 0;
-            }
-            case ADD -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() + rVal.intValue();
-                }
-                yield lVal.floatValue() + rVal.floatValue();
-            }
-            case SUB -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() - rVal.intValue();
-                }
-                yield lVal.floatValue() - rVal.floatValue();
-            }
-            case MUL -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() * rVal.intValue();
-                }
-                yield lVal.floatValue() * rVal.floatValue();
-            }
-            case DIV -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() / rVal.intValue();
-                }
-                yield lVal.floatValue() / rVal.floatValue();
-            }
-            case MOD -> {
-                if (lVal instanceof Integer && rVal instanceof Integer) {
-                    yield lVal.intValue() % rVal.intValue();
-                }
-                yield lVal.floatValue() % rVal.floatValue();
-            }
-        };
+        return CALC_OPS.get(type).apply(lVal, rVal);
     }
 
     @Override
