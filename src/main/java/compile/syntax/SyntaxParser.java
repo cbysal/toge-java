@@ -151,16 +151,17 @@ public class SyntaxParser {
             if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
                 InitValAST initVal = parseInitVal();
                 Map<Integer, ExpAST> exps = allocInitVal(initVal, dimensions);
-                int totalSize = dimensions.stream().reduce(1, Math::multiplyExact);
-                for (int i = 0; i < totalSize; i++) {
+                int totalSize = dimensions.stream().reduce(4, Math::multiplyExact);
+                stmts.add(new ExpStmtAST(new FuncCallExpAST(symbolTable.getFunc("memset"),
+                        List.of(new VarExpAST(symbol, List.of()), new IntLitExpAST(0), new IntLitExpAST(totalSize)))));
+                for (Map.Entry<Integer, ExpAST> exp : exps.entrySet()) {
                     ExpAST[] dimensionExps = new ExpAST[dimensions.size()];
-                    int t = i;
+                    int t = exp.getKey();
                     for (int j = dimensions.size() - 1; j >= 0; j--) {
                         dimensionExps[j] = new IntLitExpAST(t % dimensions.get(j));
                         t /= dimensions.get(j);
                     }
-                    ExpAST exp = exps.getOrDefault(i, new IntLitExpAST(0));
-                    stmts.add(new AssignStmtAST(new LValAST(symbol, List.of(dimensionExps)), exp));
+                    stmts.add(new AssignStmtAST(new LValAST(symbol, List.of(dimensionExps)), exp.getValue()));
                 }
             }
         } else {

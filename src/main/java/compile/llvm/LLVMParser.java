@@ -35,6 +35,7 @@ public class LLVMParser {
     public LLVMParser(RootAST root) {
         this.root = root;
         initBuiltInFuncs();
+        initSyscalls();
     }
 
     private void initBuiltInFuncs() {
@@ -97,6 +98,17 @@ public class LLVMParser {
         func = new Function(BasicType.VOID, "_sysy_stoptime");
         func.addParam(new Param(BasicType.I32, "lineno"));
         symbolTable.putFirst("_sysy_stoptime", func);
+        module.addDeclare(func);
+    }
+
+    private void initSyscalls() {
+        Function func;
+        // memset
+        func = new Function(BasicType.VOID, "memset");
+        func.addParam(new Param(new PointerType(BasicType.I32), "s"));
+        func.addParam(new Param(BasicType.I32, "c"));
+        func.addParam(new Param(BasicType.I32, "n"));
+        symbolTable.putFirst("memset", func);
         module.addDeclare(func);
     }
 
