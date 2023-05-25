@@ -8,21 +8,19 @@ import java.util.List;
 public record VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) implements ExpAST {
     @Override
     public Number calc() {
-        if (symbol instanceof GlobalSymbol symbol) {
-            if (dimensions.isEmpty()) {
-                return symbol.getValue();
-            }
-            if (symbol.getDimensions().size() != dimensions.size()) {
-                throw new RuntimeException();
-            }
-            int offset = 0;
-            List<Integer> dimensionSizes = symbol.getDimensions();
-            for (int i = 0; i < dimensions.size(); i++) {
-                offset = offset * dimensionSizes.get(i) + dimensions.get(i).calc().intValue();
-            }
-            return symbol.getValue(offset);
+        GlobalSymbol global = (GlobalSymbol) symbol;
+        if (dimensions.isEmpty()) {
+            return global.getValue();
         }
-        throw new RuntimeException("Can not calculate symbol: " + symbol.getName());
+        if (global.getDimensions().size() != dimensions.size()) {
+            throw new RuntimeException();
+        }
+        int offset = 0;
+        List<Integer> dimensionSizes = global.getDimensions();
+        for (int i = 0; i < dimensions.size(); i++) {
+            offset = offset * dimensionSizes.get(i) + dimensions.get(i).calc().intValue();
+        }
+        return global.getValue(offset);
     }
 
     public boolean isSingle() {
