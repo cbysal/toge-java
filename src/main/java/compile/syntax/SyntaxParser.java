@@ -2,6 +2,10 @@ package compile.syntax;
 
 import compile.lexical.token.TokenList;
 import compile.lexical.token.TokenType;
+import compile.llvm.ir.type.ArrayType;
+import compile.llvm.ir.type.BasicType;
+import compile.llvm.ir.type.PointerType;
+import compile.llvm.ir.type.Type;
 import compile.symbol.FuncSymbol;
 import compile.symbol.LocalSymbol;
 import compile.symbol.ParamSymbol;
@@ -53,7 +57,7 @@ public class SyntaxParser {
         parseUnaryActions.put(TokenType.INT_LIT, parser -> new IntLitExpAST(parser.tokens.nextInt()));
         parseUnaryActions.put(TokenType.L_NOT, parser -> {
             parser.tokens.expectAndFetch(TokenType.L_NOT);
-            return new UnaryExpAST(UnaryExpAST.Type.L_NOT, parser.parseUnary());
+            return new LNotExpAST(parser.parseUnary());
         });
         parseUnaryActions.put(TokenType.LP, parser -> {
             parser.tokens.expectAndFetch(TokenType.LP);
@@ -112,118 +116,123 @@ public class SyntaxParser {
     private List<ConstDefAST> parseConstDecl() {
         List<ConstDefAST> constDefs = new ArrayList<>();
         tokens.expectAndFetch(TokenType.CONST);
-        boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
-            case FLOAT -> true;
-            case INT -> false;
+        BasicType type = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
+            case INT -> BasicType.I32;
+            case FLOAT -> BasicType.FLOAT;
             default -> throw new RuntimeException();
         };
         do {
-            constDefs.add(parseConstDef(isFloat));
+            constDefs.add(parseConstDef(type));
         } while (tokens.matchAndThenThrow(TokenType.COMMA));
         tokens.expectAndFetch(TokenType.SEMICOLON);
         return constDefs;
     }
 
-    private ConstDefAST parseConstDef(boolean isFloat) {
+    private ConstDefAST parseConstDef(BasicType type) {
         String name = tokens.nextIdentity();
         if (tokens.match(TokenType.LB)) {
-            return parseConstDefForArray(isFloat, name);
+            return parseConstDefForArray(type, name);
         }
-        return parseConstDefForScalar(isFloat, name);
+        return parseConstDefForScalar(type, name);
     }
 
-    private ConstDefAST parseConstDefForScalar(boolean isFloat, String name) {
+    private ConstDefAST parseConstDefForScalar(BasicType type, String name) {
         tokens.expectAndFetch(TokenType.ASSIGN);
         ExpAST rVal = parseAddSubExp();
         Number value = rVal.calc();
-        if (isFloat) {
-            return new ConstDefAST(symbolTable.makeConst(name, value.floatValue()));
-        } else {
-            return new ConstDefAST(symbolTable.makeConst(name, value.intValue()));
+        if (type == BasicType.I32) {
+            value = value.intValue();
         }
+        return new ConstDefAST(symbolTable.makeGlobal(type, name, value));
     }
 
-    private ConstDefAST parseConstDefForArray(boolean isFloat, String name) {
+    private ConstDefAST parseConstDefForArray(BasicType type, String name) {
         List<Integer> dimensions = parseDimensionDef();
+        Type targetType = type;
+        for (int i = dimensions.size() - 1; i >= 0; i--) {
+            targetType = new ArrayType(targetType, dimensions.get(i));
+        }
         tokens.expectAndFetch(TokenType.ASSIGN);
         InitValAST initVal = parseInitVal();
         Map<Integer, ExpAST> exps = allocInitVal(initVal, dimensions);
-        return new ConstDefAST(symbolTable.makeConst(isFloat, name, dimensions,
-                exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> exp.getValue().calc()))));
+        return new ConstDefAST(symbolTable.makeGlobal(targetType, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> exp.getValue().calc()))));
     }
 
     private List<GlobalDefAST> parseGlobalDecl() {
-        boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
-            case FLOAT -> true;
-            case INT -> false;
+        BasicType type = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
+            case INT -> BasicType.I32;
+            case FLOAT -> BasicType.FLOAT;
             default -> throw new RuntimeException();
         };
         List<GlobalDefAST> globalDefs = new ArrayList<>();
         do {
-            GlobalDefAST globalDef = parseGlobalDef(isFloat);
+            GlobalDefAST globalDef = parseGlobalDef(type);
             globalDefs.add(globalDef);
         } while (tokens.matchAndThenThrow(TokenType.COMMA));
         tokens.expectAndFetch(TokenType.SEMICOLON);
         return globalDefs;
     }
 
-    private GlobalDefAST parseGlobalDef(boolean isFloat) {
+    private GlobalDefAST parseGlobalDef(BasicType type) {
         String name = tokens.nextIdentity();
         if (tokens.match(TokenType.LB)) {
-            return parseGlobalDefForArray(isFloat, name);
+            return parseGlobalDefForArray(type, name);
         }
-        return parseGlobalDefForScalar(isFloat, name);
+        return parseGlobalDefForScalar(type, name);
     }
 
-    private GlobalDefAST parseGlobalDefForScalar(boolean isFloat, String name) {
+    private GlobalDefAST parseGlobalDefForScalar(BasicType type, String name) {
         if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
             ExpAST rVal = parseAddSubExp();
-            if (isFloat) {
-                return new GlobalDefAST(symbolTable.makeGlobal(name, rVal.calc().floatValue()));
-            } else {
-                return new GlobalDefAST(symbolTable.makeGlobal(name, rVal.calc().intValue()));
+            Number value = rVal.calc();
+            if (type == BasicType.I32) {
+                value = value.intValue();
             }
+            return new GlobalDefAST(symbolTable.makeGlobal(type, name, value));
         }
-        return new GlobalDefAST(symbolTable.makeGlobal(name, 0));
+        return new GlobalDefAST(symbolTable.makeGlobal(type, name, 0));
     }
 
-    private GlobalDefAST parseGlobalDefForArray(boolean isFloat, String name) {
+    private GlobalDefAST parseGlobalDefForArray(BasicType type, String name) {
         List<Integer> dimensions = parseDimensionDef();
+        Type targetType = type;
+        for (int i = dimensions.size() - 1; i >= 0; i--) {
+            targetType = new ArrayType(targetType, dimensions.get(i));
+        }
         Map<Integer, Number> initValMap = new HashMap<>();
         if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
             InitValAST initVal = parseInitVal();
             Map<Integer, ExpAST> exps = allocInitVal(initVal, dimensions);
-            initValMap = exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                    exp -> exp.getValue().calc()));
+            initValMap = exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> exp.getValue().calc()));
         }
-        return new GlobalDefAST(symbolTable.makeGlobal(isFloat, name, dimensions, initValMap));
+        return new GlobalDefAST(symbolTable.makeGlobal(targetType, name, initValMap));
     }
 
     private List<StmtAST> parseLocalDecl() {
-        boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
-            case FLOAT -> true;
-            case INT -> false;
+        BasicType type = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
+            case INT -> BasicType.I32;
+            case FLOAT -> BasicType.FLOAT;
             default -> throw new RuntimeException();
         };
         List<StmtAST> stmts = new ArrayList<>();
         do {
-            stmts.addAll(parseLocalDef(isFloat));
+            stmts.addAll(parseLocalDef(type));
         } while (tokens.matchAndThenThrow(TokenType.COMMA));
         tokens.expectAndFetch(TokenType.SEMICOLON);
         return stmts;
     }
 
-    private List<StmtAST> parseLocalDef(boolean isFloat) {
+    private List<StmtAST> parseLocalDef(BasicType type) {
         String name = tokens.nextIdentity();
         if (tokens.match(TokenType.LB)) {
-            return parseLocalDefForArray(isFloat, name);
+            return parseLocalDefForArray(type, name);
         }
-        return parseLocalDefForScalar(isFloat, name);
+        return parseLocalDefForScalar(type, name);
     }
 
-    private List<StmtAST> parseLocalDefForScalar(boolean isFloat, String name) {
+    private List<StmtAST> parseLocalDefForScalar(BasicType type, String name) {
         List<StmtAST> stmts = new ArrayList<>();
-        LocalSymbol symbol = symbolTable.makeLocal(isFloat, name);
+        LocalSymbol symbol = symbolTable.makeLocal(type, name);
         stmts.add(new LocalDefAST(symbol));
         if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
             LValAST lVal = new LValAST(symbol, List.of());
@@ -233,17 +242,20 @@ public class SyntaxParser {
         return stmts;
     }
 
-    private List<StmtAST> parseLocalDefForArray(boolean isFloat, String name) {
+    private List<StmtAST> parseLocalDefForArray(BasicType type, String name) {
         List<StmtAST> stmts = new ArrayList<>();
         List<Integer> dimensions = parseDimensionDef();
-        LocalSymbol symbol = symbolTable.makeLocal(isFloat, name, dimensions);
+        Type targetType = type;
+        for (int i = dimensions.size() - 1; i >= 0; i--) {
+            targetType = new ArrayType(targetType, dimensions.get(i));
+        }
+        LocalSymbol symbol = symbolTable.makeLocal(targetType, name);
         stmts.add(new LocalDefAST(symbol));
         if (tokens.matchAndThenThrow(TokenType.ASSIGN)) {
             InitValAST initVal = parseInitVal();
             Map<Integer, ExpAST> exps = allocInitVal(initVal, dimensions);
             int totalSize = dimensions.stream().reduce(4, Math::multiplyExact);
-            stmts.add(new ExpStmtAST(new FuncCallExpAST(symbolTable.getFunc("memset"), List.of(new VarExpAST(symbol,
-                    List.of()), new IntLitExpAST(0), new IntLitExpAST(totalSize)))));
+            stmts.add(new ExpStmtAST(new FuncCallExpAST(symbolTable.getFunc("memset"), List.of(new VarExpAST(symbol, List.of()), new IntLitExpAST(0), new IntLitExpAST(totalSize)))));
             for (Map.Entry<Integer, ExpAST> exp : exps.entrySet()) {
                 List<ExpAST> indexExps = indexExpsFromFlatten(dimensions, exp.getKey());
                 stmts.add(new AssignStmtAST(new LValAST(symbol, indexExps), exp.getValue()));
@@ -274,24 +286,14 @@ public class SyntaxParser {
     }
 
     private CompUnitAST parseFuncDef() {
-        boolean hasRet, isFloat;
-        switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT, TokenType.VOID).getType()) {
-            case FLOAT -> {
-                hasRet = true;
-                isFloat = true;
-            }
-            case INT -> {
-                hasRet = true;
-                isFloat = false;
-            }
-            case VOID -> {
-                hasRet = false;
-                isFloat = false;
-            }
+        BasicType type = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT, TokenType.VOID).getType()) {
+            case VOID -> BasicType.VOID;
+            case INT -> BasicType.I32;
+            case FLOAT -> BasicType.FLOAT;
             default -> throw new RuntimeException();
-        }
+        };
         String name = tokens.nextIdentity();
-        FuncSymbol decl = hasRet ? symbolTable.makeFunc(isFloat, name) : symbolTable.makeFunc(name);
+        FuncSymbol decl = symbolTable.makeFunc(type, name);
         symbolTable.in();
         parseFuncDefParams(decl);
         BlockStmtAST body = parseBlock();
@@ -311,24 +313,25 @@ public class SyntaxParser {
     }
 
     private ParamSymbol parseFuncDefParam() {
-        boolean isFloat = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
-            case FLOAT -> true;
-            case INT -> false;
+        BasicType type = switch (tokens.expectAndFetch(TokenType.FLOAT, TokenType.INT).getType()) {
+            case INT -> BasicType.I32;
+            case FLOAT -> BasicType.FLOAT;
             default -> throw new RuntimeException();
         };
         String name = tokens.nextIdentity();
         if (!tokens.matchAndThenThrow(TokenType.LB)) {
-            return symbolTable.makeParam(isFloat, name);
+            return symbolTable.makeParam(type, name);
         }
         tokens.expectAndFetch(TokenType.RB);
-        List<Integer> dimensions = new ArrayList<>();
-        dimensions.add(-1);
+        Type targetType = type;
         while (tokens.matchAndThenThrow(TokenType.LB)) {
             ExpAST exp = parseAddSubExp();
-            dimensions.add(exp.calc().intValue());
+            int dimension = exp.calc().intValue();
+            targetType = new ArrayType(targetType, dimension);
             tokens.matchAndThenThrow(TokenType.RB);
         }
-        return symbolTable.makeParam(isFloat, name, dimensions);
+        targetType = new PointerType(targetType);
+        return symbolTable.makeParam(targetType, name);
     }
 
     private BlockStmtAST parseBlock() {
@@ -363,7 +366,7 @@ public class SyntaxParser {
         }
         ExpAST root = exps.get(0);
         for (int i = 1; i < exps.size(); i++) {
-            root = new BinaryExpAST(BinaryExpAST.Type.L_OR, root, exps.get(i));
+            root = new LOrExpAST(root, exps.get(i));
         }
         return root;
     }
@@ -376,47 +379,47 @@ public class SyntaxParser {
         }
         ExpAST root = exps.get(0);
         for (int i = 1; i < exps.size(); i++) {
-            root = new BinaryExpAST(BinaryExpAST.Type.L_AND, root, exps.get(i));
+            root = new LAndExpAST(root, exps.get(i));
         }
         return root;
     }
 
     private ExpAST parseEqNeExp() {
-        List<BinaryExpAST.Type> types = new ArrayList<>();
+        List<CmpExpAST.Type> types = new ArrayList<>();
         List<ExpAST> exps = new ArrayList<>();
         exps.add(parseGeGtLeLtExp());
         while (tokens.match(TokenType.EQ, TokenType.NE)) {
             types.add(switch (tokens.expectAndFetch(TokenType.EQ, TokenType.NE).getType()) {
-                case EQ -> BinaryExpAST.Type.EQ;
-                case NE -> BinaryExpAST.Type.NE;
+                case EQ -> CmpExpAST.Type.EQ;
+                case NE -> CmpExpAST.Type.NE;
                 default -> throw new RuntimeException();
             });
             exps.add(parseGeGtLeLtExp());
         }
         ExpAST root = exps.get(0);
         for (int i = 0; i < types.size(); i++) {
-            root = new BinaryExpAST(types.get(i), root, exps.get(i + 1));
+            root = new CmpExpAST(types.get(i), root, exps.get(i + 1));
         }
         return root;
     }
 
     private ExpAST parseGeGtLeLtExp() {
-        List<BinaryExpAST.Type> types = new ArrayList<>();
+        List<CmpExpAST.Type> types = new ArrayList<>();
         List<ExpAST> exps = new ArrayList<>();
         exps.add(parseAddSubExp());
         while (tokens.match(TokenType.GE, TokenType.GT, TokenType.LE, TokenType.LT)) {
             types.add(switch (tokens.expectAndFetch(TokenType.GE, TokenType.GT, TokenType.LE, TokenType.LT).getType()) {
-                case GE -> BinaryExpAST.Type.GE;
-                case GT -> BinaryExpAST.Type.GT;
-                case LE -> BinaryExpAST.Type.LE;
-                case LT -> BinaryExpAST.Type.LT;
+                case GE -> CmpExpAST.Type.GE;
+                case GT -> CmpExpAST.Type.GT;
+                case LE -> CmpExpAST.Type.LE;
+                case LT -> CmpExpAST.Type.LT;
                 default -> throw new RuntimeException();
             });
             exps.add(parseAddSubExp());
         }
         ExpAST root = exps.get(0);
         for (int i = 0; i < types.size(); i++) {
-            root = new BinaryExpAST(types.get(i), root, exps.get(i + 1));
+            root = new CmpExpAST(types.get(i), root, exps.get(i + 1));
         }
         return root;
     }

@@ -1,16 +1,18 @@
 package compile.symbol;
 
+import compile.llvm.ir.type.Type;
+
 public abstract class Symbol {
-    final boolean isFloat;
+    final Type type;
     final String name;
 
-    Symbol(boolean isFloat, String name) {
-        this.isFloat = isFloat;
+    Symbol(Type type, String name) {
+        this.type = type;
         this.name = name;
     }
 
-    public boolean isFloat() {
-        return isFloat;
+    public Type getType() {
+        return type;
     }
 
     public String getName() {

@@ -449,86 +449,62 @@ public class CodeGenerator {
                     } else {
                         src2 = valueToReg.get(rVal);
                     }
-                    switch (op) {
-                        case EQ -> {
-                            Reg tempReg = new VReg(false);
-                            asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg, src1, src2));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTIU, dest, tempReg, 1));
+                    if (cmpInstr instanceof ICmpInstr) {
+                        switch (op) {
+                            case EQ -> {
+                                Reg tempReg = new VReg(false);
+                                asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg, src1, src2));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTIU, dest, tempReg, 1));
+                            }
+                            case NE -> {
+                                Reg tempReg1 = new VReg(false);
+                                Reg tempReg2 = new VReg(false);
+                                asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg1, src1, src2));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTIU, tempReg2, tempReg1, 1));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTIU, dest, tempReg2, 1));
+                            }
+                            case GE -> {
+                                Reg tempReg = new VReg(false);
+                                asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg, src2, src1));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTI, dest, tempReg, 1));
+                            }
+                            case GT -> {
+                                Reg tempReg = new VReg(false);
+                                asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg, src2, src1));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTI, dest, tempReg, 0));
+                            }
+                            case LE -> {
+                                Reg tempReg = new VReg(false);
+                                asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg, src1, src2));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTI, dest, tempReg, 1));
+                            }
+                            case LT -> asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SLT, dest, src1, src2));
                         }
-                        case NE -> {
-                            Reg tempReg1 = new VReg(false);
-                            Reg tempReg2 = new VReg(false);
-                            asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg1, src1, src2));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTIU, tempReg2, tempReg1, 1));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTIU, dest, tempReg2, 1));
+                    } else if (cmpInstr instanceof FCmpInstr) {
+                        switch (op) {
+                            case EQ -> asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FEQ, dest, src1, src2));
+                            case NE -> {
+                                Reg tempReg = new VReg(false);
+                                asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FEQ, tempReg, src1, src2));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.XORI, dest, tempReg, 1));
+                            }
+                            case GE -> {
+                                Reg tempReg = new VReg(false);
+                                asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FLT, tempReg, src1, src2));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.XORI, dest, tempReg, 1));
+                            }
+                            case GT -> {
+                                Reg tempReg = new VReg(false);
+                                asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FLE, tempReg, src1, src2));
+                                asmBlock.addAsm(new RriAsm(RriAsm.Type.XORI, dest, tempReg, 1));
+                            }
+                            case LE -> asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FLE, dest, src1, src2));
+                            case LT -> asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FLT, dest, src1, src2));
                         }
-                        case SGE -> {
-                            Reg tempReg = new VReg(false);
-                            asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg, src2, src1));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTI, dest, tempReg, 1));
-                        }
-                        case SGT -> {
-                            Reg tempReg = new VReg(false);
-                            asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg, src2, src1));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTI, dest, tempReg, 0));
-                        }
-                        case SLE -> {
-                            Reg tempReg = new VReg(false);
-                            asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SUB, tempReg, src1, src2));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.SLTI, dest, tempReg, 1));
-                        }
-                        case SLT -> asmBlock.addAsm(new RrrAsm(RrrAsm.Type.SLT, dest, src1, src2));
+                    } else {
+                        throw new RuntimeException();
                     }
                     valueToReg.put(cmpInstr, dest);
-                    continue;
-                }
-                if (instr instanceof FcmpInstr fcmpInstr) {
-                    FcmpInstr.Op op = fcmpInstr.getOp();
-                    Value lVal = fcmpInstr.getlVal();
-                    Value rVal = fcmpInstr.getrVal();
-                    Reg src1, src2;
-                    Reg dest = new VReg(false);
-                    if (lVal instanceof I32Constant i32Constant) {
-                        src1 = new VReg(false);
-                        asmBlock.addAsm(new LiAsm(src1, i32Constant.getValue()));
-                    } else if (lVal instanceof FloatConstant floatConstant) {
-                        src1 = new VReg(true);
-                        asmBlock.addAsm(new LiAsm(MReg.T0, Float.floatToIntBits(floatConstant.getValue())));
-                        asmBlock.addAsm(new FmvWXAsm(src1, MReg.T0));
-                    } else {
-                        src1 = valueToReg.get(lVal);
-                    }
-                    if (rVal instanceof I32Constant i32Constant) {
-                        src2 = new VReg(false);
-                        asmBlock.addAsm(new LiAsm(src2, i32Constant.getValue()));
-                    } else if (rVal instanceof FloatConstant floatConstant) {
-                        src2 = new VReg(true);
-                        asmBlock.addAsm(new LiAsm(MReg.T0, Float.floatToIntBits(floatConstant.getValue())));
-                        asmBlock.addAsm(new FmvWXAsm(src2, MReg.T0));
-                    } else {
-                        src2 = valueToReg.get(rVal);
-                    }
-                    switch (op) {
-                        case OEQ -> asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FEQ, dest, src1, src2));
-                        case UNE -> {
-                            Reg tempReg = new VReg(false);
-                            asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FEQ, tempReg, src1, src2));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.XORI, dest, tempReg, 1));
-                        }
-                        case OGE -> {
-                            Reg tempReg = new VReg(false);
-                            asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FLT, tempReg, src1, src2));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.XORI, dest, tempReg, 1));
-                        }
-                        case OGT -> {
-                            Reg tempReg = new VReg(false);
-                            asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FLE, tempReg, src1, src2));
-                            asmBlock.addAsm(new RriAsm(RriAsm.Type.XORI, dest, tempReg, 1));
-                        }
-                        case OLE -> asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FLE, dest, src1, src2));
-                        case OLT -> asmBlock.addAsm(new RrrAsm(RrrAsm.Type.FLT, dest, src1, src2));
-                    }
-                    valueToReg.put(fcmpInstr, dest);
                     continue;
                 }
                 if (instr instanceof BranchInstr branchInstr) {
@@ -672,6 +648,12 @@ public class CodeGenerator {
                     }
                     asmBlock.addAsm(new LdAsm(MReg.RA, MReg.SP, -8));
                     asmBlock.addAsm(new RetAsm());
+                    continue;
+                }
+                if (instr instanceof BitCastInstr bitCastInstr) {
+                    Reg dest = new VReg(false);
+                    asmBlock.addAsm(new MvAsm(dest, valueToReg.get(bitCastInstr.getBase())));
+                    valueToReg.put(bitCastInstr, dest);
                     continue;
                 }
                 throw new RuntimeException("Unhandled instr: " + instr);

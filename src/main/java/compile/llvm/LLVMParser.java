@@ -8,16 +8,119 @@ import compile.llvm.ir.type.ArrayType;
 import compile.llvm.ir.type.BasicType;
 import compile.llvm.ir.type.PointerType;
 import compile.llvm.ir.type.Type;
-import compile.symbol.FuncSymbol;
-import compile.symbol.GlobalSymbol;
-import compile.symbol.LocalSymbol;
-import compile.symbol.ParamSymbol;
+import compile.symbol.*;
 import compile.syntax.ast.*;
+import functional.TriFunction;
 
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 // TODO reconstruct the class
 public class LLVMParser {
+    private static class TypeConversionCase {
+        private final Type sourceType, targetType;
+
+        public TypeConversionCase(Type sourceType, Type targetType) {
+            this.sourceType = sourceType;
+            this.targetType = targetType;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof TypeConversionCase typeConversionCase) {
+                if (sourceType == null || typeConversionCase.sourceType == null) {
+                    return targetType.equals(typeConversionCase.targetType);
+                }
+                return sourceType.equals(typeConversionCase.sourceType) && targetType.equals(typeConversionCase.targetType);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(targetType);
+        }
+    }
+
+    private static final Map<CmpExpAST.Type, CmpInstr.Op> CMP_OPS = Map.of(CmpExpAST.Type.EQ, CmpInstr.Op.EQ, CmpExpAST.Type.NE, CmpInstr.Op.NE, CmpExpAST.Type.GE, CmpInstr.Op.GE, CmpExpAST.Type.GT, CmpInstr.Op.GT, CmpExpAST.Type.LE, CmpInstr.Op.LE, CmpExpAST.Type.LT, CmpInstr.Op.LT);
+    private static final Map<Class<? extends CompUnitAST>, BiConsumer<LLVMParser, CompUnitAST>> VISIT_COMP_UNIT_ACTIONS;
+    private static final Map<Class<? extends StmtAST>, BiConsumer<LLVMParser, StmtAST>> VISIT_STMT_ACTIONS;
+    private static final Map<Class<? extends ExpAST>, BiFunction<LLVMParser, ExpAST, Value>> VISIT_EXP_ACTIONS;
+    private static final Map<Class<? extends ExpAST>, BiConsumer<LLVMParser, ExpAST>> VISIT_COND_ACTIONS;
+    private static final Map<Class<? extends DataSymbol>, TriFunction<LLVMParser, DataSymbol, List<ExpAST>, Value>> VISIT_VAR_EXP_ACTIONS;
+    private static final Map<TypeConversionCase, BiFunction<LLVMParser, Value, Value>> TYPE_CONVERSION_CASES;
+
+    static {
+        Map<Class<? extends CompUnitAST>, BiConsumer<LLVMParser, CompUnitAST>> visitCompUnitActions = new HashMap<>();
+        visitCompUnitActions.put(ConstDefAST.class, (parser, compUnit) -> parser.visitConstDef((ConstDefAST) compUnit));
+        visitCompUnitActions.put(GlobalDefAST.class, (parser, compUnit) -> parser.visitGlobalDef((GlobalDefAST) compUnit));
+        visitCompUnitActions.put(FuncDefAST.class, (parser, compUnit) -> parser.visitFuncDef((FuncDefAST) compUnit));
+        VISIT_COMP_UNIT_ACTIONS = visitCompUnitActions;
+        Map<Class<? extends StmtAST>, BiConsumer<LLVMParser, StmtAST>> visitStmtActions = new HashMap<>();
+        visitStmtActions.put(ConstDefAST.class, (parser, stmt) -> parser.visitConstDef((ConstDefAST) stmt));
+        visitStmtActions.put(LocalDefAST.class, (parser, stmt) -> parser.visitLocalDef((LocalDefAST) stmt));
+        visitStmtActions.put(BlockStmtAST.class, (parser, stmt) -> {
+            parser.symbolTable.in();
+            parser.visitBlockStmt((BlockStmtAST) stmt);
+            parser.symbolTable.out();
+        });
+        visitStmtActions.put(IfStmtAST.class, (parser, stmt) -> parser.visitIfStmt((IfStmtAST) stmt));
+        visitStmtActions.put(WhileStmtAST.class, (parser, stmt) -> parser.visitWhileStmt((WhileStmtAST) stmt));
+        visitStmtActions.put(ContinueStmtAST.class, (parser, stmt) -> parser.visitContinueStmt());
+        visitStmtActions.put(BreakStmtAST.class, (parser, stmt) -> parser.visitBreakStmt());
+        visitStmtActions.put(BlankStmtAST.class, (parser, stmt) -> {
+        });
+        visitStmtActions.put(AssignStmtAST.class, (parser, stmt) -> parser.visitAssignStmt((AssignStmtAST) stmt));
+        visitStmtActions.put(ExpStmtAST.class, (parser, stmt) -> parser.visitExpStmt((ExpStmtAST) stmt));
+        visitStmtActions.put(RetStmtAST.class, (parser, stmt) -> parser.visitRetStmt((RetStmtAST) stmt));
+        VISIT_STMT_ACTIONS = visitStmtActions;
+        Map<Class<? extends ExpAST>, BiFunction<LLVMParser, ExpAST, Value>> visitExpActions = new HashMap<>();
+        visitExpActions.put(BinaryExpAST.class, (parser, exp) -> parser.visitBinaryExp((BinaryExpAST) exp));
+        visitExpActions.put(CmpExpAST.class, (parser, exp) -> parser.visitCmpExp((CmpExpAST) exp));
+        visitExpActions.put(LNotExpAST.class, (parser, exp) -> parser.visitLNotExp((LNotExpAST) exp));
+        visitExpActions.put(UnaryExpAST.class, (parser, exp) -> parser.visitUnaryExp((UnaryExpAST) exp));
+        visitExpActions.put(VarExpAST.class, (parser, exp) -> parser.visitVarExp((VarExpAST) exp));
+        visitExpActions.put(FuncCallExpAST.class, (parser, exp) -> parser.visitFuncCallExp((FuncCallExpAST) exp));
+        visitExpActions.put(IntLitExpAST.class, (parser, exp) -> parser.visitIntLitExp((IntLitExpAST) exp));
+        visitExpActions.put(FloatLitExpAST.class, (parser, exp) -> parser.visitFloatLitExp((FloatLitExpAST) exp));
+        VISIT_EXP_ACTIONS = visitExpActions;
+        Map<Class<? extends ExpAST>, BiConsumer<LLVMParser, ExpAST>> visitCondActions = new HashMap<>();
+        visitCondActions.put(LOrExpAST.class, (parser, exp) -> parser.visitLOrCond((LOrExpAST) exp));
+        visitCondActions.put(LAndExpAST.class, (parser, exp) -> parser.visitLAndCond((LAndExpAST) exp));
+        visitCondActions.put(CmpExpAST.class, (parser, exp) -> parser.visitCmpCond((CmpExpAST) exp));
+        visitCondActions.put(LNotExpAST.class, (parser, exp) -> parser.visitLNotCond((LNotExpAST) exp));
+        VISIT_COND_ACTIONS = visitCondActions;
+        Map<Class<? extends DataSymbol>, TriFunction<LLVMParser, DataSymbol, List<ExpAST>, Value>> visitVarExpActions = new HashMap<>();
+        visitVarExpActions.put(GlobalSymbol.class, (parser, symbol, dimensions) -> parser.visitVarExpForGlobal((GlobalSymbol) symbol, dimensions));
+        visitVarExpActions.put(LocalSymbol.class, (parser, symbol, dimensions) -> parser.visitVarExpForLocal((LocalSymbol) symbol, dimensions));
+        visitVarExpActions.put(ParamSymbol.class, (parser, symbol, dimensions) -> parser.visitVarExpForParam((ParamSymbol) symbol, dimensions));
+        VISIT_VAR_EXP_ACTIONS = visitVarExpActions;
+        Map<TypeConversionCase, BiFunction<LLVMParser, Value, Value>> typeConversionCases = new HashMap<>();
+        typeConversionCases.put(new TypeConversionCase(BasicType.I1, BasicType.I32), (parser, value) -> {
+            Instr newValue = new ZextInstr(BasicType.I32, value);
+            parser.curBlock.addLast(newValue);
+            return newValue;
+        });
+        typeConversionCases.put(new TypeConversionCase(BasicType.I32, BasicType.FLOAT), (parser, value) -> {
+            Instr newValue = new SitofpInstr(value);
+            parser.curBlock.addLast(newValue);
+            return newValue;
+        });
+        typeConversionCases.put(new TypeConversionCase(BasicType.FLOAT, BasicType.I32), (parser, value) -> {
+            Instr newValue = new FptosiInstr(value);
+            parser.curBlock.addLast(newValue);
+            return newValue;
+        });
+        typeConversionCases.put(new TypeConversionCase(null, new PointerType(BasicType.I8)), (parser, value) -> {
+            Instr newValue = new BitCastInstr(value, new PointerType(BasicType.I8));
+            parser.curBlock.addLast(newValue);
+            return newValue;
+        });
+        TYPE_CONVERSION_CASES = typeConversionCases;
+    }
+
     private boolean isProcessed;
     private final RootAST root;
     private final Module module = new Module();
@@ -105,7 +208,7 @@ public class LLVMParser {
         Function func;
         // memset
         func = new Function(BasicType.VOID, "memset");
-        func.addParam(new Param(new PointerType(BasicType.I32), "s"));
+        func.addParam(new Param(new PointerType(BasicType.I8), "s"));
         func.addParam(new Param(BasicType.I32, "c"));
         func.addParam(new Param(BasicType.I32, "n"));
         symbolTable.putFirst("memset", func);
@@ -125,27 +228,15 @@ public class LLVMParser {
     }
 
     private void visitCompUnit(CompUnitAST compUnit) {
-        if (compUnit instanceof ConstDefAST constDef) {
-            visitConstDef(constDef);
-            return;
-        }
-        if (compUnit instanceof GlobalDefAST globalDef) {
-            visitGlobalDef(globalDef);
-            return;
-        }
-        if (compUnit instanceof FuncDefAST funcDef) {
-            visitFuncDef(funcDef);
-            return;
-        }
+        VISIT_COMP_UNIT_ACTIONS.get(compUnit.getClass()).accept(this, compUnit);
     }
 
     private void visitConstDef(ConstDefAST constDef) {
         GlobalSymbol constSymbol = constDef.symbol();
         String name = constSymbol.getName();
         Global global;
-        if (constSymbol.isSingle()) {
-            global = new Global(name, constSymbol.isFloat() ? new FloatConstant(constSymbol.getValue().floatValue())
-                    : new I32Constant(constSymbol.getValue().intValue()));
+        if (constSymbol.getType() instanceof BasicType basicType) {
+            global = new Global(name, basicType == BasicType.I32 ? new I32Constant(constSymbol.getValue().intValue()) : new FloatConstant(constSymbol.getValue().floatValue()));
         } else {
             global = parseGlobalSymbol(constSymbol);
         }
@@ -157,10 +248,8 @@ public class LLVMParser {
         GlobalSymbol globalSymbol = globalDef.symbol();
         String name = globalSymbol.getName();
         Global global;
-        if (globalSymbol.isSingle()) {
-            global = new Global(name, globalSymbol.isFloat() ?
-                    new FloatConstant(globalSymbol.getValue().floatValue()) :
-                    new I32Constant(globalSymbol.getValue().intValue()));
+        if (globalSymbol.getType() instanceof BasicType basicType) {
+            global = new Global(name, basicType == BasicType.I32 ? new I32Constant(globalSymbol.getValue().intValue()) : new FloatConstant(globalSymbol.getValue().floatValue()));
         } else {
             global = parseGlobalSymbol(globalSymbol);
         }
@@ -170,65 +259,39 @@ public class LLVMParser {
 
     private void visitLocalDef(LocalDefAST localDef) {
         LocalSymbol localSymbol = localDef.symbol();
-        Type type = localSymbol.isFloat() ? BasicType.FLOAT : BasicType.I32;
-        List<Integer> dimensions = localSymbol.getDimensions();
-        for (int i = dimensions.size() - 1; i >= 0; i--) {
-            type = new ArrayType(type, dimensions.get(i));
-        }
-        AllocInstr allocInstr = new AllocInstr(type);
+        AllocInstr allocInstr = new AllocInstr(localSymbol.getType());
         allocBlock.addLast(allocInstr);
         symbolTable.putLast(localSymbol.getName(), allocInstr);
     }
 
-    // TODO optimize performance, kill the ugly whole range
     private Global parseGlobalSymbol(GlobalSymbol symbol) {
-        List<Integer> dimensions = symbol.getDimensions();
-        int total = dimensions.stream().reduce(1, (i1, i2) -> i1 * i2);
-        List<Constant> values = new ArrayList<>(total);
-        Type type = symbol.isFloat() ? BasicType.FLOAT : BasicType.I32;
-        for (int i = 0; i < total; i++) {
-            if (symbol.getValues().containsKey(i)) {
-                values.add(symbol.isFloat() ? new FloatConstant(symbol.getValue(i).floatValue()) :
-                        new I32Constant(symbol.getValue(i).intValue()));
-            } else {
-                values.add(new ZeroConstant(type));
-            }
-        }
-        for (int i = dimensions.size() - 1; i >= 0; i--) {
-            int dimension = dimensions.get(i);
-            total /= dimension;
-            List<Constant> newValues = new ArrayList<>(total);
-            for (int j = 0; j < total; j++) {
+        BasicType basicType = symbol.getType().getRootBase();
+        Map<Integer, Constant> values = symbol.getValues().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> basicType == BasicType.I32 ? new I32Constant(entry.getValue().intValue()) : new FloatConstant(entry.getValue().floatValue())));
+        Type type = symbol.getType().getRootBase();
+        List<Integer> dimensions = ((ArrayType) symbol.getType()).dimensions();
+        ListIterator<Integer> iterator = dimensions.listIterator(dimensions.size());
+        while (iterator.hasPrevious()) {
+            int dimension = iterator.previous();
+            Map<Integer, Constant> newValues = new HashMap<>();
+            Set<Integer> indexes = values.keySet().stream().map(index -> index / dimension).collect(Collectors.toSet());
+            for (int index : indexes) {
                 Map<Integer, Value> valueMap = new HashMap<>();
-                for (int k = 0; k < dimension; k++) {
-                    if (values.get(j * dimension + k) instanceof ZeroConstant) {
-                        valueMap.put(k, new ZeroConstant(type));
-                    } else {
-                        valueMap.put(k, values.get(j * dimension + k));
-                    }
+                for (int i = 0; i < dimension; i++) {
+                    Type finalType = type;
+                    valueMap.put(i, values.computeIfAbsent(i + index * dimension, j -> new ZeroConstant(finalType)));
                 }
-                if (valueMap.values().stream().allMatch(value -> value instanceof ZeroConstant)) {
-                    newValues.add(new ZeroConstant(new ArrayType(type, dimension)));
-                } else {
-                    newValues.add(new ArrConstant(type, dimension, valueMap));
-                }
+                newValues.put(index, new ArrConstant(type, dimension, valueMap));
             }
             values = newValues;
             type = new ArrayType(type, dimension);
         }
-        Constant toWrapValue = values.get(0);
-        return new Global(symbol.getName(), toWrapValue);
+        return new Global(symbol.getName(), values.getOrDefault(0, new ZeroConstant(type)));
     }
 
     private void visitFuncDef(FuncDefAST funcDef) {
         symbolTable.in();
         FuncSymbol funcSymbol = funcDef.decl();
-        BasicType retType = BasicType.VOID;
-        if (funcSymbol.hasRet()) {
-            retType = funcSymbol.isFloat() ? BasicType.FLOAT : BasicType.I32;
-        }
-        String name = funcSymbol.getName();
-        curFunc = new Function(retType, name);
+        curFunc = new Function(funcSymbol.getType(), funcSymbol.getName());
         allocBlock = new BasicBlock(curFunc);
         paramBlock = new BasicBlock(curFunc);
         curBlock = new BasicBlock(curFunc);
@@ -253,16 +316,8 @@ public class LLVMParser {
     }
 
     private void parseParamSymbol(ParamSymbol paramSymbol) {
-        Type type = paramSymbol.isFloat() ? BasicType.FLOAT : BasicType.I32;
-        Param param;
-        if (!paramSymbol.isSingle()) {
-            List<Integer> dimensions = paramSymbol.getDimensions();
-            for (int i = dimensions.size() - 1; i > 0; i--) {
-                type = new ArrayType(type, dimensions.get(i));
-            }
-            type = new PointerType(type);
-        }
-        param = new Param(type, paramSymbol.getName());
+        Type type = paramSymbol.getType();
+        Param param = new Param(type, paramSymbol.getName());
         curFunc.addParam(param);
         AllocInstr alloc = new AllocInstr(type);
         allocBlock.addLast(alloc);
@@ -276,48 +331,7 @@ public class LLVMParser {
     }
 
     private void visitStmt(StmtAST stmt) {
-        if (stmt instanceof ConstDefAST constDef) {
-            visitConstDef(constDef);
-            return;
-        }
-        if (stmt instanceof LocalDefAST localDef) {
-            visitLocalDef(localDef);
-            return;
-        }
-        if (stmt instanceof BlockStmtAST blockStmt) {
-            symbolTable.in();
-            visitBlockStmt(blockStmt);
-            symbolTable.out();
-            return;
-        }
-        if (stmt instanceof IfStmtAST ifStmt) {
-            visitIfStmt(ifStmt);
-            return;
-        }
-        if (stmt instanceof WhileStmtAST whileStmt) {
-            visitWhileStmt(whileStmt);
-            return;
-        }
-        if (stmt instanceof ContinueStmtAST) {
-            visitContinueStmt();
-            return;
-        }
-        if (stmt instanceof BreakStmtAST) {
-            visitBreakStmt();
-            return;
-        }
-        if (stmt instanceof AssignStmtAST assignStmt) {
-            visitAssignStmt(assignStmt);
-            return;
-        }
-        if (stmt instanceof ExpStmtAST expStmt) {
-            visitExpStmt(expStmt);
-            return;
-        }
-        if (stmt instanceof RetStmtAST retStmt) {
-            visitRetStmt(retStmt);
-            return;
-        }
+        VISIT_STMT_ACTIONS.get(stmt.getClass()).accept(this, stmt);
     }
 
     private void visitIfStmt(IfStmtAST ifStmt) {
@@ -382,37 +396,18 @@ public class LLVMParser {
     }
 
     private void visitCond(ExpAST cond) {
-        if (cond instanceof BinaryExpAST binaryExp) {
-            BinaryExpAST.Type type = binaryExp.type();
-            if (type == BinaryExpAST.Type.L_OR) {
-                visitLOrCond(binaryExp);
-                return;
-            }
-            if (type == BinaryExpAST.Type.L_AND) {
-                visitLAndCond(binaryExp);
-                return;
-            }
-            if (Set.of(BinaryExpAST.Type.EQ, BinaryExpAST.Type.NE, BinaryExpAST.Type.GE, BinaryExpAST.Type.GT,
-                    BinaryExpAST.Type.LE, BinaryExpAST.Type.LT).contains(binaryExp.type())) {
-                visitCmpCond(binaryExp);
-                return;
-            }
-        }
-        if (cond instanceof UnaryExpAST unaryExp) {
-            if (unaryExp.type() == UnaryExpAST.Type.L_NOT) {
-                visitLNotCond(unaryExp);
-                return;
-            }
+        if (VISIT_COND_ACTIONS.containsKey(cond.getClass())) {
+            VISIT_COND_ACTIONS.get(cond.getClass()).accept(this, cond);
+            return;
         }
         Value cVal = visitExp(cond);
-        Instr cmpInstr = cVal.getType() == BasicType.I32 ? new CmpInstr(CmpInstr.Op.NE, cVal, new I32Constant(0)) :
-                new FcmpInstr(FcmpInstr.Op.UNE, cVal, new FloatConstant(0));
+        Instr cmpInstr = cVal.getType() == BasicType.I32 ? new ICmpInstr(CmpInstr.Op.NE, cVal, new I32Constant(0)) : new FCmpInstr(CmpInstr.Op.NE, cVal, new FloatConstant(0));
         curBlock.addLast(cmpInstr);
         Instr branchInstr = new BranchInstr(cmpInstr, trueBlock, falseBlock);
         curBlock.addLast(branchInstr);
     }
 
-    private void visitLOrCond(BinaryExpAST lOrExp) {
+    private void visitLOrCond(LOrExpAST lOrExp) {
         BasicBlock lBlock = curBlock;
         BasicBlock rBlock = new BasicBlock(curFunc);
         lBlock.insertAfter(rBlock);
@@ -428,7 +423,7 @@ public class LLVMParser {
         visitCond(lOrExp.right());
     }
 
-    private void visitLAndCond(BinaryExpAST lAndCond) {
+    private void visitLAndCond(LAndExpAST lAndCond) {
         BasicBlock lBlock = curBlock;
         BasicBlock rBlock = new BasicBlock(curFunc);
         lBlock.insertAfter(rBlock);
@@ -444,7 +439,7 @@ public class LLVMParser {
         visitCond(lAndCond.right());
     }
 
-    private void visitLNotCond(UnaryExpAST lNotCond) {
+    private void visitLNotCond(LNotExpAST lNotCond) {
         BasicBlock trueBlock = this.trueBlock;
         BasicBlock falseBlock = this.falseBlock;
         this.trueBlock = falseBlock;
@@ -452,30 +447,13 @@ public class LLVMParser {
         visitCond(lNotCond.next());
     }
 
-    private void visitCmpCond(BinaryExpAST cmpCond) {
+    private void visitCmpCond(CmpExpAST cmpCond) {
         Value lVal = visitExp(cmpCond.left());
         Value rVal = visitExp(cmpCond.right());
-        Type targetType = lVal.getType() == BasicType.FLOAT || rVal.getType() == BasicType.FLOAT ? BasicType.FLOAT :
-                BasicType.I32;
+        Type targetType = lVal.getType() == BasicType.FLOAT || rVal.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
         lVal = typeConversion(lVal, targetType);
         rVal = typeConversion(rVal, targetType);
-        Instr cmpInstr = targetType == BasicType.I32 ? new CmpInstr(switch (cmpCond.type()) {
-            case EQ -> CmpInstr.Op.EQ;
-            case NE -> CmpInstr.Op.NE;
-            case GE -> CmpInstr.Op.SGE;
-            case GT -> CmpInstr.Op.SGT;
-            case LE -> CmpInstr.Op.SLE;
-            case LT -> CmpInstr.Op.SLT;
-            default -> null;
-        }, lVal, rVal) : new FcmpInstr(switch (cmpCond.type()) {
-            case EQ -> FcmpInstr.Op.OEQ;
-            case NE -> FcmpInstr.Op.UNE;
-            case GE -> FcmpInstr.Op.OGE;
-            case GT -> FcmpInstr.Op.OGT;
-            case LE -> FcmpInstr.Op.OLE;
-            case LT -> FcmpInstr.Op.OLT;
-            default -> null;
-        }, lVal, rVal);
+        Instr cmpInstr = targetType == BasicType.I32 ? new ICmpInstr(CMP_OPS.get(cmpCond.type()), lVal, rVal) : new FCmpInstr(CMP_OPS.get(cmpCond.type()), lVal, rVal);
         curBlock.addLast(cmpInstr);
         Instr brInstr = new BranchInstr(cmpInstr, trueBlock, falseBlock);
         curBlock.addLast(brInstr);
@@ -530,64 +508,47 @@ public class LLVMParser {
     }
 
     private Value visitExp(ExpAST exp) {
-        if (exp instanceof BinaryExpAST binaryExp) {
-            return visitBinaryExp(binaryExp);
-        }
-        if (exp instanceof UnaryExpAST unaryExp) {
-            return visitUnaryExp(unaryExp);
-        }
-        if (exp instanceof VarExpAST varExp) {
-            return visitVarExp(varExp);
-        }
-        if (exp instanceof FuncCallExpAST funcCallExp) {
-            return visitFuncCallExp(funcCallExp);
-        }
-        if (exp instanceof IntLitExpAST intLitExp) {
-            return visitIntLitExp(intLitExp);
-        }
-        if (exp instanceof FloatLitExpAST floatLitExp) {
-            return visitFloatLitExp(floatLitExp);
-        }
-        throw new RuntimeException("Unprocessed ExpAST: " + exp);
+        return VISIT_EXP_ACTIONS.get(exp.getClass()).apply(this, exp);
+    }
+
+    private Value visitCmpExp(CmpExpAST binaryExp) {
+        Value lVal = visitExp(binaryExp.left());
+        Value rVal = visitExp(binaryExp.right());
+        Type targetType = automaticTypePromotion(lVal.getType(), rVal.getType());
+        lVal = typeConversion(lVal, targetType);
+        rVal = typeConversion(rVal, targetType);
+        Instr instr = targetType == BasicType.I32 ? new ICmpInstr(CMP_OPS.get(binaryExp.type()), lVal, rVal) : new FCmpInstr(CMP_OPS.get(binaryExp.type()), lVal, rVal);
+        curBlock.addLast(instr);
+        return instr;
     }
 
     private Value visitBinaryExp(BinaryExpAST binaryExp) {
         Value lVal = visitExp(binaryExp.left());
         Value rVal = visitExp(binaryExp.right());
-        Type targetType = lVal.getType() == BasicType.FLOAT || rVal.getType() == BasicType.FLOAT ? BasicType.FLOAT :
-                BasicType.I32;
+        Type targetType = automaticTypePromotion(lVal.getType(), rVal.getType());
         lVal = typeConversion(lVal, targetType);
         rVal = typeConversion(rVal, targetType);
-        Instr instr = switch (binaryExp.type()) {
-            case EQ, NE, GE, GT, LE, LT -> targetType == BasicType.I32 ? new CmpInstr(switch (binaryExp.type()) {
-                case EQ -> CmpInstr.Op.EQ;
-                case NE -> CmpInstr.Op.NE;
-                case GE -> CmpInstr.Op.SGE;
-                case GT -> CmpInstr.Op.SGT;
-                case LE -> CmpInstr.Op.SLE;
-                case LT -> CmpInstr.Op.SLT;
-                default -> null;
-            }, lVal, rVal) : new FcmpInstr(switch (binaryExp.type()) {
-                case EQ -> FcmpInstr.Op.OEQ;
-                case NE -> FcmpInstr.Op.UNE;
-                case GE -> FcmpInstr.Op.OGE;
-                case GT -> FcmpInstr.Op.OGT;
-                case LE -> FcmpInstr.Op.OLE;
-                case LT -> FcmpInstr.Op.OLT;
-                default -> null;
-            }, lVal, rVal);
-            case ADD, SUB, MUL, DIV, MOD -> new BinaryInstr(switch (binaryExp.type()) {
-                case ADD -> targetType == BasicType.I32 ? BinaryInstr.Op.ADD : BinaryInstr.Op.FADD;
-                case SUB -> targetType == BasicType.I32 ? BinaryInstr.Op.SUB : BinaryInstr.Op.FSUB;
-                case DIV -> targetType == BasicType.I32 ? BinaryInstr.Op.SDIV : BinaryInstr.Op.FDIV;
-                case MUL -> targetType == BasicType.I32 ? BinaryInstr.Op.MUL : BinaryInstr.Op.FMUL;
-                case MOD -> BinaryInstr.Op.SREM;
-                default -> throw new IllegalStateException("Unexpected value: " + binaryExp.type());
-            }, lVal, rVal);
-            default -> throw new IllegalStateException("Unexpected value: " + binaryExp.type());
-        };
+        Instr instr = new BinaryInstr(switch (binaryExp.type()) {
+            case ADD -> targetType == BasicType.I32 ? BinaryInstr.Op.ADD : BinaryInstr.Op.FADD;
+            case SUB -> targetType == BasicType.I32 ? BinaryInstr.Op.SUB : BinaryInstr.Op.FSUB;
+            case DIV -> targetType == BasicType.I32 ? BinaryInstr.Op.SDIV : BinaryInstr.Op.FDIV;
+            case MUL -> targetType == BasicType.I32 ? BinaryInstr.Op.MUL : BinaryInstr.Op.FMUL;
+            case MOD -> BinaryInstr.Op.SREM;
+        }, lVal, rVal);
         curBlock.addLast(instr);
         return instr;
+    }
+
+    private Value visitLNotExp(LNotExpAST lNotExp) {
+        Value nVal = visitExp(lNotExp.next());
+        if (nVal.getType() == BasicType.I1) {
+            Instr xorInstr = new BinaryInstr(BinaryInstr.Op.XOR, nVal, I1Constant.TRUE);
+            curBlock.addLast(xorInstr);
+            return xorInstr;
+        }
+        Instr cmpInstr = new ICmpInstr(CmpInstr.Op.EQ, nVal, new I32Constant(0));
+        curBlock.addLast(cmpInstr);
+        return cmpInstr;
     }
 
     private Value visitUnaryExp(UnaryExpAST unaryExp) {
@@ -606,96 +567,73 @@ public class LLVMParser {
                 curBlock.addLast(instr);
                 yield instr;
             }
-            case L_NOT -> {
-                if (nVal.getType() == BasicType.I1) {
-                    Instr xorInstr = new BinaryInstr(BinaryInstr.Op.XOR, nVal, I1Constant.TRUE);
-                    curBlock.addLast(xorInstr);
-                    yield xorInstr;
-                }
-                Instr cmpInstr = new CmpInstr(CmpInstr.Op.EQ, nVal, new I32Constant(0));
-                curBlock.addLast(cmpInstr);
-                yield cmpInstr;
-            }
         };
     }
 
-    // TODO too much duplicated code, extract the commons
     private Value visitVarExp(VarExpAST varExp) {
-        if (varExp.symbol() instanceof GlobalSymbol symbol) {
-            if (symbol.isConst()) {
-                Value ptr = module.getGlobal(symbol.getName());
-                List<ExpAST> dimensions = varExp.dimensions();
-                for (ExpAST dimension : dimensions) {
-                    Value index = visitExp(dimension);
-                    Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
-                    curBlock.addLast(ptrInstr);
-                    ptr = ptrInstr;
-                }
-                Instr instr = new LoadInstr(ptr);
-                curBlock.addLast(instr);
-                return instr;
-            } else {
-                Value ptr = module.getGlobal(symbol.getName());
-                List<ExpAST> dimensions = varExp.dimensions();
-                for (ExpAST dimension : dimensions) {
-                    Value index = visitExp(dimension);
-                    Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
-                    curBlock.addLast(ptrInstr);
-                    ptr = ptrInstr;
-                }
-                Instr instr;
-                if (varExp.dimensions().size() == symbol.getDimensions().size()) {
-                    instr = new LoadInstr(ptr);
-                } else {
-                    instr = new GetElementPtrInstr(ptr, new I32Constant(0), new I32Constant(0));
-                }
-                curBlock.addLast(instr);
-                return instr;
-            }
+        List<ExpAST> dimensions = varExp.dimensions();
+        DataSymbol symbol = varExp.symbol();
+        return VISIT_VAR_EXP_ACTIONS.get(symbol.getClass()).apply(this, symbol, dimensions);
+    }
+
+    private Value visitVarExpForGlobal(GlobalSymbol symbol, List<ExpAST> dimensions) {
+        Value ptr = module.getGlobal(symbol.getName());
+        for (ExpAST dimension : dimensions) {
+            Value index = visitExp(dimension);
+            Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
+            curBlock.addLast(ptrInstr);
+            ptr = ptrInstr;
         }
-        if (varExp.symbol() instanceof ParamSymbol paramSymbol) {
-            Value ptr = symbolTable.getValue(paramSymbol.getName());
-            Instr instr = new LoadInstr(ptr);
+        Instr instr;
+        if (symbol.getType() instanceof BasicType || dimensions.size() == ((ArrayType) symbol.getType()).dimensions().size()) {
+            instr = new LoadInstr(ptr);
+        } else {
+            instr = new GetElementPtrInstr(ptr, new I32Constant(0), new I32Constant(0));
+        }
+        curBlock.addLast(instr);
+        return instr;
+    }
+
+    private Value visitVarExpForParam(ParamSymbol symbol, List<ExpAST> dimensions) {
+        Value ptr = symbolTable.getValue(symbol.getName());
+        Instr instr = new LoadInstr(ptr);
+        curBlock.addLast(instr);
+        ptr = instr;
+        if (!dimensions.isEmpty()) {
+            Value index = visitExp(dimensions.get(0));
+            Instr ptrInstr = new GetElementPtrInstr(ptr, index);
+            curBlock.addLast(ptrInstr);
+            ptr = ptrInstr;
+            for (int i = 1; i < dimensions.size(); i++) {
+                ExpAST dimension = dimensions.get(i);
+                index = visitExp(dimension);
+                ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
+                curBlock.addLast(ptrInstr);
+                ptr = ptrInstr;
+            }
+            instr = new LoadInstr(ptr);
             curBlock.addLast(instr);
             ptr = instr;
-            List<ExpAST> dimensions = varExp.dimensions();
-            if (!dimensions.isEmpty()) {
-                Value index = visitExp(dimensions.get(0));
-                Instr ptrInstr = new GetElementPtrInstr(ptr, index);
-                curBlock.addLast(ptrInstr);
-                ptr = ptrInstr;
-                for (int i = 1; i < dimensions.size(); i++) {
-                    ExpAST dimension = dimensions.get(i);
-                    index = visitExp(dimension);
-                    ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
-                    curBlock.addLast(ptrInstr);
-                    ptr = ptrInstr;
-                }
-                instr = new LoadInstr(ptr);
-                curBlock.addLast(instr);
-                ptr = instr;
-            }
-            return ptr;
         }
-        if (varExp.symbol() instanceof LocalSymbol localSymbol) {
-            Value ptr = symbolTable.getValue(localSymbol.getName());
-            List<ExpAST> dimensions = varExp.dimensions();
-            for (ExpAST dimension : dimensions) {
-                Value index = visitExp(dimension);
-                Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
-                curBlock.addLast(ptrInstr);
-                ptr = ptrInstr;
-            }
-            Instr instr;
-            if (varExp.dimensions().size() == localSymbol.getDimensions().size()) {
-                instr = new LoadInstr(ptr);
-            } else {
-                instr = new GetElementPtrInstr(ptr, new I32Constant(0), new I32Constant(0));
-            }
-            curBlock.addLast(instr);
-            return instr;
+        return ptr;
+    }
+
+    private Value visitVarExpForLocal(LocalSymbol symbol, List<ExpAST> dimensions) {
+        Value ptr = symbolTable.getValue(symbol.getName());
+        for (ExpAST dimension : dimensions) {
+            Value index = visitExp(dimension);
+            Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
+            curBlock.addLast(ptrInstr);
+            ptr = ptrInstr;
         }
-        throw new RuntimeException("Unprocessed VarExpAST: " + varExp);
+        Instr instr;
+        if (symbol.getType() instanceof BasicType || dimensions.size() == ((ArrayType) symbol.getType()).dimensions().size()) {
+            instr = new LoadInstr(ptr);
+        } else {
+            instr = new GetElementPtrInstr(ptr, new I32Constant(0), new I32Constant(0));
+        }
+        curBlock.addLast(instr);
+        return instr;
     }
 
     private Value visitFuncCallExp(FuncCallExpAST funcCallExp) {
@@ -703,17 +641,11 @@ public class LLVMParser {
         for (int i = 0; i < funcCallExp.params().size(); i++) {
             ExpAST exp = funcCallExp.params().get(i);
             Value param = visitExp(exp);
-            if (param.getType() == BasicType.I32 || param.getType() == BasicType.FLOAT) {
-                Type targetType = funcCallExp.func().getParams().get(i).isFloat() ? BasicType.FLOAT : BasicType.I32;
-                param = typeConversion(param, targetType);
-            }
+            Type targetType = funcCallExp.func().getParams().get(i).getType();
+            param = typeConversion(param, targetType);
             params.add(param);
         }
-        Type retType = BasicType.VOID;
-        if (funcCallExp.func().hasRet()) {
-            retType = funcCallExp.func().isFloat() ? BasicType.FLOAT : BasicType.I32;
-        }
-        CallInstr callInstr = new CallInstr(retType, funcCallExp.func().getName(), params);
+        CallInstr callInstr = new CallInstr(funcCallExp.func().getType(), funcCallExp.func().getName(), params);
         curBlock.addLast(callInstr);
         return callInstr;
     }
@@ -726,29 +658,16 @@ public class LLVMParser {
         return new FloatConstant(floatLitExp.value());
     }
 
+    private static Type automaticTypePromotion(Type type1, Type type2) {
+        return type1 == BasicType.FLOAT || type2 == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
+    }
+
     private Value typeConversion(Value value, Type targetType) {
         Type sourceType = value.getType();
-        if (sourceType == targetType) {
+        if (sourceType.equals(targetType)) {
             return value;
         }
-        if (sourceType == BasicType.I1) {
-            if (targetType == BasicType.I32) {
-                Instr newValue = new ZextInstr(BasicType.I32, value);
-                curBlock.addLast(newValue);
-                return newValue;
-            }
-        }
-        if (sourceType == BasicType.I32 && targetType == BasicType.FLOAT) {
-            Instr newValue = new SitofpInstr(value);
-            curBlock.addLast(newValue);
-            return newValue;
-        }
-        if (sourceType == BasicType.FLOAT && targetType == BasicType.I32) {
-            Instr newValue = new FptosiInstr(value);
-            curBlock.addLast(newValue);
-            return newValue;
-        }
-        throw new RuntimeException("Unsupported type conversion: " + sourceType + " -> " + targetType);
+        return TYPE_CONVERSION_CASES.get(new TypeConversionCase(sourceType, targetType)).apply(this, value);
     }
 
     public Module getModule() {

@@ -1,20 +1,9 @@
 package compile.symbol;
 
-import java.util.List;
+import compile.llvm.ir.type.Type;
 
 public abstract class DataSymbol extends Symbol {
-    final List<Integer> dimensions;
-
-    DataSymbol(boolean isFloat, String name, List<Integer> dimensions) {
-        super(isFloat, name);
-        this.dimensions = dimensions;
-    }
-
-    public List<Integer> getDimensions() {
-        return dimensions;
-    }
-
-    public boolean isSingle() {
-        return dimensions.isEmpty();
+    DataSymbol(Type type, String name) {
+        super(type, name);
     }
 }

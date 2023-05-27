@@ -1,5 +1,7 @@
 package compile.syntax.ast;
 
+import compile.llvm.ir.type.ArrayType;
+import compile.llvm.ir.type.Type;
 import compile.symbol.DataSymbol;
 import compile.symbol.GlobalSymbol;
 
@@ -12,13 +14,12 @@ public record VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) implements E
         if (dimensions.isEmpty()) {
             return global.getValue();
         }
-        if (global.getDimensions().size() != dimensions.size()) {
-            throw new RuntimeException();
-        }
         int offset = 0;
-        List<Integer> dimensionSizes = global.getDimensions();
-        for (int i = 0; i < dimensions.size(); i++) {
-            offset = offset * dimensionSizes.get(i) + dimensions.get(i).calc().intValue();
+        Type type = global.getType();
+        for (ExpAST dimension : dimensions) {
+            ArrayType arrayType = (ArrayType) type;
+            offset = offset * arrayType.dimension() + dimension.calc().intValue();
+            type = arrayType.base();
         }
         return global.getValue(offset);
     }

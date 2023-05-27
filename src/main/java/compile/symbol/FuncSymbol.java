@@ -1,28 +1,16 @@
 package compile.symbol;
 
+import compile.llvm.ir.type.Type;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 
 public class FuncSymbol extends Symbol {
-    private final boolean hasRet;
     private final List<ParamSymbol> params = new ArrayList<>();
 
-    FuncSymbol(String name) {
-        this(false, false, name);
-    }
-
-    FuncSymbol(boolean isFloat, String name) {
-        this(true, isFloat, name);
-    }
-
-    private FuncSymbol(boolean hasRet, boolean isFloat, String name) {
-        super(isFloat, name);
-        this.hasRet = hasRet;
-    }
-
-    public boolean hasRet() {
-        return hasRet;
+    FuncSymbol(Type type, String name) {
+        super(type, name);
     }
 
     public void addParam(ParamSymbol param) {
@@ -36,7 +24,7 @@ public class FuncSymbol extends Symbol {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(hasRet ? (isFloat ? "float " : "int ") : "void ").append(name);
+        builder.append(type).append(' ').append(name);
         StringJoiner joiner = new StringJoiner(", ", "(", ")");
         params.forEach(param -> joiner.add(param.toString()));
         builder.append(joiner);

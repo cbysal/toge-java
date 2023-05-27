@@ -3,12 +3,13 @@ package compile.llvm.ir;
 import compile.llvm.ir.constant.ArrConstant;
 import compile.llvm.ir.constant.FloatConstant;
 import compile.llvm.ir.constant.I32Constant;
-import compile.llvm.ir.constant.ZeroConstant;
 import compile.llvm.ir.type.ArrayType;
 import compile.llvm.ir.type.PointerType;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Queue;
 
 public class Global extends Value {
     private final Value value;
@@ -24,32 +25,26 @@ public class Global extends Value {
     }
 
     public Map<Integer, Integer> flatten() {
+        record Task(int offset, Value value) {
+        }
         Map<Integer, Integer> result = new HashMap<>();
-        flattenDfs(result, 0, value);
-        return result;
-    }
-
-    private void flattenDfs(Map<Integer, Integer> result, int pos, Value value) {
-        if (value instanceof ZeroConstant) {
-            return;
-        }
-        if (value instanceof I32Constant i32Constant) {
-            result.put(pos, i32Constant.getValue());
-            return;
-        }
-        if (value instanceof FloatConstant floatConstant) {
-            result.put(pos, Float.floatToIntBits(floatConstant.getValue()));
-            return;
-        }
-        if (value instanceof ArrConstant arrConstant) {
-            int dimension = ((ArrayType) arrConstant.getType()).dimension();
-            Map<Integer, Value> values = arrConstant.getValues();
-            for (Map.Entry<Integer, Value> valueEntry : values.entrySet()) {
-                flattenDfs(result, pos * dimension + valueEntry.getKey() * 4, valueEntry.getValue());
+        Queue<Task> tasks = new ArrayDeque<>();
+        tasks.offer(new Task(0, value));
+        while (!tasks.isEmpty()) {
+            Task task = tasks.poll();
+            if (task.value() instanceof ArrConstant arrConstant) {
+                int dimension = ((ArrayType) arrConstant.getType()).dimension();
+                Map<Integer, Value> values = arrConstant.getValues();
+                for (Map.Entry<Integer, Value> entry : values.entrySet()) {
+                    tasks.offer(new Task(task.offset() * dimension + entry.getKey() * 4, entry.getValue()));
+                }
+            } else if (task.value() instanceof I32Constant i32Constant) {
+                result.put(task.offset(), i32Constant.getValue());
+            } else if (task.value() instanceof FloatConstant floatConstant) {
+                result.put(task.offset(), Float.floatToIntBits(floatConstant.getValue()));
             }
-            return;
         }
-        throw new RuntimeException("Unhandled value: " + value);
+        return result;
     }
 
     @Override
@@ -59,7 +54,6 @@ public class Global extends Value {
 
     @Override
     public String toString() {
-        return String.format("@%s = dso_local global %s, align %d", name, value.getRet(),
-                value.getType() instanceof ArrayType ? 16 : 4);
+        return String.format("@%s = dso_local global %s, align %d", name, value.getRet(), value.getType() instanceof ArrayType ? 16 : 4);
     }
 }

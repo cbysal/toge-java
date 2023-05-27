@@ -1,21 +1,14 @@
 package compile.symbol;
 
-import java.util.List;
+import compile.llvm.ir.type.Type;
 
 public class LocalSymbol extends DataSymbol {
-    LocalSymbol(boolean isFloat, String name) {
-        this(isFloat, name, List.of());
-    }
-
-    LocalSymbol(boolean isFloat, String name, List<Integer> dimensions) {
-        super(isFloat, name, dimensions);
+    LocalSymbol(Type type, String name) {
+        super(type, name);
     }
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append(isFloat() ? "float " : "int ").append(name);
-        dimensions.forEach(dimension -> builder.append('[').append(dimension).append(']'));
-        return builder.toString();
+        return String.format("%s %s", type, name);
     }
 }

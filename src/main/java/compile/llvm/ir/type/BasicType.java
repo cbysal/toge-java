@@ -13,12 +13,23 @@ public final class BasicType implements Type {
     }
 
     @Override
+    public BasicType getRootBase() {
+        return this;
+    }
+
+    @Override
+    public boolean equals(Type type) {
+        return this == type;
+    }
+
+    @Override
     public String toString() {
         return name;
     }
 
     public static final BasicType VOID = new BasicType("void");
     public static final BasicType I1 = new BasicType("i1");
+    public static final BasicType I8 = new BasicType("i8");
     public static final BasicType I32 = new BasicType("i32");
     public static final BasicType FLOAT = new BasicType("float");
 }

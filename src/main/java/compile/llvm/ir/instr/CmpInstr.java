@@ -5,13 +5,13 @@ import compile.llvm.ir.type.BasicType;
 
 public class CmpInstr extends Instr {
     public enum Op {
-        EQ, NE, SGE, SGT, SLE, SLT
+        EQ, NE, GE, GT, LE, LT
     }
 
-    private final Op op;
-    private final Value lVal, rVal;
+    final Op op;
+    final Value lVal, rVal;
 
-    public CmpInstr(Op op, Value lVal, Value rVal) {
+    protected CmpInstr(Op op, Value lVal, Value rVal) {
         super(BasicType.I1);
         this.op = op;
         this.lVal = lVal;
@@ -34,10 +34,5 @@ public class CmpInstr extends Instr {
 
     public Value getrVal() {
         return rVal;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%s = icmp %s %s, %s", getTag(), op.name().toLowerCase(), lVal.getRet(), rVal.getTag());
     }
 }

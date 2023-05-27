@@ -1,22 +1,14 @@
 package compile.symbol;
 
-import java.util.List;
+import compile.llvm.ir.type.Type;
 
 public class ParamSymbol extends DataSymbol {
-    ParamSymbol(boolean isFloat, String name) {
-        this(isFloat, name, List.of());
-    }
-
-    ParamSymbol(boolean isFloat, String name, List<Integer> dimensions) {
-        super(isFloat, name, dimensions);
+    ParamSymbol(Type type, String name) {
+        super(type, name);
     }
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append(isFloat() ? "float " : "int ");
-        builder.append(name);
-        dimensions.forEach(dimension -> builder.append('[').append(dimension == -1 ? "" : dimension).append(']'));
-        return builder.toString();
+        return String.format("%s %s", type, name);
     }
 }
