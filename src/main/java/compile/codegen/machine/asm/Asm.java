@@ -9,7 +9,7 @@ import java.util.Map;
 public interface Asm {
     List<VReg> getVRegs();
 
-    void replaceVRegs(Map<VReg, MReg> vRegToMReg);
+    Asm replaceVRegs(Map<VReg, MReg> vRegToMReg);
 
     List<Asm> spill(Map<VReg, Integer> vRegToSpill);
 }

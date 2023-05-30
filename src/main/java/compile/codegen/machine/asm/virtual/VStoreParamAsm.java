@@ -1,12 +1,14 @@
-package compile.codegen.machine.asm;
+package compile.codegen.machine.asm.virtual;
 
+import compile.codegen.machine.asm.Asm;
 import compile.codegen.machine.reg.MReg;
+import compile.codegen.machine.reg.Reg;
 import compile.codegen.machine.reg.VReg;
 
 import java.util.List;
 import java.util.Map;
 
-public record RetAsm() implements Asm {
+public record VStoreParamAsm(int src, int dest) implements Asm {
     @Override
     public List<VReg> getVRegs() {
         return List.of();
@@ -20,10 +22,5 @@ public record RetAsm() implements Asm {
     @Override
     public List<Asm> spill(Map<VReg, Integer> vRegToSpill) {
         return List.of(this);
-    }
-
-    @Override
-    public String toString() {
-        return "ret";
     }
 }

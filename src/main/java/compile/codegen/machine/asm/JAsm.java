@@ -7,20 +7,15 @@ import compile.codegen.machine.reg.VReg;
 import java.util.List;
 import java.util.Map;
 
-public class JAsm implements Asm {
-    private Block dest;
-
-    public JAsm(Block dest) {
-        this.dest = dest;
-    }
-
+public record JAsm(Block dest) implements Asm {
     @Override
     public List<VReg> getVRegs() {
         return List.of();
     }
 
     @Override
-    public void replaceVRegs(Map<VReg, MReg> vRegToMReg) {
+    public Asm replaceVRegs(Map<VReg, MReg> vRegToMReg) {
+        return this;
     }
 
     @Override

@@ -8,19 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class RrrAsm implements Asm {
-    public enum Type {
-        ADD, SUB, MUL, DIV, REM, SLT, SLTU, FADD, FSUB, FMUL, FDIV, FEQ, FLE, FLT
-    }
-
-    private final Type type;
-    private Reg dest, src1, src2;
-
-    public RrrAsm(Type type, Reg dest, Reg src1, Reg src2) {
-        this.type = type;
-        this.dest = dest;
-        this.src1 = src1;
-        this.src2 = src2;
+public record RrrAsm(Op op, Reg dest, Reg src1, Reg src2) implements Asm {
+    public enum Op {
+        ADD, SUB, MULW, DIV, REMW, SLT, SLTU, FADD, FSUB, FMUL, FDIV, FEQ, FLE, FLT
     }
 
     @Override
@@ -39,16 +29,29 @@ public class RrrAsm implements Asm {
     }
 
     @Override
-    public void replaceVRegs(Map<VReg, MReg> vRegToMReg) {
-        if (dest instanceof VReg vReg && vRegToMReg.containsKey(vReg)) {
-            dest = vRegToMReg.get(vReg);
+    public Asm replaceVRegs(Map<VReg, MReg> vRegToMReg) {
+        if (dest instanceof VReg vDest && vRegToMReg.containsKey(vDest) && src1 instanceof VReg vSrc1 && vRegToMReg.containsKey(vSrc1) && src2 instanceof VReg vSrc2 && vRegToMReg.containsKey(vSrc2)) {
+            return new RrrAsm(op, vRegToMReg.get(vDest), vRegToMReg.get(vSrc1), vRegToMReg.get(vSrc2));
         }
-        if (src1 instanceof VReg vReg && vRegToMReg.containsKey(vReg)) {
-            src1 = vRegToMReg.get(vReg);
+        if (dest instanceof VReg vDest && vRegToMReg.containsKey(vDest) && src1 instanceof VReg vSrc1 && vRegToMReg.containsKey(vSrc1)) {
+            return new RrrAsm(op, vRegToMReg.get(vDest), vRegToMReg.get(vSrc1), src2);
         }
-        if (src2 instanceof VReg vReg && vRegToMReg.containsKey(vReg)) {
-            src2 = vRegToMReg.get(vReg);
+        if (dest instanceof VReg vDest && vRegToMReg.containsKey(vDest) && src2 instanceof VReg vSrc2 && vRegToMReg.containsKey(vSrc2)) {
+            return new RrrAsm(op, vRegToMReg.get(vDest), src1, vRegToMReg.get(vSrc2));
         }
+        if (src1 instanceof VReg vSrc1 && vRegToMReg.containsKey(vSrc1) && src2 instanceof VReg vSrc2 && vRegToMReg.containsKey(vSrc2)) {
+            return new RrrAsm(op, dest, vRegToMReg.get(vSrc1), vRegToMReg.get(vSrc2));
+        }
+        if (dest instanceof VReg vDest && vRegToMReg.containsKey(vDest)) {
+            return new RrrAsm(op, vRegToMReg.get(vDest), src1, src2);
+        }
+        if (src1 instanceof VReg vSrc1 && vRegToMReg.containsKey(vSrc1)) {
+            return new RrrAsm(op, dest, vRegToMReg.get(vSrc1), src2);
+        }
+        if (src2 instanceof VReg vSrc2 && vRegToMReg.containsKey(vSrc2)) {
+            return new RrrAsm(op, dest, src1, vRegToMReg.get(vSrc2));
+        }
+        return this;
     }
 
     @Override
@@ -57,47 +60,43 @@ public class RrrAsm implements Asm {
             int spill1 = vRegToSpill.get(dest);
             int spill2 = vRegToSpill.get(src1);
             int spill3 = vRegToSpill.get(src2);
-            return List.of(new LdAsm(MReg.T2, MReg.SP, spill2), new LdAsm(MReg.T3, MReg.SP, spill3), new RrrAsm(type,
-                    MReg.T2, MReg.T2, MReg.T3), new SdAsm(MReg.T2, MReg.SP, spill1));
+            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new LoadAsm(MReg.T3, MReg.SP, spill3, 8), new RrrAsm(op, MReg.T2, MReg.T2, MReg.T3), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src1 instanceof VReg && vRegToSpill.containsKey(src1)) {
             int spill1 = vRegToSpill.get(dest);
             int spill2 = vRegToSpill.get(src1);
-            return List.of(new LdAsm(MReg.T2, MReg.SP, spill2), new RrrAsm(type, MReg.T2, MReg.T2, src2),
-                    new SdAsm(MReg.T2, MReg.SP, spill1));
+            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new RrrAsm(op, MReg.T2, MReg.T2, src2), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
             int spill1 = vRegToSpill.get(dest);
             int spill3 = vRegToSpill.get(src2);
-            return List.of(new LdAsm(MReg.T3, MReg.SP, spill3), new RrrAsm(type, MReg.T2, src1, MReg.T3),
-                    new SdAsm(MReg.T2, MReg.SP, spill1));
+            return List.of(new LoadAsm(MReg.T3, MReg.SP, spill3, 8), new RrrAsm(op, MReg.T2, src1, MReg.T3), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
         }
         if (src1 instanceof VReg && vRegToSpill.containsKey(src1) && src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
             int spill2 = vRegToSpill.get(src1);
             int spill3 = vRegToSpill.get(src2);
-            return List.of(new LdAsm(MReg.T2, MReg.SP, spill2), new LdAsm(MReg.T3, MReg.SP, spill3), new RrrAsm(type,
-                    dest, MReg.T2, MReg.T3));
+            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new LoadAsm(MReg.T3, MReg.SP, spill3, 8), new RrrAsm(op, dest, MReg.T2, MReg.T3));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest)) {
             int spill1 = vRegToSpill.get(dest);
-            return List.of(new RrrAsm(type, MReg.T2, src1, src2), new SdAsm(MReg.T2, MReg.SP, spill1));
+            return List.of(new RrrAsm(op, MReg.T2, src1, src2), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
         }
         if (src1 instanceof VReg && vRegToSpill.containsKey(src1)) {
             int spill2 = vRegToSpill.get(src1);
-            return List.of(new LdAsm(MReg.T2, MReg.SP, spill2), new RrrAsm(type, dest, MReg.T2, src2));
+            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new RrrAsm(op, dest, MReg.T2, src2));
         }
         if (src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
             int spill3 = vRegToSpill.get(src2);
-            return List.of(new LdAsm(MReg.T3, MReg.SP, spill3), new RrrAsm(type, dest, src1, MReg.T3));
+            return List.of(new LoadAsm(MReg.T3, MReg.SP, spill3, 8), new RrrAsm(op, dest, src1, MReg.T3));
         }
         return List.of(this);
     }
 
     @Override
     public String toString() {
-        return String.format("%s %s,%s,%s", switch (type) {
-            case ADD, SUB, MUL, DIV, REM, SLT, SLTU -> type.toString().toLowerCase();
-            case FADD, FSUB, FMUL, FDIV, FEQ, FLE, FLT -> type.toString().toLowerCase() + ".s";
+        return String.format("%s %s,%s,%s", switch (op) {
+            case ADD, SUB, MULW, DIV, REMW, SLT, SLTU -> op.toString().toLowerCase();
+            case FADD, FSUB, FMUL, FDIV, FEQ, FLE, FLT -> op.toString().toLowerCase() + ".s";
         }, dest, src1, src2);
     }
 }

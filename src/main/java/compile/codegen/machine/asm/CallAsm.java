@@ -6,20 +6,15 @@ import compile.codegen.machine.reg.VReg;
 import java.util.List;
 import java.util.Map;
 
-public class CallAsm implements Asm {
-    private final String name;
-
-    public CallAsm(String name) {
-        this.name = name;
-    }
-
+public record CallAsm(String name) implements Asm {
     @Override
     public List<VReg> getVRegs() {
         return List.of();
     }
 
     @Override
-    public void replaceVRegs(Map<VReg, MReg> vRegToMReg) {
+    public Asm replaceVRegs(Map<VReg, MReg> vRegToMReg) {
+        return this;
     }
 
     @Override

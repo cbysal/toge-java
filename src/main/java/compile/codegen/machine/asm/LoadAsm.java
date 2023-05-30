@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public record MvAsm(Reg dest, Reg src) implements Asm {
+public record LoadAsm(Reg dest, Reg src, int offset, int size) implements Asm {
     @Override
     public List<VReg> getVRegs() {
         List<VReg> vRegs = new ArrayList<>();
@@ -24,13 +24,13 @@ public record MvAsm(Reg dest, Reg src) implements Asm {
     @Override
     public Asm replaceVRegs(Map<VReg, MReg> vRegToMReg) {
         if (dest instanceof VReg vDest && vRegToMReg.containsKey(vDest) && src instanceof VReg vSrc && vRegToMReg.containsKey(vSrc)) {
-            return new MvAsm(vRegToMReg.get(vDest), vRegToMReg.get(vSrc));
+            return new LoadAsm(vRegToMReg.get(vDest), vRegToMReg.get(vSrc), offset, size);
         }
         if (dest instanceof VReg vDest && vRegToMReg.containsKey(vDest)) {
-            return new MvAsm(vRegToMReg.get(vDest), src);
+            return new LoadAsm(vRegToMReg.get(vDest), src, offset, size);
         }
         if (src instanceof VReg vSrc && vRegToMReg.containsKey(vSrc)) {
-            return new MvAsm(dest, vRegToMReg.get(vSrc));
+            return new LoadAsm(dest, vRegToMReg.get(vSrc), offset, size);
         }
         return this;
     }
@@ -40,30 +40,28 @@ public record MvAsm(Reg dest, Reg src) implements Asm {
         if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src instanceof VReg && vRegToSpill.containsKey(src)) {
             int spill1 = vRegToSpill.get(dest);
             int spill2 = vRegToSpill.get(src);
-            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
+            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new LoadAsm(MReg.T2, MReg.T2, offset, size), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest)) {
             int spill1 = vRegToSpill.get(dest);
-            return List.of(new StoreAsm(src, MReg.SP, spill1, 8));
+            return List.of(new LoadAsm(MReg.T2, src, offset, size), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
         }
         if (src instanceof VReg && vRegToSpill.containsKey(src)) {
             int spill2 = vRegToSpill.get(src);
-            return List.of(new LoadAsm(dest, MReg.SP, spill2, 8));
+            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new LoadAsm(dest, MReg.T2, offset, size));
         }
         return List.of(this);
     }
 
     @Override
     public String toString() {
-        if (dest.isFloat() && src.isFloat()) {
-            return String.format("fmv.s %s,%s", dest, src);
-        }
         if (dest.isFloat()) {
-            return String.format("fmv.w.x %s,%s", dest, src);
+            return String.format("flw %s,%d(%s)", dest, offset, src);
         }
-        if (src.isFloat()) {
-            return String.format("fmv.x.w %s,%s", dest, src);
-        }
-        return String.format("mv %s,%s", dest, src);
+        return switch (size) {
+            case 4 -> String.format("lw %s,%d(%s)", dest, offset, src);
+            case 8 -> String.format("ld %s,%d(%s)", dest, offset, src);
+            default -> throw new RuntimeException();
+        };
     }
 }

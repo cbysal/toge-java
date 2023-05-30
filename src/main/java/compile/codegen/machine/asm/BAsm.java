@@ -9,20 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class BAsm implements Asm {
+public record BAsm(Op op, Reg src1, Reg src2, Block dest) implements Asm {
     public enum Op {
         EQ, NE, GE, GT, LE, LT
-    }
-
-    private final Op op;
-    private Reg src1, src2;
-    private final Block dest;
-
-    public BAsm(Op op, Reg src1, Reg src2, Block dest) {
-        this.op = op;
-        this.src1 = src1;
-        this.src2 = src2;
-        this.dest = dest;
     }
 
     @Override
@@ -38,30 +27,37 @@ public class BAsm implements Asm {
     }
 
     @Override
-    public void replaceVRegs(Map<VReg, MReg> vRegToMReg) {
-        if (src1 instanceof VReg vReg && vRegToMReg.containsKey(vReg)) {
-            src1 = vRegToMReg.get(vReg);
+    public Asm replaceVRegs(Map<VReg, MReg> vRegToMReg) {
+        if (src1 instanceof VReg vSrc1 && vRegToMReg.containsKey(vSrc1) && src2 instanceof VReg vSrc2 && vRegToMReg.containsKey(vSrc2)) {
+            return new BAsm(op, vRegToMReg.get(vSrc1), vRegToMReg.get(vSrc2), dest);
         }
-        if (src2 instanceof VReg vReg && vRegToMReg.containsKey(vReg)) {
-            src2 = vRegToMReg.get(vReg);
+        if (src1 instanceof VReg vSrc1 && vRegToMReg.containsKey(vSrc1)) {
+            return new BAsm(op, vRegToMReg.get(vSrc1), src2, dest);
         }
+        if (src2 instanceof VReg vSrc2 && vRegToMReg.containsKey(vSrc2)) {
+            return new BAsm(op, src1, vRegToMReg.get(vSrc2), dest);
+        }
+        return this;
     }
 
     @Override
     public List<Asm> spill(Map<VReg, Integer> vRegToSpill) {
         if (src1 instanceof VReg && vRegToSpill.containsKey(src1) && src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
+            VReg newSrc1 = new VReg(false);
+            VReg newSrc2 = new VReg(false);
             int spill1 = vRegToSpill.get(src1);
             int spill2 = vRegToSpill.get(src2);
-            return List.of(new LdAsm(MReg.T2, MReg.SP, spill1), new LdAsm(MReg.T3, MReg.SP, spill2), new BAsm(op,
-                    MReg.T2, MReg.T3, dest));
+            return List.of(new LoadAsm(newSrc1, MReg.SP, spill1, 8), new LoadAsm(newSrc2, MReg.SP, spill2, 8), new BAsm(op, newSrc1, newSrc2, dest));
         }
         if (src1 instanceof VReg && vRegToSpill.containsKey(src1)) {
+            VReg newSrc1 = new VReg(false);
             int spill1 = vRegToSpill.get(src1);
-            return List.of(new LdAsm(MReg.T2, MReg.SP, spill1), new BAsm(op, MReg.T2, src2, dest));
+            return List.of(new LoadAsm(newSrc1, MReg.SP, spill1, 8), new BAsm(op, newSrc1, src2, dest));
         }
         if (src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
+            VReg newSrc2 = new VReg(false);
             int spill2 = vRegToSpill.get(src2);
-            return List.of(new LdAsm(MReg.T3, MReg.SP, spill2), new BAsm(op, src1, MReg.T3, dest));
+            return List.of(new LoadAsm(newSrc2, MReg.SP, spill2, 8), new BAsm(op, src1, newSrc2, dest));
         }
         return List.of(this);
     }

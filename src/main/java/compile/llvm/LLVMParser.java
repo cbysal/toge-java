@@ -103,6 +103,13 @@ public class LLVMParser {
             parser.curBlock.addLast(newValue);
             return newValue;
         });
+        typeConversionCases.put(new TypeConversionCase(BasicType.I1, BasicType.FLOAT), (parser, value) -> {
+            Instr newValue1 = new ZextInstr(BasicType.I32, value);
+            Instr newValue2 = new SitofpInstr(newValue1);
+            parser.curBlock.addLast(newValue1);
+            parser.curBlock.addLast(newValue2);
+            return newValue2;
+        });
         typeConversionCases.put(new TypeConversionCase(BasicType.I32, BasicType.FLOAT), (parser, value) -> {
             Instr newValue = new SitofpInstr(value);
             parser.curBlock.addLast(newValue);
@@ -479,16 +486,26 @@ public class LLVMParser {
             Instr instr = new LoadInstr(ptr);
             curBlock.addLast(instr);
             ptr = instr;
+            List<ExpAST> dimensions = lVal.dimensions();
+            boolean isFirst = true;
+            for (ExpAST dimension : dimensions) {
+                Value index = visitExp(dimension);
+                Instr ptrInstr;
+                if (isFirst) {
+                    ptrInstr = new GetElementPtrInstr(ptr, index);
+                } else {
+                    ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
+                }
+                isFirst = false;
+                curBlock.addLast(ptrInstr);
+                ptr = ptrInstr;
+            }
+            return ptr;
         }
         List<ExpAST> dimensions = lVal.dimensions();
         for (ExpAST dimension : dimensions) {
             Value index = visitExp(dimension);
-            Instr ptrInstr;
-            if (((PointerType) ptr.getType()).base() instanceof BasicType) {
-                ptrInstr = new GetElementPtrInstr(ptr, index);
-            } else {
-                ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
-            }
+            Instr ptrInstr = new GetElementPtrInstr(ptr, new I32Constant(0), index);
             curBlock.addLast(ptrInstr);
             ptr = ptrInstr;
         }

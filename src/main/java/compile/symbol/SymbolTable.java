@@ -97,13 +97,13 @@ public class SymbolTable extends MapStack<String, Symbol> {
 
     public GlobalSymbol makeGlobal(Type type, String name, Number value) {
         GlobalSymbol symbol = new GlobalSymbol(type, name, value);
-        putFirst(name, symbol);
+        putLast(name, symbol);
         return symbol;
     }
 
     public GlobalSymbol makeGlobal(Type type, String name, Map<Integer, Number> values) {
         GlobalSymbol symbol = new GlobalSymbol(type, name, values);
-        putFirst(name, symbol);
+        putLast(name, symbol);
         return symbol;
     }
 

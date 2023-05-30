@@ -14,6 +14,10 @@ public class Function implements Iterable<Block> {
         this.name = name;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public void addBlock(Block block) {
         blocks.add(block);
     }
