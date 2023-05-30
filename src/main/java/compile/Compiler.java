@@ -4,7 +4,6 @@ import client.option.OptionPool;
 import compile.codegen.CodeGenerator;
 import compile.codegen.machine.DataItem;
 import compile.codegen.machine.Function;
-import compile.codegen.machine.TextItem;
 import compile.lexical.LexicalParser;
 import compile.lexical.token.TokenList;
 import compile.llvm.LLVMParser;
@@ -60,10 +59,9 @@ public class Compiler {
             printLLVM(module, options.get(OptionPool.PRINT_LLVM));
         }
         CodeGenerator codeGenerator = new CodeGenerator(module);
-        Map<String, TextItem> textItems = codeGenerator.getTextItems();
         Map<String, DataItem> dataItems = codeGenerator.getDataItems();
         Map<String, Function> functions = codeGenerator.getFunctions();
-        emitCode(textItems, dataItems, functions);
+        emitCode(dataItems, functions);
     }
 
     private static void printTokens(TokenList tokens, String target) {
@@ -98,11 +96,8 @@ public class Compiler {
         }
     }
 
-    private void emitCode(Map<String, TextItem> textItems, Map<String, DataItem> dataItems,
-                          Map<String, Function> functions) {
+    private void emitCode(Map<String, DataItem> dataItems, Map<String, Function> functions) {
         StringBuilder builder = new StringBuilder();
-        builder.append("  .text\n");
-        textItems.values().forEach(builder::append);
         builder.append("  .data\n");
         dataItems.values().forEach(builder::append);
         builder.append("  .text\n");

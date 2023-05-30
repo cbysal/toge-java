@@ -2,7 +2,6 @@ package compile.codegen;
 
 import compile.codegen.machine.Block;
 import compile.codegen.machine.DataItem;
-import compile.codegen.machine.TextItem;
 import compile.codegen.machine.asm.*;
 import compile.codegen.machine.reg.MReg;
 import compile.codegen.machine.reg.Reg;
@@ -24,7 +23,6 @@ import java.util.stream.IntStream;
 public class CodeGenerator {
     private boolean isProcessed;
     private final Module module;
-    private final Map<String, TextItem> textItems = new HashMap<>();
     private final Map<String, DataItem> dataItems = new HashMap<>();
     private final Map<String, compile.codegen.machine.Function> functions = new HashMap<>();
 
@@ -744,11 +742,6 @@ public class CodeGenerator {
             }
         }
         functions.put(name, asmFunction);
-    }
-
-    public Map<String, TextItem> getTextItems() {
-        checkIfIsProcessed();
-        return textItems;
     }
 
     public Map<String, DataItem> getDataItems() {
