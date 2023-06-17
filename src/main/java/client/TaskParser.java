@@ -24,6 +24,7 @@ public class TaskParser {
     private boolean isProcessed;
     private final String[] args;
     private TargetState targetState = TargetState.LINK;
+    private int compileLevel = 0;
     private final List<Path> sources = new ArrayList<>();
     private Path target;
     private Task task;
@@ -52,6 +53,7 @@ public class TaskParser {
                 case 'E' -> setCompileState(TargetState.PREPROCESS);
                 case 'S' -> setCompileState(TargetState.COMPILE);
                 case 'c' -> setCompileState(TargetState.ASSEMBLE);
+                case 'O' -> setCompileLevel(args[i].substring(2));
                 case 'o' -> setTarget(Path.of(args[++i]));
                 case '-' -> setExtraOptions(args[i].substring(2));
                 default -> throw new RuntimeException("Unsupported option: " + args[i]);
@@ -64,6 +66,10 @@ public class TaskParser {
             throw new RuntimeException("Multi target states: " + targetState + " & " + state + "!");
         }
         targetState = state;
+    }
+
+    private void setCompileLevel(String level) {
+        compileLevel = Integer.parseInt(level);
     }
 
     private void setTarget(Path target) {
