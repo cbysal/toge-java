@@ -38,17 +38,21 @@ public record LoadAsm(Reg dest, Reg src, int offset, int size) implements Asm {
     @Override
     public List<Asm> spill(Map<VReg, Integer> vRegToSpill) {
         if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src instanceof VReg && vRegToSpill.containsKey(src)) {
+            VReg newDest = new VReg(dest.isFloat());
+            VReg newSrc = new VReg(src.isFloat());
             int spill1 = vRegToSpill.get(dest);
             int spill2 = vRegToSpill.get(src);
-            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new LoadAsm(MReg.T2, MReg.T2, offset, size), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
+            return List.of(new VLoadSpillAsm(newSrc, spill2), new LoadAsm(newDest, newSrc, offset, size), new VStoreSpillAsm(newDest, spill1));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest)) {
-            int spill1 = vRegToSpill.get(dest);
-            return List.of(new LoadAsm(MReg.T2, src, offset, size), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
+            VReg newDest = new VReg(dest.isFloat());
+            int spill = vRegToSpill.get(dest);
+            return List.of(new LoadAsm(newDest, src, offset, size), new VStoreSpillAsm(newDest, spill));
         }
         if (src instanceof VReg && vRegToSpill.containsKey(src)) {
-            int spill2 = vRegToSpill.get(src);
-            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new LoadAsm(dest, MReg.T2, offset, size));
+            VReg newSrc = new VReg(src.isFloat());
+            int spill = vRegToSpill.get(src);
+            return List.of(new VLoadSpillAsm(newSrc, spill), new LoadAsm(dest, newSrc, offset, size));
         }
         return List.of(this);
     }

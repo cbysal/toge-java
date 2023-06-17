@@ -7,19 +7,19 @@ import compile.codegen.machine.reg.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record LiAsm(Reg dest, int imm) implements Asm {
+public record VLoadSpillAsm(Reg dest, int src) implements Asm {
     @Override
     public List<VReg> getVRegs() {
-        if (dest instanceof VReg vReg) {
-            return List.of(vReg);
+        if (dest instanceof VReg vDest) {
+            return List.of(vDest);
         }
         return List.of();
     }
 
     @Override
     public Asm replaceVRegs(Map<VReg, MReg> vRegToMReg) {
-        if (dest instanceof VReg vDest && vRegToMReg.containsKey(vDest)) {
-            return new LiAsm(vRegToMReg.get(vDest), imm);
+        if (dest instanceof VReg && vRegToMReg.containsKey(dest)) {
+            return new VLoadSpillAsm(vRegToMReg.get(dest), src);
         }
         return this;
     }
@@ -29,13 +29,8 @@ public record LiAsm(Reg dest, int imm) implements Asm {
         if (dest instanceof VReg && vRegToSpill.containsKey(dest)) {
             VReg newDest = new VReg(dest.isFloat());
             int spill = vRegToSpill.get(dest);
-            return List.of(new LiAsm(newDest, imm), new VStoreSpillAsm(newDest, spill));
+            return List.of(new VLoadSpillAsm(newDest, src), new VStoreSpillAsm(newDest, spill));
         }
         return List.of(this);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("li %s,%d", dest, imm);
     }
 }

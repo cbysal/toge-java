@@ -47,17 +47,17 @@ public record BAsm(Op op, Reg src1, Reg src2, Block dest) implements Asm {
             VReg newSrc2 = new VReg(false);
             int spill1 = vRegToSpill.get(src1);
             int spill2 = vRegToSpill.get(src2);
-            return List.of(new LoadAsm(newSrc1, MReg.SP, spill1, 8), new LoadAsm(newSrc2, MReg.SP, spill2, 8), new BAsm(op, newSrc1, newSrc2, dest));
+            return List.of(new VLoadSpillAsm(newSrc1, spill1), new VLoadSpillAsm(newSrc2, spill2), new BAsm(op, newSrc1, newSrc2, dest));
         }
         if (src1 instanceof VReg && vRegToSpill.containsKey(src1)) {
             VReg newSrc1 = new VReg(false);
-            int spill1 = vRegToSpill.get(src1);
-            return List.of(new LoadAsm(newSrc1, MReg.SP, spill1, 8), new BAsm(op, newSrc1, src2, dest));
+            int spill = vRegToSpill.get(src1);
+            return List.of(new VLoadSpillAsm(newSrc1, spill), new BAsm(op, newSrc1, src2, dest));
         }
         if (src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
             VReg newSrc2 = new VReg(false);
-            int spill2 = vRegToSpill.get(src2);
-            return List.of(new LoadAsm(newSrc2, MReg.SP, spill2, 8), new BAsm(op, src1, newSrc2, dest));
+            int spill = vRegToSpill.get(src2);
+            return List.of(new VLoadSpillAsm(newSrc2, spill), new BAsm(op, src1, newSrc2, dest));
         }
         return List.of(this);
     }

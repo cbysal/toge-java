@@ -4,7 +4,6 @@ import common.Pair;
 import compile.codegen.machine.Block;
 import compile.codegen.machine.DataItem;
 import compile.codegen.machine.asm.*;
-import compile.codegen.machine.asm.virtual.*;
 import compile.codegen.machine.reg.MReg;
 import compile.codegen.machine.reg.Reg;
 import compile.codegen.machine.reg.VReg;
@@ -805,6 +804,14 @@ public class CodeGeneratorForFunction {
             List<Asm> asms = block.getAsms();
             List<Asm> newAsms = new ArrayList<>();
             for (Asm asm : asms) {
+                if (asm instanceof VLoadSpillAsm vLoadSpillAsm) {
+                    newAsms.add(new LoadAsm(vLoadSpillAsm.dest(), MReg.SP, vLoadSpillAsm.src(), 8));
+                    continue;
+                }
+                if (asm instanceof VStoreSpillAsm vStoreSpillAsm) {
+                    newAsms.add(new StoreAsm(vStoreSpillAsm.src(), MReg.SP, vStoreSpillAsm.dest(), 8));
+                    continue;
+                }
                 if (asm instanceof VStoreParamAsm vStoreParamAsm) {
                     newAsms.add(new LoadAsm(MReg.T1, MReg.SP, outerParamNum * 8 + localSize + callerSavedSize + (iCalleeNum + fCalleeNum + spillNum + vStoreParamAsm.src()) * 8, 8));
                     newAsms.add(new StoreAsm(MReg.T1, MReg.SP, allocPositions.get(vStoreParamAsm.dest()), 8));
@@ -848,10 +855,10 @@ public class CodeGeneratorForFunction {
                     continue;
                 }
                 if (asm instanceof VRetRegAsm vRetRegAsm) {
-                    if (vRetRegAsm.reg().isFloat()) {
-                        newAsms.add(new MvAsm(MReg.FA0, vRetRegAsm.reg()));
+                    if (vRetRegAsm.ret().isFloat()) {
+                        newAsms.add(new MvAsm(MReg.FA0, vRetRegAsm.ret()));
                     } else {
-                        newAsms.add(new MvAsm(MReg.A0, vRetRegAsm.reg()));
+                        newAsms.add(new MvAsm(MReg.A0, vRetRegAsm.ret()));
                     }
                     restoreContext(newAsms, iCalleeNum, fCalleeNum, totalStackSize);
                     continue;

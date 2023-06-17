@@ -28,8 +28,9 @@ public record LlaAsm(Reg dest, DataItem src) implements Asm {
     @Override
     public List<Asm> spill(Map<VReg, Integer> vRegToSpill) {
         if (dest instanceof VReg && vRegToSpill.containsKey(dest)) {
+            VReg newDest = new VReg(dest.isFloat());
             int spill = vRegToSpill.get(dest);
-            return List.of(new LlaAsm(MReg.T2, src), new StoreAsm(MReg.T2, MReg.SP, spill, 8));
+            return List.of(new LlaAsm(newDest, src), new VStoreSpillAsm(newDest, spill));
         }
         return List.of(this);
     }

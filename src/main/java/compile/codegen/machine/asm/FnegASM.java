@@ -37,6 +37,23 @@ public record FnegASM(Reg dest, Reg src) implements Asm {
 
     @Override
     public List<Asm> spill(Map<VReg, Integer> vRegToSpill) {
+        if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src instanceof VReg && vRegToSpill.containsKey(src)) {
+            VReg newDest = new VReg(dest.isFloat());
+            VReg newSrc = new VReg(src.isFloat());
+            int spill1 = vRegToSpill.get(dest);
+            int spill2 = vRegToSpill.get(src);
+            return List.of(new VLoadSpillAsm(newSrc, spill2), new FnegASM(newDest, newSrc), new VStoreSpillAsm(newDest, spill1));
+        }
+        if (dest instanceof VReg && vRegToSpill.containsKey(dest)) {
+            VReg newDest = new VReg(dest.isFloat());
+            int spill = vRegToSpill.get(dest);
+            return List.of(new FnegASM(newDest, src), new VStoreSpillAsm(newDest, spill));
+        }
+        if (src instanceof VReg && vRegToSpill.containsKey(src)) {
+            VReg newSrc = new VReg(src.isFloat());
+            int spill = vRegToSpill.get(src);
+            return List.of(new VLoadSpillAsm(newSrc, spill), new FnegASM(dest, newSrc));
+        }
         return List.of(this);
     }
 

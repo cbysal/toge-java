@@ -38,17 +38,18 @@ public record MvAsm(Reg dest, Reg src) implements Asm {
     @Override
     public List<Asm> spill(Map<VReg, Integer> vRegToSpill) {
         if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src instanceof VReg && vRegToSpill.containsKey(src)) {
+            VReg newReg = new VReg(false);
             int spill1 = vRegToSpill.get(dest);
             int spill2 = vRegToSpill.get(src);
-            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
+            return List.of(new VLoadSpillAsm(newReg, spill2), new VStoreSpillAsm(newReg, spill1));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest)) {
-            int spill1 = vRegToSpill.get(dest);
-            return List.of(new StoreAsm(src, MReg.SP, spill1, 8));
+            int spill = vRegToSpill.get(dest);
+            return List.of(new VStoreSpillAsm(src, spill));
         }
         if (src instanceof VReg && vRegToSpill.containsKey(src)) {
-            int spill2 = vRegToSpill.get(src);
-            return List.of(new LoadAsm(dest, MReg.SP, spill2, 8));
+            int spill = vRegToSpill.get(src);
+            return List.of(new VLoadSpillAsm(dest, spill));
         }
         return List.of(this);
     }

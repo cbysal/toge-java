@@ -1,4 +1,4 @@
-package compile.codegen.machine.asm.virtual;
+package compile.codegen.machine.asm;
 
 import compile.codegen.machine.asm.Asm;
 import compile.codegen.machine.reg.MReg;
@@ -7,7 +7,7 @@ import compile.codegen.machine.reg.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record VRetVoidAsm() implements Asm {
+public record VRetImmAsm(Number imm) implements Asm {
     @Override
     public List<VReg> getVRegs() {
         return List.of();

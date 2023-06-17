@@ -57,37 +57,49 @@ public record RrrAsm(Op op, Reg dest, Reg src1, Reg src2) implements Asm {
     @Override
     public List<Asm> spill(Map<VReg, Integer> vRegToSpill) {
         if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src1 instanceof VReg && vRegToSpill.containsKey(src1) && src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
+            VReg newDest = new VReg(dest.isFloat());
+            VReg newSrc1 = new VReg(src1.isFloat());
+            VReg newSrc2 = new VReg(src2.isFloat());
             int spill1 = vRegToSpill.get(dest);
             int spill2 = vRegToSpill.get(src1);
             int spill3 = vRegToSpill.get(src2);
-            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new LoadAsm(MReg.T3, MReg.SP, spill3, 8), new RrrAsm(op, MReg.T2, MReg.T2, MReg.T3), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
+            return List.of(new VLoadSpillAsm(newSrc1, spill2), new VLoadSpillAsm(newSrc2, spill3), new RrrAsm(op, newDest, newSrc1, newSrc2), new VStoreSpillAsm(newDest, spill1));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src1 instanceof VReg && vRegToSpill.containsKey(src1)) {
+            VReg newDest = new VReg(dest.isFloat());
+            VReg newSrc1 = new VReg(src1.isFloat());
             int spill1 = vRegToSpill.get(dest);
             int spill2 = vRegToSpill.get(src1);
-            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new RrrAsm(op, MReg.T2, MReg.T2, src2), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
+            return List.of(new VLoadSpillAsm(newSrc1, spill2), new RrrAsm(op, newDest, newSrc1, src2), new VStoreSpillAsm(newDest, spill1));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest) && src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
+            VReg newDest = new VReg(dest.isFloat());
+            VReg newSrc2 = new VReg(src2.isFloat());
             int spill1 = vRegToSpill.get(dest);
-            int spill3 = vRegToSpill.get(src2);
-            return List.of(new LoadAsm(MReg.T3, MReg.SP, spill3, 8), new RrrAsm(op, MReg.T2, src1, MReg.T3), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
+            int spill2 = vRegToSpill.get(src2);
+            return List.of(new VLoadSpillAsm(newSrc2, spill2), new RrrAsm(op, newDest, src1, newSrc2), new VStoreSpillAsm(newDest, spill1));
         }
         if (src1 instanceof VReg && vRegToSpill.containsKey(src1) && src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
-            int spill2 = vRegToSpill.get(src1);
-            int spill3 = vRegToSpill.get(src2);
-            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new LoadAsm(MReg.T3, MReg.SP, spill3, 8), new RrrAsm(op, dest, MReg.T2, MReg.T3));
+            VReg newSrc1 = new VReg(src1.isFloat());
+            VReg newSrc2 = new VReg(src2.isFloat());
+            int spill1 = vRegToSpill.get(src1);
+            int spill2 = vRegToSpill.get(src2);
+            return List.of(new VLoadSpillAsm(newSrc1, spill1), new VLoadSpillAsm(newSrc2, spill2), new RrrAsm(op, dest, newSrc1, newSrc2));
         }
         if (dest instanceof VReg && vRegToSpill.containsKey(dest)) {
-            int spill1 = vRegToSpill.get(dest);
-            return List.of(new RrrAsm(op, MReg.T2, src1, src2), new StoreAsm(MReg.T2, MReg.SP, spill1, 8));
+            VReg newDest = new VReg(dest.isFloat());
+            int spill = vRegToSpill.get(dest);
+            return List.of(new RrrAsm(op, newDest, src1, src2), new VStoreSpillAsm(newDest, spill));
         }
         if (src1 instanceof VReg && vRegToSpill.containsKey(src1)) {
-            int spill2 = vRegToSpill.get(src1);
-            return List.of(new LoadAsm(MReg.T2, MReg.SP, spill2, 8), new RrrAsm(op, dest, MReg.T2, src2));
+            VReg newSrc1 = new VReg(src1.isFloat());
+            int spill = vRegToSpill.get(src1);
+            return List.of(new VLoadSpillAsm(newSrc1, spill), new RrrAsm(op, dest, newSrc1, src2));
         }
         if (src2 instanceof VReg && vRegToSpill.containsKey(src2)) {
-            int spill3 = vRegToSpill.get(src2);
-            return List.of(new LoadAsm(MReg.T3, MReg.SP, spill3, 8), new RrrAsm(op, dest, src1, MReg.T3));
+            VReg newSrc2 = new VReg(src2.isFloat());
+            int spill = vRegToSpill.get(src2);
+            return List.of(new VLoadSpillAsm(newSrc2, spill), new RrrAsm(op, dest, src1, newSrc2));
         }
         return List.of(this);
     }
