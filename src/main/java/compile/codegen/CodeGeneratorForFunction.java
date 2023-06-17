@@ -620,7 +620,11 @@ public class CodeGeneratorForFunction {
         int localSize = 0, callerSavedSize = 8;
         for (Map.Entry<Integer, Integer> entry : allocSizes.entrySet()) {
             allocPositions.put(entry.getKey(), outerParamNum * 8 + localSize);
-            localSize += entry.getValue();
+            if (entry.getValue() % 8 == 4) {
+                localSize += entry.getValue() + 4;
+            } else {
+                localSize += entry.getValue();
+            }
         }
         Map<VReg, MReg> vRegToMReg = allocRegs(outerParamNum, localSize);
         for (Block block : asmFunction) {
