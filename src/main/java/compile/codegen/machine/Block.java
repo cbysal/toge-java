@@ -26,7 +26,7 @@ public class Block implements Iterable<Asm> {
     }
 
     public String getTag() {
-        return String.format("b%d", id);
+        return String.format(".b%d", id);
     }
 
     @Override
@@ -47,7 +47,7 @@ public class Block implements Iterable<Asm> {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(String.format("b%d:\n", id));
+        builder.append(String.format("%s:\n", getTag()));
         asms.forEach(asm -> builder.append("  ").append(asm).append('\n'));
         return builder.toString();
     }
