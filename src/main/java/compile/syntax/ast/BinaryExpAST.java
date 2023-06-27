@@ -1,61 +1,65 @@
 package compile.syntax.ast;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.BinaryOperator;
+import compile.symbol.Type;
+import compile.symbol.Value;
 
-public record BinaryExpAST(compile.syntax.ast.BinaryExpAST.Type type, ExpAST left, ExpAST right) implements ExpAST {
-    public enum Type {
-        ADD, SUB, MUL, DIV, MOD
-    }
-
-    private static final Map<Type, BinaryOperator<Number>> CALC_OPS;
-
-    static {
-        Map<Type, BinaryOperator<Number>> calcOps = new HashMap<>();
-        calcOps.put(Type.ADD, (val1, val2) -> {
-            if (val1 instanceof Integer && val2 instanceof Integer) {
-                return val1.intValue() + val2.intValue();
-            }
-            return val1.floatValue() + val2.floatValue();
-        });
-        calcOps.put(Type.SUB, (val1, val2) -> {
-            if (val1 instanceof Integer && val2 instanceof Integer) {
-                return val1.intValue() - val2.intValue();
-            }
-            return val1.floatValue() - val2.floatValue();
-        });
-        calcOps.put(Type.MUL, (val1, val2) -> {
-            if (val1 instanceof Integer && val2 instanceof Integer) {
-                return val1.intValue() * val2.intValue();
-            }
-            return val1.floatValue() * val2.floatValue();
-        });
-        calcOps.put(Type.DIV, (val1, val2) -> {
-            if (val1 instanceof Integer && val2 instanceof Integer) {
-                return val1.intValue() / val2.intValue();
-            }
-            return val1.floatValue() / val2.floatValue();
-        });
-        calcOps.put(Type.MOD, (val1, val2) -> {
-            if (val1 instanceof Integer && val2 instanceof Integer) {
-                return val1.intValue() % val2.intValue();
-            }
-            return val1.floatValue() % val2.floatValue();
-        });
-        CALC_OPS = calcOps;
+public record BinaryExpAST(Op op, ExpAST left, ExpAST right) implements ExpAST {
+    public enum Op {
+        ADD, DIV, MOD, MUL, SUB
     }
 
     @Override
-    public Number calc() {
-        Number lVal = left.calc();
-        Number rVal = right.calc();
-        return CALC_OPS.get(type).apply(lVal, rVal);
+    public Value calc() {
+        Value lVal = left.calc();
+        Value rVal = right.calc();
+        return switch (op) {
+            case ADD -> {
+                if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getFloat() + rVal.getFloat());
+                if (lVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getFloat() + rVal.getInt());
+                if (rVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getInt() + rVal.getFloat());
+                yield new Value(lVal.getInt() + rVal.getInt());
+            }
+            case DIV -> {
+                if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getFloat() / rVal.getFloat());
+                if (lVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getFloat() / rVal.getInt());
+                if (rVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getInt() / rVal.getFloat());
+                yield new Value(lVal.getInt() / rVal.getInt());
+            }
+            case MOD -> {
+                if (lVal.getType() == Type.FLOAT || rVal.getType() == Type.FLOAT)
+                    throw new RuntimeException();
+                yield new Value(lVal.getInt() % rVal.getInt());
+            }
+            case MUL -> {
+                if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getFloat() * rVal.getFloat());
+                if (lVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getFloat() * rVal.getInt());
+                if (rVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getInt() * rVal.getFloat());
+                yield new Value(lVal.getInt() * rVal.getInt());
+            }
+            case SUB -> {
+                if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getFloat() - rVal.getFloat());
+                if (lVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getFloat() - rVal.getInt());
+                if (rVal.getType() == Type.FLOAT)
+                    yield new Value(lVal.getInt() - rVal.getFloat());
+                yield new Value(lVal.getInt() - rVal.getInt());
+            }
+        };
     }
 
     @Override
     public void print(int depth) {
-        System.out.println("  ".repeat(depth) + "BinaryExp " + type);
+        System.out.println("  ".repeat(depth) + "BinaryExp " + op);
         left.print(depth + 1);
         right.print(depth + 1);
     }

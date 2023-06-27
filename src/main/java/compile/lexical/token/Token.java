@@ -15,15 +15,15 @@ public class Token {
     }
 
     public static Token valueOf(float value) {
-        return new FloatToken(value);
+        return new FloatLitToken(value);
     }
 
     public static Token valueOf(int value) {
-        return new IntToken(value);
+        return new IntLitToken(value);
     }
 
     public static Token valueOf(String id) {
-        return new IdToken(id);
+        return new IdentityToken(id);
     }
 
     public static Token valueOf(TokenType type) {

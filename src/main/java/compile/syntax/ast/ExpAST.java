@@ -1,5 +1,7 @@
 package compile.syntax.ast;
 
+import compile.symbol.Value;
+
 public interface ExpAST extends AST {
-    Number calc();
+    Value calc();
 }

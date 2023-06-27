@@ -5,76 +5,32 @@ import compile.lexical.token.TokenList;
 import compile.lexical.token.TokenType;
 
 import java.util.Map;
-import java.util.function.Predicate;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public class LexicalParser {
-    private record DoubleCharCase(char secondChar, TokenType firstToken, TokenType secondToken) {
-    }
-
     private static final Map<String, TokenType> KEYWORDS = Map.of("break", TokenType.BREAK, "const", TokenType.CONST,
             "continue", TokenType.CONTINUE, "else", TokenType.ELSE, "float", TokenType.FLOAT, "if", TokenType.IF,
             "int", TokenType.INT, "return", TokenType.RETURN, "void", TokenType.VOID, "while", TokenType.WHILE);
-    private static final boolean[] OCT_INT_CHARS = new boolean[128];
-    private static final boolean[] DEC_INT_CHARS = new boolean[128];
-    private static final boolean[] HEX_INT_CHARS = new boolean[128];
-    private static final boolean[] FLOAT_CHARS = new boolean[128];
-    private static final boolean[] ID_CHARS = new boolean[128];
-    private static final Pattern DEC_INT_PATTERN = Pattern.compile("[1-9]\\d*");
+    private static final Set<Character> DECIMAL_INT_CHARSET = Set.of('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+    private static final Pattern DECIMAL_INT_PATTERN = Pattern.compile("[1-9]\\d*");
+    private static final Set<Character> FLOAT_CHARSET = Set.of('+', '-', '.', '0', '1', '2', '3', '4', '5', '6', '7',
+            '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'P', 'X', 'a', 'b', 'c', 'd', 'e', 'f', 'p', 'x');
     private static final Pattern FLOAT_PATTERN = Pattern.compile("(\\d+\\.\\d*|\\.\\d+)([Ee][+-]?\\d+)?|\\d+[Ee][" +
             "+-]?\\d+|0[Xx]([\\dA-Fa-f]+\\.[\\dA-Fa-f]*|\\.[\\dA-Fa-f]+)[Pp][+-]?\\d+");
-    private static final Pattern ID_PATTERN = Pattern.compile("[A-Za-z_][\\dA-Za-z_]*");
-    private static final Pattern HEX_INT_PATTERN = Pattern.compile("0[Xx][\\d|A-Fa-f]+");
-    private static final Pattern OCT_INT_PATTERN = Pattern.compile("0[0-7]*");
-    private static final Map<Character, TokenType> SINGLE_CHAR_CASES = Map.ofEntries(Map.entry('%', TokenType.MOD),
-            Map.entry('(', TokenType.LP), Map.entry(')', TokenType.RP), Map.entry('*', TokenType.MUL), Map.entry('+',
-                    TokenType.PLUS), Map.entry(',', TokenType.COMMA), Map.entry('-', TokenType.MINUS), Map.entry('/',
-                    TokenType.DIV), Map.entry(';', TokenType.SEMICOLON), Map.entry('[', TokenType.LB), Map.entry(']',
-                    TokenType.RB), Map.entry('{', TokenType.LC), Map.entry('}', TokenType.RC));
-    private static final Map<Character, DoubleCharCase> DOUBLE_CHAR_CASES = Map.of('!', new DoubleCharCase('=',
-            TokenType.L_NOT, TokenType.NE), '&', new DoubleCharCase('&', null, TokenType.L_AND), '<',
-            new DoubleCharCase('=', TokenType.LT, TokenType.LE), '=', new DoubleCharCase('=', TokenType.ASSIGN,
-                    TokenType.EQ), '>', new DoubleCharCase('=', TokenType.GT, TokenType.GE), '|',
-            new DoubleCharCase('|', null, TokenType.L_OR));
+    private static final Set<Character> IDENTITY_CHARSET = Set.of('0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
+            'V', 'W', 'X', 'Y', 'Z', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+            'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z');
+    private static final Pattern IDENTITY_PATTERN = Pattern.compile("[A-Za-z_][\\dA-Za-z_]*");
+    private static final Set<Character> HEXADECIMAL_INT_CHARSET = Set.of('0', '1', '2', '3', '4', '5', '6', '7', '8',
+            '9', 'A', 'B', 'C', 'D', 'E', 'F', 'X', 'a', 'b', 'c', 'd', 'e', 'f', 'x');
+    private static final Pattern HEXADECIMAL_INT_PATTERN = Pattern.compile("0[Xx][\\d|A-Fa-f]+");
+    private static final Set<Character> OCTAL_INT_CHARSET = Set.of('0', '1', '2', '3', '4', '5', '6', '7');
+    private static final Pattern OCTAL_INT_PATTERN = Pattern.compile("0[0-7]*");
 
-    static {
-        for (char c = '0'; c <= '9'; c++) {
-            if (c < '8') {
-                OCT_INT_CHARS[c] = true;
-            }
-            DEC_INT_CHARS[c] = true;
-            HEX_INT_CHARS[c] = true;
-            FLOAT_CHARS[c] = true;
-            ID_CHARS[c] = true;
-        }
-        for (char c = 'A'; c <= 'Z'; c++) {
-            if (c <= 'F') {
-                HEX_INT_CHARS[c] = true;
-                FLOAT_CHARS[c] = true;
-            }
-            ID_CHARS[c] = true;
-        }
-        for (char c = 'a'; c <= 'z'; c++) {
-            if (c <= 'f') {
-                HEX_INT_CHARS[c] = true;
-                FLOAT_CHARS[c] = true;
-            }
-            ID_CHARS[c] = true;
-        }
-        HEX_INT_CHARS['X'] = true;
-        HEX_INT_CHARS['x'] = true;
-        FLOAT_CHARS['P'] = true;
-        FLOAT_CHARS['p'] = true;
-        FLOAT_CHARS['X'] = true;
-        FLOAT_CHARS['x'] = true;
-        FLOAT_CHARS['.'] = true;
-        FLOAT_CHARS['+'] = true;
-        FLOAT_CHARS['-'] = true;
-        ID_CHARS['_'] = true;
-    }
-
-    private boolean isProcessed;
-    private int head;
+    private boolean isProcessed = false;
+    private int head = 0;
     private final String content;
     private final TokenList tokens = new TokenList();
 
@@ -83,14 +39,12 @@ public class LexicalParser {
     }
 
     private void checkIfIsProcessed() {
-        if (isProcessed) {
+        if (isProcessed)
             return;
-        }
         isProcessed = true;
         Token token;
-        while ((token = nextToken()) != null) {
+        while ((token = nextToken()) != null)
             tokens.add(token);
-        }
     }
 
     public TokenList getTokens() {
@@ -99,125 +53,194 @@ public class LexicalParser {
     }
 
     private Token nextToken() {
-        head = skipChars(head, Character::isWhitespace);
-        if (head == content.length()) {
+        while (head < content.length() && Character.isWhitespace(content.charAt(head)))
+            head++;
+        if (head == content.length())
             return null;
-        }
-        if (SINGLE_CHAR_CASES.containsKey(content.charAt(head))) {
-            return matchSingleCharToken(SINGLE_CHAR_CASES.get(content.charAt(head)));
-        }
-        if (DOUBLE_CHAR_CASES.containsKey(content.charAt(head))) {
-            DoubleCharCase doubleCharCase = DOUBLE_CHAR_CASES.get(content.charAt(head));
-            return matchDoubleCharToken(doubleCharCase.secondChar(), doubleCharCase.firstToken(),
-                    doubleCharCase.secondToken());
-        }
-        return matchMultiCharToken();
-    }
-
-    private Token matchSingleCharToken(TokenType type) {
-        head++;
-        return Token.valueOf(type);
-    }
-
-    private Token matchDoubleCharToken(char secondChar, TokenType singleCharToken, TokenType doubleCharToken) {
-        if (head + 1 < content.length() && content.charAt(head + 1) == secondChar) {
-            head += 2;
-            return Token.valueOf(doubleCharToken);
-        }
-        if (singleCharToken == null) {
-            throw new RuntimeException("Can not continue matching at position " + head);
-        }
-        head++;
-        return Token.valueOf(singleCharToken);
-    }
-
-    private Token matchMultiCharToken() {
-        Token tryToken;
-        tryToken = tryMatchKeywordOrId();
-        if (tryToken != null) {
-            return tryToken;
-        }
-        tryToken = tryMatchFloat();
-        if (tryToken != null) {
-            return tryToken;
-        }
-        tryToken = tryMatchHexInt();
-        if (tryToken != null) {
-            return tryToken;
-        }
-        tryToken = tryMatchDecInt();
-        if (tryToken != null) {
-            return tryToken;
-        }
-        tryToken = tryMatchOctInt();
-        if (tryToken != null) {
-            return tryToken;
-        }
-        throw new RuntimeException("Can not continue matching at position " + head);
-    }
-
-    private Token tryMatchKeywordOrId() {
-        int tail = skipChars(head, c -> ID_CHARS[c]);
-        String matched = content.substring(head, tail);
-        if (!ID_PATTERN.matcher(matched).matches()) {
-            return null;
-        }
-        head = tail;
-        if (KEYWORDS.containsKey(matched)) {
-            return Token.valueOf(KEYWORDS.get(matched));
-        }
-        return Token.valueOf(matched);
-    }
-
-    private Token tryMatchFloat() {
-        int tail = skipChars(head, c -> FLOAT_CHARS[c]);
-        String matched = content.substring(head, tail);
-        if (!FLOAT_PATTERN.matcher(matched).matches()) {
-            return null;
-        }
-        head = tail;
-        return Token.valueOf(Float.parseFloat(matched));
-    }
-
-    private Token tryMatchHexInt() {
-        int tail = skipChars(head, c -> HEX_INT_CHARS[c]);
-        String matched = content.substring(head, tail);
-        if (!HEX_INT_PATTERN.matcher(matched).matches()) {
-            return null;
-        }
-        head = tail;
-        return Token.valueOf(Integer.parseInt(matched, 2, matched.length(), 16));
+        return switch (content.charAt(head)) {
+            case '!' -> {
+                if (head + 1 < content.length() && content.charAt(head + 1) == '=') {
+                    head += 2;
+                    yield Token.valueOf(TokenType.NE);
+                } else {
+                    head++;
+                    yield Token.valueOf(TokenType.L_NOT);
+                }
+            }
+            case '%' -> {
+                head++;
+                yield Token.valueOf(TokenType.MOD);
+            }
+            case '&' -> {
+                if (head + 1 < content.length() && content.charAt(head + 1) == '&') {
+                    head += 2;
+                    yield Token.valueOf(TokenType.L_AND);
+                } else
+                    throw new RuntimeException("It should be token AND, but has not implemented now!");
+            }
+            case '(' -> {
+                head++;
+                yield Token.valueOf(TokenType.LP);
+            }
+            case ')' -> {
+                head++;
+                yield Token.valueOf(TokenType.RP);
+            }
+            case '*' -> {
+                head++;
+                yield Token.valueOf(TokenType.MUL);
+            }
+            case '+' -> {
+                head++;
+                yield Token.valueOf(TokenType.PLUS);
+            }
+            case ',' -> {
+                head++;
+                yield Token.valueOf(TokenType.COMMA);
+            }
+            case '-' -> {
+                head++;
+                yield Token.valueOf(TokenType.MINUS);
+            }
+            case '/' -> {
+                head++;
+                yield Token.valueOf(TokenType.DIV);
+            }
+            case ';' -> {
+                head++;
+                yield Token.valueOf(TokenType.SEMICOLON);
+            }
+            case '<' -> {
+                if (head + 1 < content.length() && content.charAt(head + 1) == '=') {
+                    head += 2;
+                    yield Token.valueOf(TokenType.LE);
+                } else {
+                    head++;
+                    yield Token.valueOf(TokenType.LT);
+                }
+            }
+            case '=' -> {
+                if (head + 1 < content.length() && content.charAt(head + 1) == '=') {
+                    head += 2;
+                    yield Token.valueOf(TokenType.EQ);
+                } else {
+                    head++;
+                    yield Token.valueOf(TokenType.ASSIGN);
+                }
+            }
+            case '>' -> {
+                if (content.charAt(head + 1) == '=') {
+                    head += 2;
+                    yield Token.valueOf(TokenType.GE);
+                } else {
+                    head++;
+                    yield Token.valueOf(TokenType.GT);
+                }
+            }
+            case '[' -> {
+                head++;
+                yield Token.valueOf(TokenType.LB);
+            }
+            case ']' -> {
+                head++;
+                yield Token.valueOf(TokenType.RB);
+            }
+            case '{' -> {
+                head++;
+                yield Token.valueOf(TokenType.LC);
+            }
+            case '|' -> {
+                if (head + 1 < content.length() && content.charAt(head + 1) == '|') {
+                    head += 2;
+                    yield Token.valueOf(TokenType.L_OR);
+                } else
+                    throw new RuntimeException("It should be token OR, but has not implemented now!");
+            }
+            case '}' -> {
+                head++;
+                yield Token.valueOf(TokenType.RC);
+            }
+            default -> {
+                Token tryToken;
+                tryToken = tryMatchKeywordOrIdentity();
+                if (tryToken != null)
+                    yield tryToken;
+                tryToken = tryMatchFloat();
+                if (tryToken != null)
+                    yield tryToken;
+                tryToken = tryMatchHexInt();
+                if (tryToken != null)
+                    yield tryToken;
+                tryToken = tryMatchDecInt();
+                if (tryToken != null)
+                    yield tryToken;
+                tryToken = tryMatchOctInt();
+                if (tryToken != null)
+                    yield tryToken;
+                throw new RuntimeException("Can not match at position: " + head);
+            }
+        };
     }
 
     private Token tryMatchDecInt() {
-        int tail = skipChars(head, c -> DEC_INT_CHARS[c]);
-        String matched = content.substring(head, tail);
-        if (!DEC_INT_PATTERN.matcher(matched).matches()) {
-            return null;
+        int tail = head;
+        while (DECIMAL_INT_CHARSET.contains(content.charAt(tail)))
+            tail++;
+        String tokenStr = content.substring(head, tail);
+        if (DECIMAL_INT_PATTERN.matcher(tokenStr).matches()) {
+            head = tail;
+            return Token.valueOf(Integer.parseInt(tokenStr));
         }
-        head = tail;
-        return Token.valueOf(Integer.parseInt(matched));
+        return null;
+    }
+
+    private Token tryMatchFloat() {
+        int tail = head;
+        while (FLOAT_CHARSET.contains(content.charAt(tail)))
+            tail++;
+        String tokenStr = content.substring(head, tail);
+        if (FLOAT_PATTERN.matcher(tokenStr).matches()) {
+            head = tail;
+            return Token.valueOf(Float.parseFloat(tokenStr));
+        }
+        return null;
+    }
+
+    private Token tryMatchHexInt() {
+        int tail = head;
+        while (HEXADECIMAL_INT_CHARSET.contains(content.charAt(tail)))
+            tail++;
+        String tokenStr = content.substring(head, tail);
+        if (HEXADECIMAL_INT_PATTERN.matcher(tokenStr).matches()) {
+            head = tail;
+            return Token.valueOf(Integer.parseInt(tokenStr.substring(2), 16));
+        }
+        return null;
+    }
+
+    private Token tryMatchKeywordOrIdentity() {
+        int tail = head;
+        while (IDENTITY_CHARSET.contains(content.charAt(tail)))
+            tail++;
+        String tokenStr = content.substring(head, tail);
+        if (IDENTITY_PATTERN.matcher(tokenStr).matches()) {
+            head = tail;
+            if (KEYWORDS.containsKey(tokenStr))
+                return Token.valueOf(KEYWORDS.get(tokenStr));
+            return Token.valueOf(tokenStr);
+        }
+        return null;
     }
 
     private Token tryMatchOctInt() {
-        int tail = skipChars(head, c -> OCT_INT_CHARS[c]);
-        String matched = content.substring(head, tail);
-        if (!OCT_INT_PATTERN.matcher(matched).matches()) {
-            return null;
+        int tail = head;
+        while (OCTAL_INT_CHARSET.contains(content.charAt(tail)))
+            tail++;
+        String tokenStr = content.substring(head, tail);
+        if (OCTAL_INT_PATTERN.matcher(tokenStr).matches()) {
+            head = tail;
+            return Token.valueOf(Integer.parseInt(tokenStr, 8));
         }
-        head = tail;
-        // TODO here's a bug, but with this bug, program runs, fix it later
-        // This branch matches decimal number 0, but it should not appear here.
-        // With the following method call, a octal number string will also treat leading 0 as the digit in the octal
-        // number. e.g. 012, that is 1 * 8 + 2 = 10, but with the following method call, it will be 0 * 64 + 1 * 8 + 2
-        // = 10. That is wrong in logic, but is right in result.
-        return Token.valueOf(Integer.parseInt(matched, 8));
-    }
-
-    private int skipChars(int index, Predicate<Character> predicate) {
-        while (index < content.length() && predicate.test(content.charAt(index))) {
-            index++;
-        }
-        return index;
+        return null;
     }
 }

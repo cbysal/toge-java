@@ -1,38 +1,38 @@
 package compile.syntax.ast;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.UnaryOperator;
+import compile.symbol.Type;
+import compile.symbol.Value;
 
-public record UnaryExpAST(compile.syntax.ast.UnaryExpAST.Type type, ExpAST next) implements ExpAST {
-    public enum Type {
+public record UnaryExpAST(Op op, ExpAST next) implements ExpAST {
+    public enum Op {
         F2I, I2F, NEG
     }
 
-    private static final Map<Type, UnaryOperator<Number>> CALC_OPS;
-
-    static {
-        Map<Type, UnaryOperator<Number>> calcOps = new HashMap<>();
-        calcOps.put(Type.F2I, Number::intValue);
-        calcOps.put(Type.I2F, Number::floatValue);
-        calcOps.put(Type.NEG, val -> {
-            if (val instanceof Integer) {
-                return -val.intValue();
-            }
-            return -val.floatValue();
-        });
-        CALC_OPS = calcOps;
-    }
-
     @Override
-    public Number calc() {
-        Number nVal = next.calc();
-        return CALC_OPS.get(type).apply(nVal);
+    public Value calc() {
+        Value nVal = next.calc();
+        return switch (op) {
+            case F2I -> {
+                if (nVal.getType() != Type.FLOAT)
+                    throw new RuntimeException();
+                yield new Value((int) nVal.getFloat());
+            }
+            case I2F -> {
+                if (nVal.getType() != Type.INT)
+                    throw new RuntimeException();
+                yield new Value((float) nVal.getInt());
+            }
+            case NEG -> {
+                if (nVal.getType() == Type.FLOAT)
+                    yield new Value(-nVal.getFloat());
+                yield new Value(-nVal.getInt());
+            }
+        };
     }
 
     @Override
     public void print(int depth) {
-        System.out.println("  ".repeat(depth) + switch (type) {
+        System.out.println("  ".repeat(depth) + switch (op) {
             case F2I -> "F2IExp";
             case I2F -> "I2FExp";
             case NEG -> "NegExp";

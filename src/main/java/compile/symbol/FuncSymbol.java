@@ -1,10 +1,7 @@
 package compile.symbol;
 
-import compile.llvm.ir.type.Type;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringJoiner;
 
 public class FuncSymbol extends Symbol {
     private final List<ParamSymbol> params = new ArrayList<>();
@@ -24,10 +21,15 @@ public class FuncSymbol extends Symbol {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(type).append(' ').append(name);
-        StringJoiner joiner = new StringJoiner(", ", "(", ")");
-        params.forEach(param -> joiner.add(param.toString()));
-        builder.append(joiner);
+        builder.append(type.toString().toLowerCase()).append(' ').append(name).append('(');
+        boolean isFirst = true;
+        for (ParamSymbol param : params) {
+            if (!isFirst)
+                builder.append(", ");
+            isFirst = false;
+            builder.append(param);
+        }
+        builder.append(')');
         return builder.toString();
     }
 }

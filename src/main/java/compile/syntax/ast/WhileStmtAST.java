@@ -1,7 +1,6 @@
 package compile.syntax.ast;
 
 public record WhileStmtAST(ExpAST cond, StmtAST body) implements StmtAST {
-
     @Override
     public void print(int depth) {
         System.out.println("  ".repeat(depth) + "WhileStmt");

@@ -1,38 +1,42 @@
 package compile.syntax.ast;
 
-import compile.llvm.ir.type.ArrayType;
-import compile.llvm.ir.type.Type;
 import compile.symbol.DataSymbol;
 import compile.symbol.GlobalSymbol;
+import compile.symbol.Type;
+import compile.symbol.Value;
 
 import java.util.List;
 
 public record VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) implements ExpAST {
     @Override
-    public Number calc() {
-        GlobalSymbol global = (GlobalSymbol) symbol;
-        if (dimensions.isEmpty()) {
-            return global.getValue();
+    public Value calc() {
+        if (symbol instanceof GlobalSymbol globalSymbol) {
+            if (dimensions.isEmpty()) {
+                if (globalSymbol.getType() == Type.FLOAT)
+                    return new Value(globalSymbol.getFloat());
+                return new Value(globalSymbol.getInt());
+            }
+            if (globalSymbol.getDimensionSize() != dimensions.size())
+                throw new RuntimeException();
+            int offset = 0;
+            int[] sizes = globalSymbol.getSizes();
+            for (int i = 0; i < dimensions.size(); i++)
+                offset += sizes[i] * dimensions.get(i).calc().getInt();
+            if (globalSymbol.getType() == Type.FLOAT)
+                return new Value(globalSymbol.getFloat(offset));
+            return new Value(globalSymbol.getInt(offset));
         }
-        int offset = 0;
-        Type type = global.getType();
-        for (ExpAST dimension : dimensions) {
-            ArrayType arrayType = (ArrayType) type;
-            offset = offset * arrayType.dimension() + dimension.calc().intValue();
-            type = arrayType.base();
-        }
-        return global.getValue(offset);
+        throw new RuntimeException("Can not calculate symbol: " + symbol.getName());
     }
 
     public boolean isSingle() {
-        return dimensions == null;
+        return dimensions.isEmpty();
     }
 
     @Override
     public void print(int depth) {
         System.out.println("  ".repeat(depth) + "VarExp " + symbol);
-        if (dimensions != null) {
+        if (dimensions != null)
             dimensions.forEach(dimension -> dimension.print(depth + 1));
-        }
     }
 }

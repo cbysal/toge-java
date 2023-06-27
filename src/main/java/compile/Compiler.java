@@ -2,18 +2,21 @@ package compile;
 
 import client.option.OptionPool;
 import compile.codegen.CodeGenerator;
-import compile.codegen.machine.DataItem;
-import compile.codegen.machine.Function;
+import compile.codegen.mirgen.MIRGenerator;
+import compile.codegen.mirgen.MachineFunction;
+import compile.codegen.regalloc.RegAllocator;
+import compile.codegen.virgen.VIRGenerator;
+import compile.codegen.virgen.VIROptimizer;
+import compile.codegen.virgen.VirtualFunction;
 import compile.lexical.LexicalParser;
 import compile.lexical.token.TokenList;
-import compile.llvm.LLVMParser;
-import compile.llvm.ir.Module;
+import compile.symbol.GlobalSymbol;
 import compile.symbol.SymbolTable;
 import compile.syntax.SyntaxParser;
-import compile.syntax.ast.AST;
 import compile.syntax.ast.RootAST;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,7 +25,7 @@ import java.util.Map;
 
 public class Compiler {
     private final OptionPool options;
-    private boolean isProcessed;
+    private boolean isProcessed = false;
     private final Path inputFile, outputFile;
 
     public Compiler(OptionPool options, Path inputFile, Path outputFile) {
@@ -31,10 +34,9 @@ public class Compiler {
         this.outputFile = outputFile;
     }
 
-    public void compile() {
-        if (isProcessed) {
+    private void checkIfIsProcessed() {
+        if (isProcessed)
             return;
-        }
         isProcessed = true;
         String input;
         try {
@@ -44,68 +46,101 @@ public class Compiler {
         }
         LexicalParser lexicalParser = new LexicalParser(input);
         TokenList tokens = lexicalParser.getTokens();
-        if (options.containsKey(OptionPool.PRINT_TOKENS)) {
-            printTokens(tokens, options.get(OptionPool.PRINT_TOKENS));
-        }
+        if (options.containsKey(OptionPool.PRINT_TOKENS))
+            printTokens(tokens);
         SymbolTable symbolTable = new SymbolTable();
         SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
-        RootAST root = syntaxParser.getRootAST();
-        if (options.containsKey(OptionPool.PRINT_AST)) {
-            printAST(root);
-        }
-        LLVMParser llvmParser = new LLVMParser(root);
-        Module module = llvmParser.getModule();
-        if (options.containsKey(OptionPool.PRINT_LLVM)) {
-            printLLVM(module, options.get(OptionPool.PRINT_LLVM));
-        }
-        CodeGenerator codeGenerator = new CodeGenerator(module);
-        Map<String, DataItem> dataItems = codeGenerator.getDataItems();
-        Map<String, Function> functions = codeGenerator.getFunctions();
-        emitCode(dataItems, functions);
-    }
-
-    private static void printTokens(TokenList tokens, String target) {
-        StringBuilder toPrintInfo = new StringBuilder("============ print-tokens ============\n");
-        tokens.forEach(token -> toPrintInfo.append(token).append('\n'));
-        if (target == null) {
-            System.out.println(toPrintInfo);
-            return;
-        }
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(target))) {
-            writer.write(toPrintInfo.toString());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void printAST(AST root) {
-        System.out.println("============ print-ast ============");
-        root.print(0);
-    }
-
-    private void printLLVM(Module module, String target) {
-        if (target == null) {
-            System.out.println("============ print-llvm ============\n");
-            System.out.println(module);
-            return;
-        }
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(target))) {
-            writer.write(module.toString());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void emitCode(Map<String, DataItem> dataItems, Map<String, Function> functions) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("  .data\n");
-        dataItems.values().forEach(builder::append);
-        builder.append("  .text\n");
-        functions.values().forEach(builder::append);
+        RootAST rootAST = syntaxParser.getRootAST();
+        if (options.containsKey(OptionPool.PRINT_AST))
+            printAST(rootAST);
+        VIRGenerator virGenerator = new VIRGenerator(rootAST);
+        Map<String, GlobalSymbol> consts = virGenerator.getConsts();
+        Map<String, GlobalSymbol> globals = virGenerator.getGlobals();
+        Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
+        if (options.containsKey(OptionPool.PRINT_VIR_BEFORE_OPTIMIZATION))
+            printVIR(vFuncs);
+        if (options.containsKey(OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION))
+            emitVIR(options.get(OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION), vFuncs);
+        VIROptimizer virOptimizer = new VIROptimizer(consts, globals, vFuncs);
+        virOptimizer.optimize();
+        if (options.containsKey(OptionPool.PRINT_VIR_AFTER_OPTIMIZATION))
+            printVIR(vFuncs);
+        if (options.containsKey(OptionPool.EMIT_VIR_AFTER_OPTIMIZATION))
+            emitVIR(options.get(OptionPool.EMIT_VIR_AFTER_OPTIMIZATION), vFuncs);
+        MIRGenerator mirGenerator = new MIRGenerator(consts, globals, vFuncs);
+        consts = mirGenerator.getConsts();
+        globals = mirGenerator.getGlobals();
+        Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
+        if (options.containsKey(OptionPool.PRINT_MIR))
+            printMIR(mFuncs);
+        if (options.containsKey(OptionPool.EMIT_MIR))
+            emitMIR(options.get(OptionPool.EMIT_MIR), mFuncs);
+        RegAllocator regAllocator = new RegAllocator(mFuncs);
+        regAllocator.allocate();
+        CodeGenerator codeGenerator = new CodeGenerator(consts, globals, mFuncs);
+        String output = codeGenerator.getOutput();
+        if (options.containsKey(OptionPool.PRINT_ASM))
+            System.out.println(output);
         try {
-            Files.writeString(outputFile, builder);
+            Files.writeString(outputFile, output);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        if (options.containsKey(OptionPool.EMIT_ASM))
+            emitASM(new File(options.get(OptionPool.EMIT_ASM)), output);
+    }
+
+    public void compile() {
+        checkIfIsProcessed();
+    }
+
+    private void emitASM(File file, String output) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            writer.write(output);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void emitMIR(String filePath, Map<String, MachineFunction> funcs) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            for (MachineFunction func : funcs.values()) {
+                writer.write(func.toString());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void emitVIR(String filePath, Map<String, VirtualFunction> funcs) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            for (VirtualFunction func : funcs.values()) {
+                writer.write(func.toString());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void printAST(RootAST rootAST) {
+        System.out.println("============ print-ast ============");
+        rootAST.print(0);
+    }
+
+    private static void printVIR(Map<String, VirtualFunction> funcs) {
+        System.out.println("============ print-vir ============");
+        funcs.forEach((key, value) -> System.out.println(value));
+    }
+
+    private void printMIR(Map<String, MachineFunction> funcs) {
+        System.out.println("============ print-mir ============");
+        funcs.forEach((key, value) -> System.out.println(value));
+    }
+
+    private static void printTokens(TokenList tokens) {
+        System.out.println("============ print-tokens ============");
+        tokens.forEach(System.out::println);
     }
 }

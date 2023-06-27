@@ -1,10 +1,8 @@
 package compile.symbol;
 
-import compile.llvm.ir.type.Type;
-
 public abstract class Symbol {
-    final Type type;
-    final String name;
+    protected final Type type;
+    protected final String name;
 
     Symbol(Type type, String name) {
         this.type = type;
