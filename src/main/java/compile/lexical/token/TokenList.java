@@ -2,17 +2,18 @@ package compile.lexical.token;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
-public class TokenList extends ArrayList<Token> {
+public class TokenList {
     private int head;
+    private final List<Token> tokens = new ArrayList<>();
 
-    public TokenList() {
-        super();
-        reset();
+    public boolean add(Token token) {
+        return tokens.add(token);
     }
 
     public Token expectAndFetch(TokenType... types) {
-        Token token = get(head++);
+        Token token = tokens.get(head++);
         for (TokenType type : types) {
             if (token.getType() == type) {
                 return token;
@@ -22,21 +23,21 @@ public class TokenList extends ArrayList<Token> {
     }
 
     public boolean expect(int n, TokenType... types) {
-        Token token = get(head + n);
+        Token token = tokens.get(head + n);
         return Arrays.stream(types).anyMatch(type -> type.equals(token.getType()));
     }
 
     public boolean expect(TokenType... types) {
-        Token token = get(head);
+        Token token = tokens.get(head);
         return Arrays.stream(types).anyMatch(type -> type.equals(token.getType()));
     }
 
     public boolean hasNext() {
-        return head < size();
+        return head < tokens.size();
     }
 
     public TokenType next() {
-        return get(head++).getType();
+        return tokens.get(head++).getType();
     }
 
     public TokenType next(TokenType... types) {
@@ -62,11 +63,11 @@ public class TokenList extends ArrayList<Token> {
     }
 
     public TokenType peek() {
-        return get(head).getType();
+        return tokens.get(head).getType();
     }
 
     public TokenType peek(int n) {
-        return get(head + n).getType();
+        return tokens.get(head + n).getType();
     }
 
     public TokenType peek(TokenType... types) {
@@ -74,9 +75,5 @@ public class TokenList extends ArrayList<Token> {
         if (Arrays.stream(types).noneMatch(type -> type.equals(nextType)))
             throw new RuntimeException("Expecting " + Arrays.toString(types) + ", but meeting " + nextType);
         return nextType;
-    }
-
-    public void reset() {
-        head = 0;
     }
 }
