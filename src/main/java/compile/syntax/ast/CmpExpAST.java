@@ -69,18 +69,4 @@ public record CmpExpAST(Op op, ExpAST left, ExpAST right) implements ExpAST {
             }
         };
     }
-
-    @Override
-    public void print(int depth) {
-        System.out.println("  ".repeat(depth) + switch (op) {
-            case EQ -> "EqExp";
-            case LE -> "LeExp";
-            case LT -> "LtExp";
-            case GE -> "GeExp";
-            case GT -> "GtExp";
-            case NE -> "NeExp";
-        });
-        left.print(depth + 1);
-        right.print(depth + 1);
-    }
 }

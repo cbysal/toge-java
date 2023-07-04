@@ -29,14 +29,4 @@ public record UnaryExpAST(Op op, ExpAST next) implements ExpAST {
             }
         };
     }
-
-    @Override
-    public void print(int depth) {
-        System.out.println("  ".repeat(depth) + switch (op) {
-            case F2I -> "F2IExp";
-            case I2F -> "I2FExp";
-            case NEG -> "NegExp";
-        });
-        next.print(depth + 1);
-    }
 }

@@ -9,9 +9,4 @@ public class InitValAST extends ArrayList<ExpAST> implements ExpAST {
     public Value calc() {
         return null;
     }
-
-    @Override
-    public void print(int depth) {
-        throw new RuntimeException();
-    }
 }

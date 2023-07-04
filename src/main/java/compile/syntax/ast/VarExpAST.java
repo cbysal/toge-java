@@ -32,11 +32,4 @@ public record VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) implements E
     public boolean isSingle() {
         return dimensions.isEmpty();
     }
-
-    @Override
-    public void print(int depth) {
-        System.out.println("  ".repeat(depth) + "VarExp " + symbol);
-        if (dimensions != null)
-            dimensions.forEach(dimension -> dimension.print(depth + 1));
-    }
 }

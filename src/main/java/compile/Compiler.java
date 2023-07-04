@@ -46,13 +46,9 @@ public class Compiler {
         }
         LexicalParser lexicalParser = new LexicalParser(input);
         TokenList tokens = lexicalParser.getTokens();
-        if (options.containsKey(OptionPool.PRINT_TOKENS))
-            printTokens(tokens);
         SymbolTable symbolTable = new SymbolTable();
         SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
         RootAST rootAST = syntaxParser.getRootAST();
-        if (options.containsKey(OptionPool.PRINT_AST))
-            printAST(rootAST);
         VIRGenerator virGenerator = new VIRGenerator(rootAST);
         Map<String, GlobalSymbol> consts = virGenerator.getConsts();
         Map<String, GlobalSymbol> globals = virGenerator.getGlobals();
@@ -124,11 +120,6 @@ public class Compiler {
         }
     }
 
-    private static void printAST(RootAST rootAST) {
-        System.out.println("============ print-ast ============");
-        rootAST.print(0);
-    }
-
     private static void printVIR(Map<String, VirtualFunction> funcs) {
         System.out.println("============ print-vir ============");
         funcs.forEach((key, value) -> System.out.println(value));
@@ -137,10 +128,5 @@ public class Compiler {
     private void printMIR(Map<String, MachineFunction> funcs) {
         System.out.println("============ print-mir ============");
         funcs.forEach((key, value) -> System.out.println(value));
-    }
-
-    private static void printTokens(TokenList tokens) {
-        System.out.println("============ print-tokens ============");
-        tokens.forEach(System.out::println);
     }
 }

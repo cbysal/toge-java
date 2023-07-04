@@ -56,11 +56,4 @@ public record BinaryExpAST(Op op, ExpAST left, ExpAST right) implements ExpAST {
             }
         };
     }
-
-    @Override
-    public void print(int depth) {
-        System.out.println("  ".repeat(depth) + "BinaryExp " + op);
-        left.print(depth + 1);
-        right.print(depth + 1);
-    }
 }

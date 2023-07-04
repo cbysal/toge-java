@@ -3,8 +3,6 @@ package client.option;
 import java.util.HashMap;
 
 public class OptionPool {
-    public static final String PRINT_TOKENS = "print-tokens";
-    public static final String PRINT_AST = "print-ast";
     public static final String PRINT_VIR_BEFORE_OPTIMIZATION = "print-vir-before-optimization";
     public static final String EMIT_VIR_BEFORE_OPTIMIZATION = "emit-vir-before-optimization";
     public static final String PRINT_VIR_AFTER_OPTIMIZATION = "print-vir-after-optimization";

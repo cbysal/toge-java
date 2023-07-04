@@ -16,11 +16,4 @@ public record LOrExpAST(ExpAST left, ExpAST right) implements ExpAST {
             return new Value(lVal.getInt() != 0 || rVal.getFloat() != 0.0f);
         return new Value(lVal.getInt() != 0 || rVal.getInt() != 0);
     }
-
-    @Override
-    public void print(int depth) {
-        System.out.println("  ".repeat(depth) + "LOrExp");
-        left.print(depth + 1);
-        right.print(depth + 1);
-    }
 }
