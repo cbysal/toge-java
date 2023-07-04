@@ -18,11 +18,6 @@ public class Task implements Runnable {
         subTasks.add(subTask);
     }
 
-    Task(OptionPool options, List<Task> subTasks) {
-        this(options);
-        this.subTasks.addAll(subTasks);
-    }
-
     @Override
     public void run() {
         subTasks.forEach(Task::run);
