@@ -66,11 +66,11 @@ public class VIROptimizer {
                             newBlock.add(new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
                             continue;
                         }
+                        if (ir instanceof JVIR jVIR) {
+                            newBlock.add(new JVIR(oldToNewMap.get(jVIR.getBlock())));
+                            continue;
+                        }
                         if (ir instanceof BVIR bVIR) {
-                            if (bVIR.getType() == BVIR.Type.AL) {
-                                newBlock.add(new BVIR(oldToNewMap.get(bVIR.getBlock())));
-                                continue;
-                            }
                             VIRItem left = bVIR.getLeft();
                             VIRItem right = bVIR.getRight();
                             if (left instanceof VReg reg && regToValueMap.containsKey(reg))
@@ -173,13 +173,15 @@ public class VIROptimizer {
                     VIR ir = curBlock.get(irId);
                     if (ir instanceof BVIR bVIR) {
                         frontier.add(bVIR.getBlock());
-                        if (bVIR.getType() == BVIR.Type.AL) {
-                            toTail = false;
-                            while (curBlock.size() > irId + 1) {
-                                curBlock.remove(curBlock.size() - 1);
-                            }
-                            break;
+                        continue;
+                    }
+                    if (ir instanceof JVIR jVIR) {
+                        frontier.add(jVIR.getBlock());
+                        toTail = false;
+                        while (curBlock.size() > irId + 1) {
+                            curBlock.remove(curBlock.size() - 1);
                         }
+                        break;
                     }
                 }
                 if (toTail) {
@@ -307,13 +309,13 @@ public class VIROptimizer {
                             newBlock.add(ir);
                         continue;
                     }
+                    if (ir instanceof JVIR jVIR) {
+                        newBlock.add(new JVIR(oldToNewMap.get(jVIR.getBlock())));
+                        continue;
+                    }
                     if (ir instanceof BVIR bVIR) {
-                        if (bVIR.getType() == BVIR.Type.AL) {
-                            newBlock.add(new BVIR(oldToNewMap.get(bVIR.getBlock())));
-                        } else {
-                            newBlock.add(new BVIR(bVIR.getType(), oldToNewMap.get(bVIR.getBlock()), bVIR.getLeft(),
-                                    bVIR.getRight()));
-                        }
+                        newBlock.add(new BVIR(bVIR.getType(), oldToNewMap.get(bVIR.getBlock()), bVIR.getLeft(),
+                                bVIR.getRight()));
                         continue;
                     }
                     if (ir instanceof LIVIR liVIR) {
@@ -467,12 +469,13 @@ public class VIROptimizer {
                                     newBlock.add(new BinaryVIR(binaryVIR.getType(), result, left, right));
                                     continue;
                                 }
+                                if (toReplaceIR instanceof JVIR jVIR) {
+                                    Block targetBlock = oldToNewMap.get(jVIR.getBlock());
+                                    newBlock.add(new JVIR(targetBlock));
+                                    continue;
+                                }
                                 if (toReplaceIR instanceof BVIR bVIR) {
                                     Block targetBlock = oldToNewMap.get(bVIR.getBlock());
-                                    if (bVIR.getType() == BVIR.Type.AL) {
-                                        newBlock.add(new BVIR(targetBlock));
-                                        continue;
-                                    }
                                     VIRItem left = bVIR.getLeft();
                                     if (left instanceof VReg reg) {
                                         if (regMap.containsKey(reg))
@@ -762,12 +765,12 @@ public class VIROptimizer {
                 if (toContinue) {
                     for (Block block : blocks) {
                         for (int i = 0; i < block.size(); i++) {
+                            if (block.get(i) instanceof JVIR jVIR && jVIR.getBlock() == curBlock) {
+                                block.set(i, new JVIR(nextBlock));
+                                continue;
+                            }
                             if (block.get(i) instanceof BVIR bVIR && bVIR.getBlock() == curBlock) {
-                                if (bVIR.getType() == BVIR.Type.AL) {
-                                    block.set(i, new BVIR(nextBlock));
-                                } else {
-                                    block.set(i, new BVIR(bVIR.getType(), nextBlock, bVIR.getLeft(), bVIR.getRight()));
-                                }
+                                block.set(i, new BVIR(bVIR.getType(), nextBlock, bVIR.getLeft(), bVIR.getRight()));
                             }
                         }
                     }
@@ -851,7 +854,7 @@ public class VIROptimizer {
                         continue;
                     }
                     if (ir instanceof BVIR bVIR) {
-                        if (bVIR.getType() != BVIR.Type.AL && bVIR.getLeft() instanceof Value value1 && bVIR.getRight() instanceof Value value2) {
+                        if (bVIR.getLeft() instanceof Value value1 && bVIR.getRight() instanceof Value value2) {
                             if (switch (bVIR.getType()) {
                                 case EQ -> value1.eq(value2);
                                 case GE -> value1.ge(value2);
@@ -859,16 +862,16 @@ public class VIROptimizer {
                                 case LE -> value1.le(value2);
                                 case LT -> value1.lt(value2);
                                 case NE -> value1.ne(value2);
-                                default -> throw new RuntimeException();
                             })
-                                newBlock.add(new BVIR(oldToNewMap.get(bVIR.getBlock())));
+                                newBlock.add(new JVIR(oldToNewMap.get(bVIR.getBlock())));
                         } else {
-                            if (bVIR.getType() == BVIR.Type.AL)
-                                newBlock.add(new BVIR(oldToNewMap.get(bVIR.getBlock())));
-                            else
-                                newBlock.add(new BVIR(bVIR.getType(), oldToNewMap.get(bVIR.getBlock()),
-                                        bVIR.getLeft(), bVIR.getRight()));
+                            newBlock.add(new BVIR(bVIR.getType(), oldToNewMap.get(bVIR.getBlock()), bVIR.getLeft(),
+                                    bVIR.getRight()));
                         }
+                        continue;
+                    }
+                    if (ir instanceof JVIR jVIR) {
+                        newBlock.add(new JVIR(oldToNewMap.get(jVIR.getBlock())));
                         continue;
                     }
                     if (ir instanceof UnaryVIR unaryVIR && unaryVIR.getSource() instanceof Value value) {

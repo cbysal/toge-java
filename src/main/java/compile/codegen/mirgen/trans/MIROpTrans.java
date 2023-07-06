@@ -13,10 +13,6 @@ import java.util.Map;
 
 public final class MIROpTrans {
     public static void transB(List<MIR> irs, BVIR bVIR) {
-        if (bVIR.getType() == BVIR.Type.AL) {
-            irs.add(new BMIR(bVIR.getBlock().getLabel()));
-            return;
-        }
         VIRItem item1 = bVIR.getLeft();
         VIRItem item2 = bVIR.getRight();
         VReg reg1, reg2;

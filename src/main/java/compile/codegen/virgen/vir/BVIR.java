@@ -7,19 +7,12 @@ import java.util.List;
 
 public class BVIR implements VIR {
     public enum Type {
-        AL, EQ, GE, GT, LE, LT, NE
+        EQ, GE, GT, LE, LT, NE
     }
 
     private final Type type;
     private final Block block;
     private final VIRItem left, right;
-
-    public BVIR(Block block) {
-        this.type = Type.AL;
-        this.block = block;
-        this.left = null;
-        this.right = null;
-    }
 
     public BVIR(Type type, Block block, VIRItem left, VIRItem right) {
         this.type = type;
@@ -64,8 +57,6 @@ public class BVIR implements VIR {
 
     @Override
     public String toString() {
-        if (type == Type.AL)
-            return "B       " + block;
         return "B" + type + "     " + block + ", " + left + ", " + right;
     }
 }

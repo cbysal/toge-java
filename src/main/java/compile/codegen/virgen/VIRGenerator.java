@@ -82,7 +82,7 @@ public class VIRGenerator {
     }
 
     private void parseBreakStmt() {
-        curBlock.add(new BVIR(breakStack.peek()));
+        curBlock.add(new JVIR(breakStack.peek()));
     }
 
     private void parseCmpCond(CmpExpAST cmpCond) {
@@ -99,7 +99,7 @@ public class VIRGenerator {
             case LT -> BVIR.Type.LT;
             case NE -> BVIR.Type.NE;
         }, trueBlock, lReg, rReg));
-        curBlock.add(new BVIR(falseBlock));
+        curBlock.add(new JVIR(falseBlock));
     }
 
     private VReg parseCmpExp(CmpExpAST cmpExp) {
@@ -130,11 +130,11 @@ public class VIRGenerator {
             return;
         }
         if (root instanceof FloatLitExpAST floatLitExp) {
-            curBlock.add(new BVIR(floatLitExp.value() != 0.0f ? trueBlock : falseBlock));
+            curBlock.add(new JVIR(floatLitExp.value() != 0.0f ? trueBlock : falseBlock));
             return;
         }
         if (root instanceof IntLitExpAST intLitExp) {
-            curBlock.add(new BVIR(intLitExp.value() != 0 ? trueBlock : falseBlock));
+            curBlock.add(new JVIR(intLitExp.value() != 0 ? trueBlock : falseBlock));
             return;
         }
         if (root instanceof LAndExpAST lAndExp) {
@@ -170,7 +170,7 @@ public class VIRGenerator {
     }
 
     private void parseContinueStmt() {
-        curBlock.add(new BVIR(continueStack.peek()));
+        curBlock.add(new JVIR(continueStack.peek()));
     }
 
     private VReg parseExp(ExpAST root) {
@@ -257,10 +257,10 @@ public class VIRGenerator {
             parseCond(ifStmt.cond());
             curBlock = trueBlock;
             parseStmt(ifStmt.stmt1());
-            curBlock.add(new BVIR(ifEndBlock));
+            curBlock.add(new JVIR(ifEndBlock));
             curBlock = falseBlock;
             parseStmt(ifStmt.stmt2());
-            curBlock.add(new BVIR(ifEndBlock));
+            curBlock.add(new JVIR(ifEndBlock));
             curBlock = ifEndBlock;
         } else {
             curFunc.insertBlockAfter(curBlock, trueBlock);
@@ -270,7 +270,7 @@ public class VIRGenerator {
             parseCond(ifStmt.cond());
             curBlock = trueBlock;
             parseStmt(ifStmt.stmt1());
-            curBlock.add(new BVIR(falseBlock));
+            curBlock.add(new JVIR(falseBlock));
             curBlock = falseBlock;
         }
     }
@@ -330,13 +330,13 @@ public class VIRGenerator {
 
     private void parseRetStmt(RetStmtAST retStmt) {
         if (retStmt.value() == null) {
-            curBlock.add(new BVIR(retBlock));
+            curBlock.add(new JVIR(retBlock));
             return;
         }
         VReg retReg = parseExp(retStmt.value());
         retReg = typeConversion(retReg, curFunc.getRetVal().getType());
         curBlock.add(new MovVIR(curFunc.getRetVal(), retReg));
-        curBlock.add(new BVIR(retBlock));
+        curBlock.add(new JVIR(retBlock));
     }
 
     private void parseRoot(RootAST root) {
@@ -420,7 +420,7 @@ public class VIRGenerator {
                 VReg zero = new VReg(Type.INT);
                 curBlock.add(new LIVIR(zero, 0));
                 curBlock.add(new BVIR(BVIR.Type.NE, trueBlock, result, zero));
-                curBlock.add(new BVIR(falseBlock));
+                curBlock.add(new JVIR(falseBlock));
             }
             case NEG -> parseCond(unaryCond.next());
         }
@@ -444,7 +444,7 @@ public class VIRGenerator {
         VReg zero = new VReg(Type.INT);
         curBlock.add(new LIVIR(zero, 0));
         curBlock.add(new BVIR(BVIR.Type.NE, trueBlock, result, zero));
-        curBlock.add(new BVIR(falseBlock));
+        curBlock.add(new JVIR(falseBlock));
     }
 
     private VReg parseVarExp(VarExpAST varExp) {
@@ -477,14 +477,14 @@ public class VIRGenerator {
         curFunc.insertBlockAfter(loopBlock, endBlock);
         continueStack.push(entryBlock);
         breakStack.push(endBlock);
-        curBlock.add(new BVIR(entryBlock));
+        curBlock.add(new JVIR(entryBlock));
         curBlock = entryBlock;
         trueBlock = loopBlock;
         falseBlock = endBlock;
         parseCond(whileStmt.cond());
         curBlock = loopBlock;
         parseStmt(whileStmt.body());
-        curBlock.add(new BVIR(entryBlock));
+        curBlock.add(new JVIR(entryBlock));
         curBlock = endBlock;
         continueStack.pop();
         breakStack.pop();
