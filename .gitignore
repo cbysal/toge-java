@@ -39,7 +39,7 @@ testcase
 *.i
 *.s
 *.token
-*.ll
+*.vir
 *.sy
 *.in
 *.out
