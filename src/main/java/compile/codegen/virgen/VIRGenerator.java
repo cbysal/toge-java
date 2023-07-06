@@ -98,8 +98,7 @@ public class VIRGenerator {
             case LE -> BVIR.Type.LE;
             case LT -> BVIR.Type.LT;
             case NE -> BVIR.Type.NE;
-        }, trueBlock, lReg, rReg));
-        curBlock.add(new JVIR(falseBlock));
+        }, lReg, rReg, trueBlock, falseBlock));
     }
 
     private VReg parseCmpExp(CmpExpAST cmpExp) {
@@ -419,8 +418,7 @@ public class VIRGenerator {
                 }, result, source));
                 VReg zero = new VReg(Type.INT);
                 curBlock.add(new LIVIR(zero, 0));
-                curBlock.add(new BVIR(BVIR.Type.NE, trueBlock, result, zero));
-                curBlock.add(new JVIR(falseBlock));
+                curBlock.add(new BVIR(BVIR.Type.NE, result, zero, trueBlock, falseBlock));
             }
             case NEG -> parseCond(unaryCond.next());
         }
@@ -443,8 +441,7 @@ public class VIRGenerator {
         VReg result = parseExp(root);
         VReg zero = new VReg(Type.INT);
         curBlock.add(new LIVIR(zero, 0));
-        curBlock.add(new BVIR(BVIR.Type.NE, trueBlock, result, zero));
-        curBlock.add(new JVIR(falseBlock));
+        curBlock.add(new BVIR(BVIR.Type.NE, result, zero, trueBlock, falseBlock));
     }
 
     private VReg parseVarExp(VarExpAST varExp) {

@@ -81,7 +81,8 @@ public class VIROptimizer {
                                 right = reg.getType() == Type.FLOAT ?
                                         new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                         new Value(regToValueMap.get(reg));
-                            newBlock.add(new BVIR(bVIR.getType(), oldToNewMap.get(bVIR.getBlock()), left, right));
+                            newBlock.add(new BVIR(bVIR.getType(), left, right, oldToNewMap.get(bVIR.getTrueBlock()),
+                                    oldToNewMap.get(bVIR.getFalseBlock())));
                             continue;
                         }
                         if (ir instanceof CallVIR callVIR) {
@@ -172,7 +173,8 @@ public class VIROptimizer {
                 for (int irId = 0; irId < curBlock.size(); irId++) {
                     VIR ir = curBlock.get(irId);
                     if (ir instanceof BVIR bVIR) {
-                        frontier.add(bVIR.getBlock());
+                        frontier.add(bVIR.getTrueBlock());
+                        frontier.add(bVIR.getFalseBlock());
                         continue;
                     }
                     if (ir instanceof JVIR jVIR) {
@@ -314,8 +316,8 @@ public class VIROptimizer {
                         continue;
                     }
                     if (ir instanceof BVIR bVIR) {
-                        newBlock.add(new BVIR(bVIR.getType(), oldToNewMap.get(bVIR.getBlock()), bVIR.getLeft(),
-                                bVIR.getRight()));
+                        newBlock.add(new BVIR(bVIR.getType(), bVIR.getLeft(), bVIR.getRight(),
+                                oldToNewMap.get(bVIR.getTrueBlock()), oldToNewMap.get(bVIR.getFalseBlock())));
                         continue;
                     }
                     if (ir instanceof LIVIR liVIR) {
@@ -475,7 +477,8 @@ public class VIROptimizer {
                                     continue;
                                 }
                                 if (toReplaceIR instanceof BVIR bVIR) {
-                                    Block targetBlock = oldToNewMap.get(bVIR.getBlock());
+                                    Block newTrueBlock = oldToNewMap.get(bVIR.getTrueBlock());
+                                    Block newFalseBlock = oldToNewMap.get(bVIR.getFalseBlock());
                                     VIRItem left = bVIR.getLeft();
                                     if (left instanceof VReg reg) {
                                         if (regMap.containsKey(reg))
@@ -496,7 +499,7 @@ public class VIROptimizer {
                                             regMap.put(reg, newReg);
                                         }
                                     }
-                                    newBlock.add(new BVIR(bVIR.getType(), targetBlock, left, right));
+                                    newBlock.add(new BVIR(bVIR.getType(), left, right, newTrueBlock, newFalseBlock));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof CallVIR callVIR) {
@@ -739,7 +742,7 @@ public class VIROptimizer {
                 Block nextBlock = blocks.get(blockId + 1);
                 if (!curBlock.isEmpty()) {
                     VIR lastIR = curBlock.get(curBlock.size() - 1);
-                    if (lastIR instanceof BVIR bVIR && bVIR.getBlock() == nextBlock)
+                    if (lastIR instanceof BVIR bVIR && bVIR.getTrueBlock() == nextBlock && bVIR.getFalseBlock() == nextBlock)
                         curBlock.remove(curBlock.size() - 1);
                 }
             }
@@ -765,12 +768,18 @@ public class VIROptimizer {
                 if (toContinue) {
                     for (Block block : blocks) {
                         for (int i = 0; i < block.size(); i++) {
-                            if (block.get(i) instanceof JVIR jVIR && jVIR.getBlock() == curBlock) {
-                                block.set(i, new JVIR(nextBlock));
+                            if (block.get(i) instanceof BVIR bVIR && bVIR.getTrueBlock() == curBlock) {
+                                block.set(i, new BVIR(bVIR.getType(), bVIR.getLeft(), bVIR.getRight(), nextBlock,
+                                        bVIR.getFalseBlock()));
                                 continue;
                             }
-                            if (block.get(i) instanceof BVIR bVIR && bVIR.getBlock() == curBlock) {
-                                block.set(i, new BVIR(bVIR.getType(), nextBlock, bVIR.getLeft(), bVIR.getRight()));
+                            if (block.get(i) instanceof BVIR bVIR && bVIR.getFalseBlock() == curBlock) {
+                                block.set(i, new BVIR(bVIR.getType(), bVIR.getLeft(), bVIR.getRight(),
+                                        bVIR.getTrueBlock(), nextBlock));
+                                continue;
+                            }
+                            if (block.get(i) instanceof JVIR jVIR && jVIR.getBlock() == curBlock) {
+                                block.set(i, new JVIR(nextBlock));
                             }
                         }
                     }
@@ -863,10 +872,12 @@ public class VIROptimizer {
                                 case LT -> value1.lt(value2);
                                 case NE -> value1.ne(value2);
                             })
-                                newBlock.add(new JVIR(oldToNewMap.get(bVIR.getBlock())));
+                                newBlock.add(new JVIR(oldToNewMap.get(bVIR.getTrueBlock())));
+                            else
+                                newBlock.add(new JVIR(oldToNewMap.get(bVIR.getFalseBlock())));
                         } else {
-                            newBlock.add(new BVIR(bVIR.getType(), oldToNewMap.get(bVIR.getBlock()), bVIR.getLeft(),
-                                    bVIR.getRight()));
+                            newBlock.add(new BVIR(bVIR.getType(), bVIR.getLeft(), bVIR.getRight(),
+                                    oldToNewMap.get(bVIR.getTrueBlock()), oldToNewMap.get(bVIR.getFalseBlock())));
                         }
                         continue;
                     }

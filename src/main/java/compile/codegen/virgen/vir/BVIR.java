@@ -11,22 +11,35 @@ public class BVIR implements VIR {
     }
 
     private final Type type;
-    private final Block block;
     private final VIRItem left, right;
+    private final Block trueBlock, falseBlock;
 
-    public BVIR(Type type, Block block, VIRItem left, VIRItem right) {
+    public BVIR(Type type, VIRItem left, VIRItem right, Block trueBlock, Block falseBlock) {
         this.type = type;
-        this.block = block;
         this.left = left;
         this.right = right;
+        this.trueBlock = trueBlock;
+        this.falseBlock = falseBlock;
     }
 
-    public Block getBlock() {
-        return block;
+    public Type getType() {
+        return type;
     }
 
     public VIRItem getLeft() {
         return left;
+    }
+
+    public VIRItem getRight() {
+        return right;
+    }
+
+    public Block getTrueBlock() {
+        return trueBlock;
+    }
+
+    public Block getFalseBlock() {
+        return falseBlock;
     }
 
     @Override
@@ -42,14 +55,6 @@ public class BVIR implements VIR {
         return List.of();
     }
 
-    public VIRItem getRight() {
-        return right;
-    }
-
-    public Type getType() {
-        return type;
-    }
-
     @Override
     public VReg getWrite() {
         return null;
@@ -57,6 +62,6 @@ public class BVIR implements VIR {
 
     @Override
     public String toString() {
-        return "B" + type + "     " + block + ", " + left + ", " + right;
+        return "B" + type + "     " + left + ", " + right + ", " + trueBlock + ", " + falseBlock;
     }
 }

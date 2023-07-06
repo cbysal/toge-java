@@ -40,7 +40,8 @@ public final class MIROpTrans {
             VReg midReg = new VReg(Type.INT);
             if (bVIR.getType() == BVIR.Type.NE) {
                 irs.add(new RrrMIR(RrrMIR.Op.EQ, midReg, reg1, reg2));
-                irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, bVIR.getBlock().getLabel()));
+                irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, bVIR.getTrueBlock().getLabel()));
+                irs.add(new BMIR(bVIR.getFalseBlock().getLabel()));
             } else {
                 irs.add(new RrrMIR(switch (bVIR.getType()) {
                     case EQ -> RrrMIR.Op.EQ;
@@ -50,7 +51,8 @@ public final class MIROpTrans {
                     case LT -> RrrMIR.Op.LT;
                     default -> throw new IllegalStateException("Unexpected value: " + bVIR.getType());
                 }, midReg, reg1, reg2));
-                irs.add(new BMIR(BMIR.Op.NE, midReg, MReg.ZERO, bVIR.getBlock().getLabel()));
+                irs.add(new BMIR(BMIR.Op.NE, midReg, MReg.ZERO, bVIR.getTrueBlock().getLabel()));
+                irs.add(new BMIR(bVIR.getFalseBlock().getLabel()));
             }
             return;
         }
@@ -61,8 +63,8 @@ public final class MIROpTrans {
             case LE -> BMIR.Op.LE;
             case LT -> BMIR.Op.LT;
             case NE -> BMIR.Op.NE;
-            default -> throw new IllegalStateException("Unexpected value: " + bVIR.getType());
-        }, reg1, reg2, bVIR.getBlock().getLabel()));
+        }, reg1, reg2, bVIR.getTrueBlock().getLabel()));
+        irs.add(new BMIR(bVIR.getFalseBlock().getLabel()));
     }
 
     public static void transBinary(List<MIR> irs, BinaryVIR binaryVIR) {
