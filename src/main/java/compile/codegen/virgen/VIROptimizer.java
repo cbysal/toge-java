@@ -36,117 +36,119 @@ public class VIROptimizer {
     }
 
     private void constPass() {
-        int sizeBefore, sizeAfter;
+        boolean toContinue;
         do {
-            sizeBefore = funcs.values().stream().mapToInt(VirtualFunction::countIRs).sum();
+            toContinue = false;
             for (VirtualFunction func : funcs.values()) {
-                List<Block> oldBlocks = func.getBlocks();
-                List<Block> newBlocks = new ArrayList<>();
-                Map<Block, Block> oldToNewMap = new HashMap<>();
-                for (Block oldBlock : oldBlocks) {
-                    Block newBlock = new Block();
-                    newBlocks.add(newBlock);
-                    oldToNewMap.put(oldBlock, newBlock);
-                }
-                for (Block oldBlock : oldBlocks) {
+                List<Block> blocks = func.getBlocks();
+                for (Block block : blocks) {
                     Map<VReg, Integer> regToValueMap = new HashMap<>();
-                    Block newBlock = oldToNewMap.get(oldBlock);
-                    for (VIR ir : oldBlock) {
+                    for (int irId = 0; irId < block.size(); irId++) {
+                        VIR ir = block.get(irId);
                         if (ir instanceof BinaryVIR binaryVIR) {
                             VIRItem left = binaryVIR.getLeft();
                             VIRItem right = binaryVIR.getRight();
-                            if (left instanceof VReg reg && regToValueMap.containsKey(reg))
+                            if (left instanceof VReg reg && regToValueMap.containsKey(reg)) {
                                 left = reg.getType() == Type.FLOAT ?
                                         new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                         new Value(regToValueMap.get(reg));
-                            if (right instanceof VReg reg && regToValueMap.containsKey(reg))
+                                toContinue = true;
+                            }
+                            if (right instanceof VReg reg && regToValueMap.containsKey(reg)) {
                                 right = reg.getType() == Type.FLOAT ?
                                         new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                         new Value(regToValueMap.get(reg));
-                            newBlock.add(new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
-                            continue;
-                        }
-                        if (ir instanceof JVIR jVIR) {
-                            newBlock.add(new JVIR(oldToNewMap.get(jVIR.getBlock())));
-                            continue;
-                        }
-                        if (ir instanceof BVIR bVIR) {
-                            VIRItem left = bVIR.getLeft();
-                            VIRItem right = bVIR.getRight();
-                            if (left instanceof VReg reg && regToValueMap.containsKey(reg))
-                                left = reg.getType() == Type.FLOAT ?
-                                        new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
-                                        new Value(regToValueMap.get(reg));
-                            if (right instanceof VReg reg && regToValueMap.containsKey(reg))
-                                right = reg.getType() == Type.FLOAT ?
-                                        new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
-                                        new Value(regToValueMap.get(reg));
-                            newBlock.add(new BVIR(bVIR.getType(), left, right, oldToNewMap.get(bVIR.getTrueBlock()),
-                                    oldToNewMap.get(bVIR.getFalseBlock())));
+                                toContinue = true;
+                            }
+                            block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
+                            regToValueMap.remove(binaryVIR.getResult());
                             continue;
                         }
                         if (ir instanceof CallVIR callVIR) {
                             List<VIRItem> params = callVIR.getParams();
                             for (int j = 0; j < params.size(); j++)
-                                if (params.get(j) instanceof VReg reg && regToValueMap.containsKey(reg))
+                                if (params.get(j) instanceof VReg reg && regToValueMap.containsKey(reg)) {
                                     params.set(j, reg.getType() == Type.FLOAT ?
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
-                            newBlock.add(ir);
+                                    toContinue = true;
+                                }
+                            regToValueMap.remove(callVIR.getRetVal());
                             continue;
                         }
                         if (ir instanceof LIVIR liVIR) {
                             regToValueMap.put(liVIR.getTarget(), liVIR.getValue());
-                            newBlock.add(ir);
                             continue;
                         }
                         if (ir instanceof LoadVIR loadVIR) {
                             List<VIRItem> dimensions = loadVIR.getDimensions();
                             for (int j = 0; j < dimensions.size(); j++)
-                                if (dimensions.get(j) instanceof VReg reg && regToValueMap.containsKey(reg))
+                                if (dimensions.get(j) instanceof VReg reg && regToValueMap.containsKey(reg)) {
                                     dimensions.set(j, reg.getType() == Type.FLOAT ?
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
-                            newBlock.add(ir);
+                                    toContinue = true;
+                                }
+                            regToValueMap.remove(loadVIR.getTarget());
                             continue;
                         }
                         if (ir instanceof MovVIR movVIR) {
                             if (regToValueMap.containsKey(movVIR.getSource())) {
-                                newBlock.add(new LIVIR(movVIR.getTarget(), regToValueMap.get(movVIR.getSource())));
-                                continue;
+                                block.set(irId, new LIVIR(movVIR.getTarget(), regToValueMap.get(movVIR.getSource())));
+                                toContinue = true;
                             }
-                            newBlock.add(ir);
+                            regToValueMap.remove(movVIR.getTarget());
                             continue;
                         }
                         if (ir instanceof StoreVIR storeVIR) {
                             List<VIRItem> dimensions = storeVIR.getDimensions();
                             for (int j = 0; j < dimensions.size(); j++)
-                                if (dimensions.get(j) instanceof VReg reg && regToValueMap.containsKey(reg))
+                                if (dimensions.get(j) instanceof VReg reg && regToValueMap.containsKey(reg)) {
                                     dimensions.set(j, reg.getType() == Type.FLOAT ?
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
-                            newBlock.add(ir);
+                                    toContinue = true;
+                                }
                             continue;
                         }
                         if (ir instanceof UnaryVIR unaryVIR) {
                             if (unaryVIR.getSource() instanceof VReg reg && regToValueMap.containsKey(reg)) {
-                                newBlock.add(new UnaryVIR(unaryVIR.getType(), unaryVIR.getResult(),
+                                block.set(irId, new UnaryVIR(unaryVIR.getType(), unaryVIR.getResult(),
                                         reg.getType() == Type.FLOAT ?
                                                 new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                                 new Value(regToValueMap.get(reg))));
-                                continue;
+                                toContinue = true;
                             }
-                            newBlock.add(ir);
+                            regToValueMap.remove(unaryVIR.getResult());
                             continue;
                         }
-                        throw new RuntimeException();
                     }
+                    Map<Block.Cond, Block> newCondBlocks = new HashMap<>();
+                    for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+                        Block.Cond cond = entry.getKey();
+                        VIRItem left = cond.left();
+                        VIRItem right = cond.right();
+                        Block targetBlock = entry.getValue();
+                        if (left instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                            left = reg.getType() == Type.FLOAT ?
+                                    new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                    new Value(regToValueMap.get(reg));
+                            toContinue = true;
+                        }
+                        if (right instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                            right = reg.getType() == Type.FLOAT ?
+                                    new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                    new Value(regToValueMap.get(reg));
+                            toContinue = true;
+                        }
+                        newCondBlocks.put(new Block.Cond(cond.type(), left, right), targetBlock);
+                    }
+                    block.clearCondBlocks();
+                    newCondBlocks.forEach(block::setCondBlock);
                 }
-                func.setBlocks(newBlocks);
             }
             standardize();
-            sizeAfter = funcs.values().stream().mapToInt(VirtualFunction::countIRs).sum();
-        } while (sizeBefore != sizeAfter);
+        } while (toContinue);
     }
 
     private void deadcodeElimination() {
@@ -157,10 +159,6 @@ public class VIROptimizer {
     private void deadcodeEliminationOnReachability() {
         for (VirtualFunction func : funcs.values()) {
             List<Block> blocks = func.getBlocks();
-            Map<Block, Integer> blockIdMap = new HashMap<>();
-            for (int i = 0; i < blocks.size(); i++) {
-                blockIdMap.put(blocks.get(i), i);
-            }
             Queue<Block> frontier = new ArrayDeque<>();
             frontier.offer(blocks.get(0));
             Set<Block> reachableBlocks = new HashSet<>();
@@ -169,29 +167,9 @@ public class VIROptimizer {
                 if (reachableBlocks.contains(curBlock))
                     continue;
                 reachableBlocks.add(curBlock);
-                boolean toTail = true;
-                for (int irId = 0; irId < curBlock.size(); irId++) {
-                    VIR ir = curBlock.get(irId);
-                    if (ir instanceof BVIR bVIR) {
-                        frontier.add(bVIR.getTrueBlock());
-                        frontier.add(bVIR.getFalseBlock());
-                        continue;
-                    }
-                    if (ir instanceof JVIR jVIR) {
-                        frontier.add(jVIR.getBlock());
-                        toTail = false;
-                        while (curBlock.size() > irId + 1) {
-                            curBlock.remove(curBlock.size() - 1);
-                        }
-                        break;
-                    }
-                }
-                if (toTail) {
-                    int nextId = blockIdMap.get(curBlock) + 1;
-                    if (nextId < blocks.size()) {
-                        frontier.offer(blocks.get(nextId));
-                    }
-                }
+                if (curBlock.getDefaultBlock() != null)
+                    frontier.offer(curBlock.getDefaultBlock());
+                curBlock.getCondBlocks().values().forEach(frontier::offer);
             }
             List<Block> newBlocks = blocks.stream().filter(reachableBlocks::contains).collect(Collectors.toList());
             func.setBlocks(newBlocks);
@@ -210,6 +188,12 @@ public class VIROptimizer {
             usedSymbols.addAll(func.getSymbol().getParams());
             List<Block> blocks = func.getBlocks();
             for (Block block : blocks) {
+                for (Block.Cond cond : block.getCondBlocks().keySet()) {
+                    if (cond.left() instanceof VReg reg)
+                        usedRegs.add(reg);
+                    if (cond.right() instanceof VReg reg)
+                        usedRegs.add(reg);
+                }
                 for (VIR ir : block) {
                     if (ir instanceof BinaryVIR binaryVIR) {
                         if (binaryVIR.getLeft() instanceof VReg reg) {
@@ -222,13 +206,6 @@ public class VIROptimizer {
                             regs.add(reg);
                             regToRegMap.put(binaryVIR.getResult(), regs);
                         }
-                        continue;
-                    }
-                    if (ir instanceof BVIR bVIR) {
-                        if (bVIR.getLeft() instanceof VReg reg)
-                            usedRegs.add(reg);
-                        if (bVIR.getRight() instanceof VReg reg)
-                            usedRegs.add(reg);
                         continue;
                     }
                     if (ir instanceof CallVIR callVIR) {
@@ -290,78 +267,54 @@ public class VIROptimizer {
             sizeAfter = usedRegs.size() + usedSymbols.size();
         } while (sizeBefore != sizeAfter);
         for (VirtualFunction func : funcs.values()) {
-            List<Block> oldBlocks = func.getBlocks();
-            List<Block> newBlocks = new ArrayList<>();
-            Map<Block, Block> oldToNewMap = new HashMap<>();
-            for (Block oldBlock : oldBlocks) {
-                Block newBlock = new Block();
-                newBlocks.add(newBlock);
-                oldToNewMap.put(oldBlock, newBlock);
-            }
-            for (Block oldBlock : oldBlocks) {
-                Block newBlock = oldToNewMap.get(oldBlock);
-                for (VIR ir : oldBlock) {
+            List<Block> blocks = func.getBlocks();
+            for (Block block : blocks) {
+                for (int irId = 0; irId < block.size(); irId++) {
+                    VIR ir = block.get(irId);
                     if (ir instanceof BinaryVIR binaryVIR) {
-                        boolean flag = usedRegs.contains(binaryVIR.getResult());
-                        if (flag && binaryVIR.getLeft() instanceof VReg reg && !usedRegs.contains(reg))
-                            flag = false;
-                        if (flag && binaryVIR.getRight() instanceof VReg reg && !usedRegs.contains(reg))
-                            flag = false;
-                        if (flag)
-                            newBlock.add(ir);
-                        continue;
-                    }
-                    if (ir instanceof JVIR jVIR) {
-                        newBlock.add(new JVIR(oldToNewMap.get(jVIR.getBlock())));
-                        continue;
-                    }
-                    if (ir instanceof BVIR bVIR) {
-                        newBlock.add(new BVIR(bVIR.getType(), bVIR.getLeft(), bVIR.getRight(),
-                                oldToNewMap.get(bVIR.getTrueBlock()), oldToNewMap.get(bVIR.getFalseBlock())));
+                        if (!usedRegs.contains(binaryVIR.getResult())) {
+                            block.remove(irId);
+                            irId--;
+                        }
                         continue;
                     }
                     if (ir instanceof LIVIR liVIR) {
-                        if (usedRegs.contains(liVIR.getTarget()))
-                            newBlock.add(ir);
+                        if (!usedRegs.contains(liVIR.getTarget())) {
+                            block.remove(irId);
+                            irId--;
+                        }
                         continue;
                     }
                     if (ir instanceof LoadVIR loadVIR) {
-                        boolean flag =
-                                usedRegs.contains(loadVIR.getTarget()) && usedSymbols.contains(loadVIR.getSymbol());
-                        for (VIRItem dimension : loadVIR.getDimensions())
-                            if (flag && dimension instanceof VReg reg && !usedRegs.contains(reg))
-                                flag = false;
-                        if (flag)
-                            newBlock.add(ir);
+                        if (!usedRegs.contains(loadVIR.getTarget())) {
+                            block.remove(irId);
+                            irId--;
+                        }
                         continue;
                     }
                     if (ir instanceof MovVIR movVIR) {
-                        if (usedRegs.contains(movVIR.getTarget()) && usedRegs.contains(movVIR.getSource()))
-                            newBlock.add(ir);
+                        if (!usedRegs.contains(movVIR.getTarget())) {
+                            block.remove(irId);
+                            irId--;
+                        }
                         continue;
                     }
                     if (ir instanceof StoreVIR storeVIR) {
-                        boolean flag =
-                                usedRegs.contains(storeVIR.getSource()) && usedSymbols.contains(storeVIR.getSymbol());
-                        for (VIRItem dimension : storeVIR.getDimensions())
-                            if (dimension instanceof VReg reg && !usedRegs.contains(reg))
-                                flag = false;
-                        if (flag)
-                            newBlock.add(ir);
+                        if (!usedSymbols.contains(storeVIR.getSymbol())) {
+                            block.remove(irId);
+                            irId--;
+                        }
                         continue;
                     }
                     if (ir instanceof UnaryVIR unaryVIR) {
-                        boolean flag = usedRegs.contains(unaryVIR.getResult());
-                        if (flag && unaryVIR.getSource() instanceof VReg reg && !usedRegs.contains(reg))
-                            flag = false;
-                        if (flag)
-                            newBlock.add(ir);
+                        if (!usedRegs.contains(unaryVIR.getResult())) {
+                            block.remove(irId);
+                            irId--;
+                        }
                         continue;
                     }
-                    newBlock.add(ir);
                 }
             }
-            func.setBlocks(newBlocks);
         }
     }
 
@@ -439,6 +392,37 @@ public class VIROptimizer {
                         }
                         for (Block oldBlock : oldBlocks) {
                             Block newBlock = oldToNewMap.get(oldBlock);
+                            newBlock.setDefaultBlock(oldToNewMap.get(oldBlock.getDefaultBlock()));
+                            for (Map.Entry<Block.Cond, Block> oldCondBlockEntry : oldBlock.getCondBlocks().entrySet()) {
+                                Block.Cond oldCond = oldCondBlockEntry.getKey();
+                                Block oldCondBlock = oldCondBlockEntry.getValue();
+                                VIRItem left = oldCond.left();
+                                if (left instanceof VReg reg) {
+                                    if (regMap.containsKey(reg))
+                                        left = regMap.get(reg);
+                                    else {
+                                        VReg newReg = new VReg(reg.getType());
+                                        left = newReg;
+                                        regMap.put(reg, newReg);
+                                    }
+                                }
+                                VIRItem right = oldCond.right();
+                                if (right instanceof VReg reg) {
+                                    if (regMap.containsKey(reg))
+                                        right = regMap.get(reg);
+                                    else {
+                                        VReg newReg = new VReg(reg.getType());
+                                        right = newReg;
+                                        regMap.put(reg, newReg);
+                                    }
+                                }
+                                Block.Cond newCond = new Block.Cond(oldCond.type(), left, right);
+                                Block newCondBlock = oldToNewMap.get(oldCondBlock);
+                                newBlock.setCondBlock(newCond, newCondBlock);
+                            }
+                        }
+                        for (Block oldBlock : oldBlocks) {
+                            Block newBlock = oldToNewMap.get(oldBlock);
                             for (VIR toReplaceIR : oldBlock) {
                                 if (toReplaceIR instanceof BinaryVIR binaryVIR) {
                                     VReg result = binaryVIR.getResult();
@@ -469,37 +453,6 @@ public class VIROptimizer {
                                         }
                                     }
                                     newBlock.add(new BinaryVIR(binaryVIR.getType(), result, left, right));
-                                    continue;
-                                }
-                                if (toReplaceIR instanceof JVIR jVIR) {
-                                    Block targetBlock = oldToNewMap.get(jVIR.getBlock());
-                                    newBlock.add(new JVIR(targetBlock));
-                                    continue;
-                                }
-                                if (toReplaceIR instanceof BVIR bVIR) {
-                                    Block newTrueBlock = oldToNewMap.get(bVIR.getTrueBlock());
-                                    Block newFalseBlock = oldToNewMap.get(bVIR.getFalseBlock());
-                                    VIRItem left = bVIR.getLeft();
-                                    if (left instanceof VReg reg) {
-                                        if (regMap.containsKey(reg))
-                                            left = regMap.get(reg);
-                                        else {
-                                            VReg newReg = new VReg(reg.getType());
-                                            left = newReg;
-                                            regMap.put(reg, newReg);
-                                        }
-                                    }
-                                    VIRItem right = bVIR.getRight();
-                                    if (right instanceof VReg reg) {
-                                        if (regMap.containsKey(reg))
-                                            right = regMap.get(reg);
-                                        else {
-                                            VReg newReg = new VReg(reg.getType());
-                                            right = newReg;
-                                            regMap.put(reg, newReg);
-                                        }
-                                    }
-                                    newBlock.add(new BVIR(bVIR.getType(), left, right, newTrueBlock, newFalseBlock));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof CallVIR callVIR) {
@@ -694,6 +647,12 @@ public class VIROptimizer {
                             }
                         }
                         Block lastBlock = new Block();
+                        lastBlock.setDefaultBlock(curBlock.getDefaultBlock());
+                        curBlock.getCondBlocks().forEach(lastBlock::setCondBlock);
+                        curBlock.setDefaultBlock(preCallBlock);
+                        curBlock.clearCondBlocks();
+                        preCallBlock.setDefaultBlock(newBlocks.get(0));
+                        newBlocks.get(newBlocks.size() - 1).setDefaultBlock(lastBlock);
                         for (int i = irId + 1; i < curBlock.size(); i++) {
                             lastBlock.add(curBlock.get(i));
                         }
@@ -740,10 +699,17 @@ public class VIROptimizer {
             for (int blockId = 0; blockId + 1 < blocks.size(); blockId++) {
                 Block curBlock = blocks.get(blockId);
                 Block nextBlock = blocks.get(blockId + 1);
-                if (!curBlock.isEmpty()) {
-                    VIR lastIR = curBlock.get(curBlock.size() - 1);
-                    if (lastIR instanceof BVIR bVIR && bVIR.getTrueBlock() == nextBlock && bVIR.getFalseBlock() == nextBlock)
-                        curBlock.remove(curBlock.size() - 1);
+                if (curBlock.isEmpty() && curBlock.getCondBlocks().isEmpty() && curBlock.getDefaultBlock() == nextBlock) {
+                    blocks.remove(blockId);
+                    blockId--;
+                    for (Block block : blocks) {
+                        if (block.getDefaultBlock() == curBlock)
+                            block.setDefaultBlock(nextBlock);
+                        block.getCondBlocks().entrySet().forEach(entry -> {
+                            if (entry.getValue() == curBlock)
+                                entry.setValue(nextBlock);
+                        });
+                    }
                 }
             }
         }
@@ -759,7 +725,7 @@ public class VIROptimizer {
                 for (int blockId = 0; blockId + 1 < blocks.size(); blockId++) {
                     curBlock = blocks.get(blockId);
                     nextBlock = blocks.get(blockId + 1);
-                    if (curBlock.isEmpty()) {
+                    if (curBlock.isEmpty() && curBlock.getCondBlocks().isEmpty() && curBlock.getDefaultBlock() == nextBlock) {
                         blocks.remove(blockId);
                         toContinue = true;
                         break;
@@ -767,21 +733,14 @@ public class VIROptimizer {
                 }
                 if (toContinue) {
                     for (Block block : blocks) {
-                        for (int i = 0; i < block.size(); i++) {
-                            if (block.get(i) instanceof BVIR bVIR && bVIR.getTrueBlock() == curBlock) {
-                                block.set(i, new BVIR(bVIR.getType(), bVIR.getLeft(), bVIR.getRight(), nextBlock,
-                                        bVIR.getFalseBlock()));
-                                continue;
-                            }
-                            if (block.get(i) instanceof BVIR bVIR && bVIR.getFalseBlock() == curBlock) {
-                                block.set(i, new BVIR(bVIR.getType(), bVIR.getLeft(), bVIR.getRight(),
-                                        bVIR.getTrueBlock(), nextBlock));
-                                continue;
-                            }
-                            if (block.get(i) instanceof JVIR jVIR && jVIR.getBlock() == curBlock) {
-                                block.set(i, new JVIR(nextBlock));
-                            }
-                        }
+                        if (block.getDefaultBlock() == curBlock)
+                            block.setDefaultBlock(nextBlock);
+                        Block finalCurBlock = curBlock;
+                        Block finalNextBlock = nextBlock;
+                        block.getCondBlocks().entrySet().forEach(entry -> {
+                            if (entry.getValue() == finalCurBlock)
+                                entry.setValue(finalNextBlock);
+                        });
                     }
                 }
             } while (toContinue);
@@ -826,20 +785,34 @@ public class VIROptimizer {
 
     private void standardize() {
         for (VirtualFunction func : funcs.values()) {
-            List<Block> oldBlocks = func.getBlocks();
-            List<Block> newBlocks = new ArrayList<>();
-            Map<Block, Block> oldToNewMap = new HashMap<>();
-            for (Block oldBlock : oldBlocks) {
-                Block newBlock = new Block();
-                newBlocks.add(newBlock);
-                oldToNewMap.put(oldBlock, newBlock);
-            }
-            for (Block oldBlock : oldBlocks) {
-                Block newBlock = oldToNewMap.get(oldBlock);
-                for (VIR ir : oldBlock) {
+            List<Block> blocks = func.getBlocks();
+            for (Block block : blocks) {
+                Map<Block.Cond, Block> newCondMap = new HashMap<>();
+                for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+                    Block.Cond cond = entry.getKey();
+                    Block targetBlock = entry.getValue();
+                    if (cond.left() instanceof Value value1 && cond.right() instanceof Value value2) {
+                        if (switch (cond.type()) {
+                            case EQ -> value1.eq(value2);
+                            case GE -> value1.ge(value2);
+                            case GT -> value1.gt(value2);
+                            case LE -> value1.le(value2);
+                            case LT -> value1.lt(value2);
+                            case NE -> value1.ne(value2);
+                        }) {
+                            block.setDefaultBlock(targetBlock);
+                        }
+                    } else {
+                        newCondMap.put(cond, targetBlock);
+                    }
+                }
+                block.clearCondBlocks();
+                newCondMap.forEach(block::setCondBlock);
+                for (int irId = 0; irId < block.size(); irId++) {
+                    VIR ir = block.get(irId);
                     if (ir instanceof BinaryVIR binaryVIR && binaryVIR.getLeft() instanceof Value value1 && binaryVIR.getRight() instanceof Value value2) {
                         if (binaryVIR.getResult().getType() == Type.FLOAT)
-                            newBlock.add(new LIVIR(binaryVIR.getResult(), switch (binaryVIR.getType()) {
+                            block.set(irId, new LIVIR(binaryVIR.getResult(), switch (binaryVIR.getType()) {
                                 case ADD -> value1.getFloat() + value2.getFloat();
                                 case DIV -> value1.getFloat() / value2.getFloat();
                                 case MUL -> value1.getFloat() * value2.getFloat();
@@ -847,7 +820,7 @@ public class VIROptimizer {
                                 default -> throw new RuntimeException();
                             }));
                         else
-                            newBlock.add(new LIVIR(binaryVIR.getResult(), switch (binaryVIR.getType()) {
+                            block.set(irId, new LIVIR(binaryVIR.getResult(), switch (binaryVIR.getType()) {
                                 case ADD -> value1.getInt() + value2.getInt();
                                 case DIV -> value1.getInt() / value2.getInt();
                                 case EQ -> value1.eq(value2) ? 1 : 0;
@@ -862,38 +835,15 @@ public class VIROptimizer {
                             }));
                         continue;
                     }
-                    if (ir instanceof BVIR bVIR) {
-                        if (bVIR.getLeft() instanceof Value value1 && bVIR.getRight() instanceof Value value2) {
-                            if (switch (bVIR.getType()) {
-                                case EQ -> value1.eq(value2);
-                                case GE -> value1.ge(value2);
-                                case GT -> value1.gt(value2);
-                                case LE -> value1.le(value2);
-                                case LT -> value1.lt(value2);
-                                case NE -> value1.ne(value2);
-                            })
-                                newBlock.add(new JVIR(oldToNewMap.get(bVIR.getTrueBlock())));
-                            else
-                                newBlock.add(new JVIR(oldToNewMap.get(bVIR.getFalseBlock())));
-                        } else {
-                            newBlock.add(new BVIR(bVIR.getType(), bVIR.getLeft(), bVIR.getRight(),
-                                    oldToNewMap.get(bVIR.getTrueBlock()), oldToNewMap.get(bVIR.getFalseBlock())));
-                        }
-                        continue;
-                    }
-                    if (ir instanceof JVIR jVIR) {
-                        newBlock.add(new JVIR(oldToNewMap.get(jVIR.getBlock())));
-                        continue;
-                    }
                     if (ir instanceof UnaryVIR unaryVIR && unaryVIR.getSource() instanceof Value value) {
                         if (unaryVIR.getResult().getType() == Type.FLOAT)
-                            newBlock.add(new LIVIR(unaryVIR.getResult(), switch (unaryVIR.getType()) {
+                            block.set(irId, new LIVIR(unaryVIR.getResult(), switch (unaryVIR.getType()) {
                                 case I2F -> (float) value.getInt();
                                 case NEG -> -value.getFloat();
                                 default -> throw new RuntimeException();
                             }));
                         else
-                            newBlock.add(new LIVIR(unaryVIR.getResult(), switch (unaryVIR.getType()) {
+                            block.set(irId, new LIVIR(unaryVIR.getResult(), switch (unaryVIR.getType()) {
                                 case F2I -> (int) value.getFloat();
                                 case L_NOT ->
                                         (value.getType() == Type.FLOAT ? (value.getFloat() == 0.0f) :
@@ -903,10 +853,8 @@ public class VIROptimizer {
                             }));
                         continue;
                     }
-                    newBlock.add(ir);
                 }
             }
-            func.setBlocks(newBlocks);
         }
     }
 }

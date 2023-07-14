@@ -2,33 +2,66 @@ package compile.codegen.virgen;
 
 import compile.codegen.Label;
 import compile.codegen.virgen.vir.VIR;
+import compile.codegen.virgen.vir.VIRItem;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public class Block implements Iterable<VIR> {
+    public record Cond(Type type, VIRItem left, VIRItem right) {
+        public enum Type {
+            EQ, GE, GT, LE, LT, NE
+        }
+    }
+
     private final Label label;
+    private boolean isRet;
+    private Block defaultBlock;
+    private final Map<Cond, Block> condBlocks = new HashMap<>();
     private final List<VIR> irs = new ArrayList<>();
 
     public Block() {
         this.label = new Label();
     }
 
-    @Override
-    public Iterator<VIR> iterator() {
-        return irs.iterator();
+    public void markRet() {
+        isRet = true;
+    }
+
+    public boolean isRet() {
+        return isRet;
+    }
+
+    public void setDefaultBlock(Block defaultBlock) {
+        this.defaultBlock = defaultBlock;
+    }
+
+    public Block getDefaultBlock() {
+        return defaultBlock;
+    }
+
+    public void setCondBlock(Cond cond, Block condBlock) {
+        condBlocks.put(cond, condBlock);
+    }
+
+    public Map<Cond, Block> getCondBlocks() {
+        return condBlocks;
+    }
+
+    public void clearCondBlocks() {
+        condBlocks.clear();
     }
 
     public Label getLabel() {
         return label;
     }
 
-    boolean add(VIR ir) {
+    public boolean add(VIR ir) {
+        if (isRet)
+            return false;
         return irs.add(ir);
     }
 
-    VIR get(int index) {
+    public VIR get(int index) {
         return irs.get(index);
     }
 
@@ -46,6 +79,11 @@ public class Block implements Iterable<VIR> {
 
     int size() {
         return irs.size();
+    }
+
+    @Override
+    public Iterator<VIR> iterator() {
+        return irs.iterator();
     }
 
     @Override

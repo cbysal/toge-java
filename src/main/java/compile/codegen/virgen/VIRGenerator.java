@@ -29,6 +29,7 @@ public class VIRGenerator {
             return;
         isProcessed = true;
         parseRoot(rootAST);
+        formatVIRs();
     }
 
     public Map<String, GlobalSymbol> getConsts() {
@@ -44,6 +45,17 @@ public class VIRGenerator {
     public Map<String, GlobalSymbol> getGlobals() {
         checkIfIsProcessed();
         return globals;
+    }
+
+    private void formatVIRs() {
+        for (VirtualFunction func : funcs.values()) {
+            List<Block> blocks = func.getBlocks();
+            for (int i = 0; i + 1 < blocks.size(); i++) {
+                Block block = blocks.get(i);
+                if (block.getDefaultBlock() == null)
+                    block.setDefaultBlock(blocks.get(i + 1));
+            }
+        }
     }
 
     private void parseAssignStmt(AssignStmtAST assignStmt) {
@@ -78,11 +90,16 @@ public class VIRGenerator {
     }
 
     private void parseBlockStmt(BlockStmtAST blockStmt) {
-        blockStmt.stmts().forEach(this::parseStmt);
+        for (StmtAST stmt : blockStmt.stmts()) {
+            parseStmt(stmt);
+            if (stmt instanceof ContinueStmtAST || stmt instanceof BreakStmtAST || stmt instanceof RetStmtAST)
+                break;
+        }
     }
 
     private void parseBreakStmt() {
-        curBlock.add(new JVIR(breakStack.peek()));
+        if (curBlock.getDefaultBlock() == null)
+            curBlock.setDefaultBlock(breakStack.peek());
     }
 
     private void parseCmpCond(CmpExpAST cmpCond) {
@@ -91,14 +108,16 @@ public class VIRGenerator {
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
-        curBlock.add(new BVIR(switch (cmpCond.op()) {
-            case EQ -> BVIR.Type.EQ;
-            case GE -> BVIR.Type.GE;
-            case GT -> BVIR.Type.GT;
-            case LE -> BVIR.Type.LE;
-            case LT -> BVIR.Type.LT;
-            case NE -> BVIR.Type.NE;
-        }, lReg, rReg, trueBlock, falseBlock));
+        curBlock.setCondBlock(new Block.Cond(switch (cmpCond.op()) {
+            case EQ -> Block.Cond.Type.EQ;
+            case NE -> Block.Cond.Type.NE;
+            case GE -> Block.Cond.Type.GE;
+            case GT -> Block.Cond.Type.GT;
+            case LE -> Block.Cond.Type.LE;
+            case LT -> Block.Cond.Type.LT;
+        }, lReg, rReg), trueBlock);
+        if (curBlock.getDefaultBlock() == null)
+            curBlock.setDefaultBlock(falseBlock);
     }
 
     private VReg parseCmpExp(CmpExpAST cmpExp) {
@@ -129,11 +148,13 @@ public class VIRGenerator {
             return;
         }
         if (root instanceof FloatLitExpAST floatLitExp) {
-            curBlock.add(new JVIR(floatLitExp.value() != 0.0f ? trueBlock : falseBlock));
+            if (curBlock.getDefaultBlock() == null)
+                curBlock.setDefaultBlock(floatLitExp.value() != 0.0f ? trueBlock : falseBlock);
             return;
         }
         if (root instanceof IntLitExpAST intLitExp) {
-            curBlock.add(new JVIR(intLitExp.value() != 0 ? trueBlock : falseBlock));
+            if (curBlock.getDefaultBlock() == null)
+                curBlock.setDefaultBlock(intLitExp.value() != 0 ? trueBlock : falseBlock);
             return;
         }
         if (root instanceof LAndExpAST lAndExp) {
@@ -169,7 +190,8 @@ public class VIRGenerator {
     }
 
     private void parseContinueStmt() {
-        curBlock.add(new JVIR(continueStack.peek()));
+        if (curBlock.getDefaultBlock() == null)
+            curBlock.setDefaultBlock(continueStack.peek());
     }
 
     private VReg parseExp(ExpAST root) {
@@ -256,10 +278,12 @@ public class VIRGenerator {
             parseCond(ifStmt.cond());
             curBlock = trueBlock;
             parseStmt(ifStmt.stmt1());
-            curBlock.add(new JVIR(ifEndBlock));
+            if (curBlock.getDefaultBlock() == null)
+                curBlock.setDefaultBlock(ifEndBlock);
             curBlock = falseBlock;
             parseStmt(ifStmt.stmt2());
-            curBlock.add(new JVIR(ifEndBlock));
+            if (curBlock.getDefaultBlock() == null)
+                curBlock.setDefaultBlock(ifEndBlock);
             curBlock = ifEndBlock;
         } else {
             curFunc.insertBlockAfter(curBlock, trueBlock);
@@ -269,7 +293,8 @@ public class VIRGenerator {
             parseCond(ifStmt.cond());
             curBlock = trueBlock;
             parseStmt(ifStmt.stmt1());
-            curBlock.add(new JVIR(falseBlock));
+            if (curBlock.getDefaultBlock() == null)
+                curBlock.setDefaultBlock(falseBlock);
             curBlock = falseBlock;
         }
     }
@@ -329,13 +354,17 @@ public class VIRGenerator {
 
     private void parseRetStmt(RetStmtAST retStmt) {
         if (retStmt.value() == null) {
-            curBlock.add(new JVIR(retBlock));
+            if (curBlock.getDefaultBlock() == null)
+                curBlock.setDefaultBlock(retBlock);
+            curBlock.markRet();
             return;
         }
         VReg retReg = parseExp(retStmt.value());
         retReg = typeConversion(retReg, curFunc.getRetVal().getType());
         curBlock.add(new MovVIR(curFunc.getRetVal(), retReg));
-        curBlock.add(new JVIR(retBlock));
+        if (curBlock.getDefaultBlock() == null)
+            curBlock.setDefaultBlock(retBlock);
+        curBlock.markRet();
     }
 
     private void parseRoot(RootAST root) {
@@ -418,7 +447,9 @@ public class VIRGenerator {
                 }, result, source));
                 VReg zero = new VReg(Type.INT);
                 curBlock.add(new LIVIR(zero, 0));
-                curBlock.add(new BVIR(BVIR.Type.NE, result, zero, trueBlock, falseBlock));
+                curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
+                if (curBlock.getDefaultBlock() == null)
+                    curBlock.setDefaultBlock(falseBlock);
             }
             case NEG -> parseCond(unaryCond.next());
         }
@@ -441,7 +472,9 @@ public class VIRGenerator {
         VReg result = parseExp(root);
         VReg zero = new VReg(Type.INT);
         curBlock.add(new LIVIR(zero, 0));
-        curBlock.add(new BVIR(BVIR.Type.NE, result, zero, trueBlock, falseBlock));
+        curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
+        if (curBlock.getDefaultBlock() == null)
+            curBlock.setDefaultBlock(falseBlock);
     }
 
     private VReg parseVarExp(VarExpAST varExp) {
@@ -474,14 +507,16 @@ public class VIRGenerator {
         curFunc.insertBlockAfter(loopBlock, endBlock);
         continueStack.push(entryBlock);
         breakStack.push(endBlock);
-        curBlock.add(new JVIR(entryBlock));
+        if (curBlock.getDefaultBlock() == null)
+            curBlock.setDefaultBlock(entryBlock);
         curBlock = entryBlock;
         trueBlock = loopBlock;
         falseBlock = endBlock;
         parseCond(whileStmt.cond());
         curBlock = loopBlock;
         parseStmt(whileStmt.body());
-        curBlock.add(new JVIR(entryBlock));
+        if (curBlock.getDefaultBlock() == null)
+            curBlock.setDefaultBlock(entryBlock);
         curBlock = endBlock;
         continueStack.pop();
         breakStack.pop();

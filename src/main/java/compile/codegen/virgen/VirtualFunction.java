@@ -7,12 +7,13 @@ import compile.symbol.LocalSymbol;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class VirtualFunction {
     private final FuncSymbol symbol;
     private final VReg retVal;
     private final List<LocalSymbol> locals = new ArrayList<>();
-    private List<Block> blocks = new ArrayList<>();
+    private final List<Block> blocks = new ArrayList<>();
 
     public VirtualFunction(FuncSymbol symbol) {
         this.symbol = symbol;
@@ -41,10 +42,6 @@ public class VirtualFunction {
     public void insertBlockAfter(Block base, Block block) {
         int index = blocks.indexOf(base);
         blocks.add(index + 1, block);
-    }
-
-    public int countIRs() {
-        return blocks.stream().mapToInt(Block::size).sum();
     }
 
     public List<Block> getBlocks() {
@@ -81,6 +78,13 @@ public class VirtualFunction {
             builder.append(block).append(":\n");
             for (VIR ir : block)
                 builder.append(ir).append('\n');
+            for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+                Block.Cond cond = entry.getKey();
+                Block targetBlock = entry.getValue();
+                builder.append("B").append(cond.type()).append("     ").append(cond.left()).append(", ").append(cond.right()).append(", ").append(targetBlock).append('\n');
+            }
+            if (block.getDefaultBlock() != null)
+                builder.append("B       ").append(block.getDefaultBlock()).append('\n');
         }
         return builder.toString();
     }

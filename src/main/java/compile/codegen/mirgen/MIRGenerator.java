@@ -1,7 +1,6 @@
 package compile.codegen.mirgen;
 
 import common.Pair;
-import compile.codegen.mirgen.mir.BMIR;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
@@ -124,10 +123,6 @@ public class MIRGenerator {
             for (VIR vir : block) {
                 if (vir instanceof BinaryVIR binaryVIR)
                     MIROpTrans.transBinary(mFunc.getIrs(), binaryVIR);
-                if (vir instanceof JVIR jVIR)
-                    mFunc.getIrs().add(new BMIR(jVIR.getBlock().getLabel()));
-                if (vir instanceof BVIR bVIR)
-                    MIROpTrans.transB(mFunc.getIrs(), bVIR);
                 if (vir instanceof CallVIR callVIR) {
                     int paramNum = MIROpTrans.transCall(mFunc.getIrs(), callVIR);
                     mFunc.setMaxFuncParamNum(Integer.max(mFunc.getMaxFuncParamNum(), paramNum));
@@ -143,6 +138,7 @@ public class MIRGenerator {
                 if (vir instanceof StoreVIR storeVIR)
                     MIROpTrans.transStore(mFunc.getIrs(), storeVIR, localOffsets, paramOffsets);
             }
+            MIROpTrans.transBlockBranches(mFunc.getIrs(), block);
         }
         for (MIR mir : mFunc.getIrs())
             mir.replaceReg(replaceMap);
