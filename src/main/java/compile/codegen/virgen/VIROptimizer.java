@@ -29,10 +29,119 @@ public class VIROptimizer {
         removeEmptyBlocks();
         constPass();
         deadcodeElimination();
+        assignPass();
+        deadcodeElimination();
         functionInline();
         deadcodeElimination();
         removeUselessJump();
         removeEmptyBlocks();
+    }
+
+    private void assignPass() {
+        boolean toContinue;
+        do {
+            toContinue = false;
+            for (VirtualFunction func : funcs.values()) {
+                List<Block> blocks = func.getBlocks();
+                for (Block block : blocks) {
+                    Map<VReg, VReg> regToRegMap = new HashMap<>();
+                    for (int irId = 0; irId < block.size(); irId++) {
+                        VIR ir = block.get(irId);
+                        if (ir instanceof BinaryVIR binaryVIR) {
+                            VIRItem left = binaryVIR.getLeft();
+                            VIRItem right = binaryVIR.getRight();
+                            if (left instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                                left = regToRegMap.get(reg);
+                                toContinue = true;
+                            }
+                            if (right instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                                right = regToRegMap.get(reg);
+                                toContinue = true;
+                            }
+                            block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
+                            regToRegMap.remove(binaryVIR.getResult());
+                            continue;
+                        }
+                        if (ir instanceof CallVIR callVIR) {
+                            List<VIRItem> params = callVIR.getParams();
+                            for (int j = 0; j < params.size(); j++)
+                                if (params.get(j) instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                                    params.set(j, regToRegMap.get(reg));
+                                    toContinue = true;
+                                }
+                            regToRegMap.remove(callVIR.getRetVal());
+                            continue;
+                        }
+                        if (ir instanceof LIVIR liVIR) {
+                            regToRegMap.remove(liVIR.getTarget());
+                            continue;
+                        }
+                        if (ir instanceof LoadVIR loadVIR) {
+                            List<VIRItem> dimensions = loadVIR.getDimensions();
+                            for (int j = 0; j < dimensions.size(); j++)
+                                if (dimensions.get(j) instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                                    dimensions.set(j, regToRegMap.get(reg));
+                                    toContinue = true;
+                                }
+                            regToRegMap.remove(loadVIR.getTarget());
+                            continue;
+                        }
+                        if (ir instanceof MovVIR movVIR) {
+                            if (regToRegMap.containsKey(movVIR.getSource())) {
+                                regToRegMap.put(movVIR.getTarget(), regToRegMap.get(movVIR.getSource()));
+                                block.set(irId, new MovVIR(movVIR.getTarget(), regToRegMap.get(movVIR.getSource())));
+                                toContinue = true;
+                            } else {
+                                regToRegMap.put(movVIR.getTarget(), movVIR.getSource());
+                            }
+                            continue;
+                        }
+                        if (ir instanceof StoreVIR storeVIR) {
+                            List<VIRItem> dimensions = storeVIR.getDimensions();
+                            for (int j = 0; j < dimensions.size(); j++)
+                                if (dimensions.get(j) instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                                    dimensions.set(j, regToRegMap.get(reg));
+                                    toContinue = true;
+                                }
+                            if (regToRegMap.containsKey(storeVIR.getSource())) {
+                                block.set(irId, new StoreVIR(storeVIR.getSymbol(), dimensions,
+                                        regToRegMap.get(storeVIR.getSource())));
+                                toContinue = true;
+                            }
+                            continue;
+                        }
+                        if (ir instanceof UnaryVIR unaryVIR) {
+                            if (unaryVIR.getSource() instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                                block.set(irId, new UnaryVIR(unaryVIR.getType(), unaryVIR.getResult(),
+                                        regToRegMap.get(reg)));
+                                toContinue = true;
+                            }
+                            regToRegMap.remove(unaryVIR.getResult());
+                            continue;
+                        }
+                    }
+                    Map<Block.Cond, Block> newCondBlocks = new HashMap<>();
+                    for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+                        Block.Cond cond = entry.getKey();
+                        VIRItem left = cond.left();
+                        VIRItem right = cond.right();
+                        Block targetBlock = entry.getValue();
+                        if (left instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                            left = regToRegMap.get(reg);
+                            toContinue = true;
+                        }
+                        if (right instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                            right = regToRegMap.get(reg);
+                            toContinue = true;
+                        }
+                        newCondBlocks.put(new Block.Cond(cond.type(), left, right), targetBlock);
+                    }
+                    block.clearCondBlocks();
+                    newCondBlocks.forEach(block::setCondBlock);
+                }
+            }
+            standardize();
+        } while (toContinue);
     }
 
     private void constPass() {
@@ -361,11 +470,15 @@ public class VIROptimizer {
                     VIR ir = curBlock.get(irId);
                     if (ir instanceof CallVIR toReplaceCall && toReplaceCall.getFunc().equals(toInlineSymbol)) {
                         Map<ParamSymbol, VReg> paramToRegMap = new HashMap<>();
+                        Map<VReg, VReg> paramRegCopyMap = new HashMap<>();
                         Block preCallBlock = new Block();
                         for (int i = 0; i < toReplaceCall.getParams().size(); i++) {
                             ParamSymbol param = toReplaceCall.getFunc().getParams().get(i);
                             if (toReplaceCall.getParams().get(i) instanceof VReg reg) {
-                                paramToRegMap.put(param, reg);
+                                VReg newReg = new VReg(reg.getType());
+                                paramToRegMap.put(param, newReg);
+                                preCallBlock.add(new MovVIR(newReg, reg));
+                                paramRegCopyMap.put(newReg, reg);
                                 continue;
                             }
                             if (toReplaceCall.getParams().get(i) instanceof Value value) {
@@ -504,7 +617,7 @@ public class VIROptimizer {
                                             newBlock.add(new MovVIR(target, toReplaceReg));
                                         } else {
                                             Pair<DataSymbol, List<VIRItem>> toReplaceSymbol =
-                                                    arrayParamMap.get(toReplaceReg);
+                                                    arrayParamMap.get(paramRegCopyMap.get(toReplaceReg));
                                             List<VIRItem> dimensions = new ArrayList<>(toReplaceSymbol.second());
                                             for (VIRItem dimension : loadVIR.getDimensions()) {
                                                 if (dimension instanceof VReg reg) {
@@ -579,7 +692,7 @@ public class VIROptimizer {
                                             newBlock.add(new MovVIR(toReplaceReg, source));
                                         } else {
                                             Pair<DataSymbol, List<VIRItem>> toReplaceSymbol =
-                                                    arrayParamMap.get(toReplaceReg);
+                                                    arrayParamMap.get(paramRegCopyMap.get(toReplaceReg));
                                             List<VIRItem> dimensions = new ArrayList<>(toReplaceSymbol.second());
                                             for (VIRItem dimension : storeVIR.getDimensions()) {
                                                 if (dimension instanceof VReg reg) {
