@@ -1,6 +1,5 @@
 package compile.codegen.mirgen.trans;
 
-import common.Pair;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.virgen.Block;
@@ -14,7 +13,7 @@ import java.util.Map;
 
 public final class MIROpTrans {
     public static void transBlockBranches(List<MIR> irs, Block block) {
-        for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+        for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks()) {
             Block.Cond cond = entry.getKey();
             Block.Cond.Type type = cond.type();
             VIRItem item1 = cond.left();
@@ -156,7 +155,7 @@ public final class MIROpTrans {
     }
 
     public static void transLoad(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets, Map<Symbol,
-            Pair<Boolean, Integer>> paramOffsets) {
+            Map.Entry<Boolean, Integer>> paramOffsets) {
         Symbol symbol = loadVIR.getSymbol();
         if (symbol instanceof GlobalSymbol globalSymbol) {
             if (globalSymbol.isConst())
@@ -178,7 +177,7 @@ public final class MIROpTrans {
     }
 
     public static void transStore(List<MIR> irs, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets, Map<Symbol,
-            Pair<Boolean, Integer>> paramOffsets) {
+            Map.Entry<Boolean, Integer>> paramOffsets) {
         DataSymbol symbol = storeVIR.getSymbol();
         if (symbol instanceof GlobalSymbol) {
             MIRStoreTrans.transStoreGlobal(irs, storeVIR);

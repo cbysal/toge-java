@@ -1,8 +1,10 @@
 package compile.codegen.mirgen.trans;
 
-import common.Pair;
 import compile.codegen.Reg;
-import compile.codegen.mirgen.mir.*;
+import compile.codegen.mirgen.mir.LiMIR;
+import compile.codegen.mirgen.mir.MIR;
+import compile.codegen.mirgen.mir.MvMIR;
+import compile.codegen.mirgen.mir.RrrMIR;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.VIRItem;
 import compile.symbol.Type;
@@ -10,18 +12,19 @@ import compile.symbol.Value;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class MIROpHelper {
-    public static void addRegDimensionsToReg(List<MIR> irs, VReg target, List<Pair<VReg, Integer>> regDimensions,
-                                             VReg source) {
+    public static void addRegDimensionsToReg(List<MIR> irs, VReg target, List<Map.Entry<VReg, Integer>> regDimensions
+            , VReg source) {
         for (int i = 0; i < regDimensions.size() - 1; i++) {
-            Pair<VReg, Integer> regDimension = regDimensions.get(i);
+            Map.Entry<VReg, Integer> regDimension = regDimensions.get(i);
             VReg midReg = new VReg(Type.INT);
-            addRtRbRsImm(irs, midReg, source, regDimension.first(), regDimension.second());
+            addRtRbRsImm(irs, midReg, source, regDimension.getKey(), regDimension.getValue());
             source = midReg;
         }
-        addRtRbRsImm(irs, target, source, regDimensions.get(regDimensions.size() - 1).first(),
-                regDimensions.get(regDimensions.size() - 1).second());
+        addRtRbRsImm(irs, target, source, regDimensions.get(regDimensions.size() - 1).getKey(),
+                regDimensions.get(regDimensions.size() - 1).getValue());
     }
 
     public static void addRtRbRsImm(List<MIR> irs, VReg target, VReg source1, VReg source2, int imm) {
@@ -32,13 +35,14 @@ public final class MIROpHelper {
         irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg2));
     }
 
-    public static Pair<Integer, List<Pair<VReg, Integer>>> calcDimension(List<VIRItem> dimensions, int[] sizes) {
+    public static Map.Entry<Integer, List<Map.Entry<VReg, Integer>>> calcDimension(List<VIRItem> dimensions,
+                                                                                   int[] sizes) {
         int offset = 0;
-        List<Pair<VReg, Integer>> regDimensions = new ArrayList<>();
+        List<Map.Entry<VReg, Integer>> regDimensions = new ArrayList<>();
         for (int i = 0; i < dimensions.size(); i++) {
             VIRItem dimension = dimensions.get(i);
             if (dimension instanceof VReg reg) {
-                regDimensions.add(new Pair<>(reg, sizes[i]));
+                regDimensions.add(Map.entry(reg, sizes[i]));
                 continue;
             }
             if (dimension instanceof Value value) {
@@ -47,7 +51,7 @@ public final class MIROpHelper {
             }
             throw new RuntimeException();
         }
-        return new Pair<>(offset, regDimensions);
+        return Map.entry(offset, regDimensions);
     }
 
     public static void loadImmToReg(List<MIR> irs, Reg reg, float imm) {

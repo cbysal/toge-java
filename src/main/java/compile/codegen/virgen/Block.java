@@ -16,7 +16,7 @@ public class Block implements Iterable<VIR> {
     private final Label label;
     private boolean isRet;
     private Block defaultBlock;
-    private final Map<Cond, Block> condBlocks = new HashMap<>();
+    private final List<Map.Entry<Cond, Block>> condBlocks = new ArrayList<>();
     private final List<VIR> irs = new ArrayList<>();
 
     public Block() {
@@ -39,11 +39,15 @@ public class Block implements Iterable<VIR> {
         return defaultBlock;
     }
 
-    public void setCondBlock(Cond cond, Block condBlock) {
-        condBlocks.put(cond, condBlock);
+    public void setCondBlock(Map.Entry<Cond, Block> entry) {
+        condBlocks.add(entry);
     }
 
-    public Map<Cond, Block> getCondBlocks() {
+    public void setCondBlock(Cond cond, Block condBlock) {
+        condBlocks.add(Map.entry(cond, condBlock));
+    }
+
+    public List<Map.Entry<Cond, Block>> getCondBlocks() {
         return condBlocks;
     }
 

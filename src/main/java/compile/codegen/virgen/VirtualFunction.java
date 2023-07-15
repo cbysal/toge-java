@@ -78,7 +78,7 @@ public class VirtualFunction {
             builder.append(block).append(":\n");
             for (VIR ir : block)
                 builder.append(ir).append('\n');
-            for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+            for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks()) {
                 Block.Cond cond = entry.getKey();
                 Block targetBlock = entry.getValue();
                 builder.append("B").append(cond.type()).append("     ").append(cond.left()).append(", ").append(cond.right()).append(", ").append(targetBlock).append('\n');

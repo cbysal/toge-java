@@ -1,6 +1,5 @@
 package compile.codegen.virgen;
 
-import common.Pair;
 import compile.codegen.virgen.vir.*;
 import compile.symbol.*;
 
@@ -121,7 +120,7 @@ public class VIROptimizer {
                         }
                     }
                     Map<Block.Cond, Block> newCondBlocks = new HashMap<>();
-                    for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+                    for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks()) {
                         Block.Cond cond = entry.getKey();
                         VIRItem left = cond.left();
                         VIRItem right = cond.right();
@@ -233,7 +232,7 @@ public class VIROptimizer {
                         }
                     }
                     Map<Block.Cond, Block> newCondBlocks = new HashMap<>();
-                    for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+                    for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks()) {
                         Block.Cond cond = entry.getKey();
                         VIRItem left = cond.left();
                         VIRItem right = cond.right();
@@ -278,7 +277,7 @@ public class VIROptimizer {
                 reachableBlocks.add(curBlock);
                 if (curBlock.getDefaultBlock() != null)
                     frontier.offer(curBlock.getDefaultBlock());
-                curBlock.getCondBlocks().values().forEach(frontier::offer);
+                curBlock.getCondBlocks().stream().map(Map.Entry::getValue).forEach(frontier::offer);
             }
             List<Block> newBlocks = blocks.stream().filter(reachableBlocks::contains).collect(Collectors.toList());
             func.setBlocks(newBlocks);
@@ -297,12 +296,12 @@ public class VIROptimizer {
             usedSymbols.addAll(func.getSymbol().getParams());
             List<Block> blocks = func.getBlocks();
             for (Block block : blocks) {
-                for (Block.Cond cond : block.getCondBlocks().keySet()) {
+                block.getCondBlocks().stream().map(Map.Entry::getKey).forEach(cond -> {
                     if (cond.left() instanceof VReg reg)
                         usedRegs.add(reg);
                     if (cond.right() instanceof VReg reg)
                         usedRegs.add(reg);
-                }
+                });
                 for (VIR ir : block) {
                     if (ir instanceof BinaryVIR binaryVIR) {
                         if (binaryVIR.getLeft() instanceof VReg reg) {
@@ -458,12 +457,11 @@ public class VIROptimizer {
         FuncSymbol toInlineSymbol = toInlineFunc.getSymbol();
         for (VirtualFunction func : funcs.values()) {
             List<Block> blocks = func.getBlocks();
-            Map<VReg, Pair<DataSymbol, List<VIRItem>>> arrayParamMap = new HashMap<>();
+            Map<VReg, Map.Entry<DataSymbol, List<VIRItem>>> arrayParamMap = new HashMap<>();
             for (Block oldBlock : blocks)
                 for (VIR ir : oldBlock)
                     if (ir instanceof LoadVIR loadVIR && loadVIR.getDimensions().size() != loadVIR.getSymbol().getDimensionSize())
-                        arrayParamMap.put(loadVIR.getTarget(), new Pair<>(loadVIR.getSymbol(),
-                                loadVIR.getDimensions()));
+                        arrayParamMap.put(loadVIR.getTarget(), Map.entry(loadVIR.getSymbol(), loadVIR.getDimensions()));
             for (int blockId = 0; blockId < blocks.size(); blockId++) {
                 Block curBlock = blocks.get(blockId);
                 for (int irId = 0; irId < curBlock.size(); irId++) {
@@ -506,7 +504,7 @@ public class VIROptimizer {
                         for (Block oldBlock : oldBlocks) {
                             Block newBlock = oldToNewMap.get(oldBlock);
                             newBlock.setDefaultBlock(oldToNewMap.get(oldBlock.getDefaultBlock()));
-                            for (Map.Entry<Block.Cond, Block> oldCondBlockEntry : oldBlock.getCondBlocks().entrySet()) {
+                            for (Map.Entry<Block.Cond, Block> oldCondBlockEntry : oldBlock.getCondBlocks()) {
                                 Block.Cond oldCond = oldCondBlockEntry.getKey();
                                 Block oldCondBlock = oldCondBlockEntry.getValue();
                                 VIRItem left = oldCond.left();
@@ -616,9 +614,9 @@ public class VIROptimizer {
                                         if (paramSymbol.isSingle()) {
                                             newBlock.add(new MovVIR(target, toReplaceReg));
                                         } else {
-                                            Pair<DataSymbol, List<VIRItem>> toReplaceSymbol =
+                                            Map.Entry<DataSymbol, List<VIRItem>> toReplaceSymbol =
                                                     arrayParamMap.get(paramRegCopyMap.get(toReplaceReg));
-                                            List<VIRItem> dimensions = new ArrayList<>(toReplaceSymbol.second());
+                                            List<VIRItem> dimensions = new ArrayList<>(toReplaceSymbol.getValue());
                                             for (VIRItem dimension : loadVIR.getDimensions()) {
                                                 if (dimension instanceof VReg reg) {
                                                     if (regMap.containsKey(reg))
@@ -631,7 +629,7 @@ public class VIROptimizer {
                                                 } else
                                                     dimensions.add(dimension);
                                             }
-                                            newBlock.add(new LoadVIR(target, dimensions, toReplaceSymbol.first()));
+                                            newBlock.add(new LoadVIR(target, dimensions, toReplaceSymbol.getKey()));
                                         }
                                         continue;
                                     }
@@ -691,9 +689,9 @@ public class VIROptimizer {
                                         if (paramSymbol.isSingle()) {
                                             newBlock.add(new MovVIR(toReplaceReg, source));
                                         } else {
-                                            Pair<DataSymbol, List<VIRItem>> toReplaceSymbol =
+                                            Map.Entry<DataSymbol, List<VIRItem>> toReplaceSymbol =
                                                     arrayParamMap.get(paramRegCopyMap.get(toReplaceReg));
-                                            List<VIRItem> dimensions = new ArrayList<>(toReplaceSymbol.second());
+                                            List<VIRItem> dimensions = new ArrayList<>(toReplaceSymbol.getValue());
                                             for (VIRItem dimension : storeVIR.getDimensions()) {
                                                 if (dimension instanceof VReg reg) {
                                                     if (regMap.containsKey(reg))
@@ -706,7 +704,7 @@ public class VIROptimizer {
                                                 } else
                                                     dimensions.add(dimension);
                                             }
-                                            newBlock.add(new StoreVIR(toReplaceSymbol.first(), dimensions, source));
+                                            newBlock.add(new StoreVIR(toReplaceSymbol.getKey(), dimensions, source));
                                         }
                                         continue;
                                     }
@@ -818,10 +816,13 @@ public class VIROptimizer {
                     for (Block block : blocks) {
                         if (block.getDefaultBlock() == curBlock)
                             block.setDefaultBlock(nextBlock);
-                        block.getCondBlocks().entrySet().forEach(entry -> {
+                        List<Map.Entry<Block.Cond, Block>> newCondBlocks = block.getCondBlocks().stream().map(entry -> {
                             if (entry.getValue() == curBlock)
-                                entry.setValue(nextBlock);
-                        });
+                                return Map.entry(entry.getKey(), nextBlock);
+                            return entry;
+                        }).toList();
+                        block.clearCondBlocks();
+                        newCondBlocks.forEach(block::setCondBlock);
                     }
                 }
             }
@@ -850,10 +851,13 @@ public class VIROptimizer {
                             block.setDefaultBlock(nextBlock);
                         Block finalCurBlock = curBlock;
                         Block finalNextBlock = nextBlock;
-                        block.getCondBlocks().entrySet().forEach(entry -> {
+                        List<Map.Entry<Block.Cond, Block>> newCondBlocks = block.getCondBlocks().stream().map(entry -> {
                             if (entry.getValue() == finalCurBlock)
-                                entry.setValue(finalNextBlock);
-                        });
+                                return Map.entry(entry.getKey(), finalNextBlock);
+                            return entry;
+                        }).toList();
+                        block.clearCondBlocks();
+                        newCondBlocks.forEach(block::setCondBlock);
                     }
                 }
             } while (toContinue);
@@ -901,7 +905,7 @@ public class VIROptimizer {
             List<Block> blocks = func.getBlocks();
             for (Block block : blocks) {
                 Map<Block.Cond, Block> newCondMap = new HashMap<>();
-                for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks().entrySet()) {
+                for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks()) {
                     Block.Cond cond = entry.getKey();
                     Block targetBlock = entry.getValue();
                     if (cond.left() instanceof Value value1 && cond.right() instanceof Value value2) {
