@@ -24,16 +24,17 @@ public class VIROptimizer {
             return;
         isProcessed = true;
         singleLocal2Reg();
-        removeUselessJump();
-        removeEmptyBlocks();
+        mergeBlocks();
         constPass();
-        deadcodeElimination();
         assignPass();
         deadcodeElimination();
         functionInline();
         deadcodeElimination();
-        removeUselessJump();
-        removeEmptyBlocks();
+        mergeBlocks();
+        constPass();
+        assignPass();
+        deadcodeElimination();
+        mergeBlocks();
     }
 
     private void assignPass() {
@@ -59,6 +60,8 @@ public class VIROptimizer {
                             }
                             block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
                             regToRegMap.remove(binaryVIR.getResult());
+                            regToRegMap =
+                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != binaryVIR.getResult()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof CallVIR callVIR) {
@@ -69,10 +72,14 @@ public class VIROptimizer {
                                     toContinue = true;
                                 }
                             regToRegMap.remove(callVIR.getRetVal());
+                            regToRegMap =
+                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != callVIR.getRetVal()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof LIVIR liVIR) {
                             regToRegMap.remove(liVIR.getTarget());
+                            regToRegMap =
+                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != liVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof LoadVIR loadVIR) {
@@ -83,6 +90,8 @@ public class VIROptimizer {
                                     toContinue = true;
                                 }
                             regToRegMap.remove(loadVIR.getTarget());
+                            regToRegMap =
+                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != loadVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof MovVIR movVIR) {
@@ -93,6 +102,8 @@ public class VIROptimizer {
                             } else {
                                 regToRegMap.put(movVIR.getTarget(), movVIR.getSource());
                             }
+                            regToRegMap =
+                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != movVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof StoreVIR storeVIR) {
@@ -116,6 +127,8 @@ public class VIROptimizer {
                                 toContinue = true;
                             }
                             regToRegMap.remove(unaryVIR.getResult());
+                            regToRegMap =
+                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != unaryVIR.getResult()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                     }
@@ -804,63 +817,67 @@ public class VIROptimizer {
             funcs.remove(func.getSymbol().getName());
     }
 
-    private void removeUselessJump() {
+    private void mergeBlocks() {
         for (VirtualFunction func : funcs.values()) {
             List<Block> blocks = func.getBlocks();
-            for (int blockId = 0; blockId + 1 < blocks.size(); blockId++) {
-                Block curBlock = blocks.get(blockId);
-                Block nextBlock = blocks.get(blockId + 1);
-                if (curBlock.isEmpty() && curBlock.getCondBlocks().isEmpty() && curBlock.getDefaultBlock() == nextBlock) {
-                    blocks.remove(blockId);
-                    blockId--;
-                    for (Block block : blocks) {
-                        if (block.getDefaultBlock() == curBlock)
-                            block.setDefaultBlock(nextBlock);
-                        List<Map.Entry<Block.Cond, Block>> newCondBlocks = block.getCondBlocks().stream().map(entry -> {
-                            if (entry.getValue() == curBlock)
-                                return Map.entry(entry.getKey(), nextBlock);
-                            return entry;
-                        }).toList();
-                        block.clearCondBlocks();
-                        newCondBlocks.forEach(block::setCondBlock);
-                    }
-                }
-            }
-        }
-    }
-
-    private void removeEmptyBlocks() {
-        for (VirtualFunction func : funcs.values()) {
-            boolean toContinue;
+            boolean toContinue, optimized = false;
             do {
                 toContinue = false;
-                List<Block> blocks = func.getBlocks();
-                Block curBlock = null, nextBlock = null;
-                for (int blockId = 0; blockId + 1 < blocks.size(); blockId++) {
-                    curBlock = blocks.get(blockId);
-                    nextBlock = blocks.get(blockId + 1);
-                    if (curBlock.isEmpty() && curBlock.getCondBlocks().isEmpty() && curBlock.getDefaultBlock() == nextBlock) {
-                        blocks.remove(blockId);
-                        toContinue = true;
+                Map<Block, Set<Block>> prevBlockMap = new HashMap<>();
+                for (Block block : blocks) {
+                    block.getCondBlocks().stream().map(Map.Entry::getValue).forEach(nextBlock -> {
+                        if (!prevBlockMap.containsKey(nextBlock))
+                            prevBlockMap.put(nextBlock, new HashSet<>());
+                        prevBlockMap.get(nextBlock).add(block);
+                    });
+                    Block nextBlock = block.getDefaultBlock();
+                    if (nextBlock != null) {
+                        if (!prevBlockMap.containsKey(nextBlock))
+                            prevBlockMap.put(nextBlock, new HashSet<>());
+                        prevBlockMap.get(nextBlock).add(block);
+                    }
+                }
+                Block curBlock = null, toMergeBlock = null;
+                for (Block block : blocks) {
+                    Block nextBlock = block.getDefaultBlock();
+                    if (nextBlock == null || !block.getCondBlocks().isEmpty())
+                        continue;
+                    if (prevBlockMap.get(nextBlock).size() == 1 && prevBlockMap.get(nextBlock).iterator().next() == block) {
+                        curBlock = block;
+                        toMergeBlock = nextBlock;
                         break;
                     }
                 }
-                if (toContinue) {
-                    for (Block block : blocks) {
-                        if (block.getDefaultBlock() == curBlock)
-                            block.setDefaultBlock(nextBlock);
-                        Block finalCurBlock = curBlock;
-                        Block finalNextBlock = nextBlock;
-                        List<Map.Entry<Block.Cond, Block>> newCondBlocks = block.getCondBlocks().stream().map(entry -> {
-                            if (entry.getValue() == finalCurBlock)
-                                return Map.entry(entry.getKey(), finalNextBlock);
-                            return entry;
-                        }).toList();
-                        block.clearCondBlocks();
-                        newCondBlocks.forEach(block::setCondBlock);
-                    }
+                if (curBlock != null) {
+                    curBlock.addAll(toMergeBlock);
+                    curBlock.clearCondBlocks();
+                    toMergeBlock.getCondBlocks().forEach(curBlock::setCondBlock);
+                    curBlock.setDefaultBlock(toMergeBlock.getDefaultBlock());
+                    blocks.remove(toMergeBlock);
+                    toContinue = true;
+                    optimized = true;
                 }
             } while (toContinue);
+            if (optimized) {
+                List<Block> toLinkBlocks = new ArrayList<>();
+                for (int i = 0; i < blocks.size() - 1; i++) {
+                    Block block = blocks.get(i);
+                    if (block.getDefaultBlock() == null)
+                        toLinkBlocks.add(block);
+                }
+                Block lastBlock = blocks.get(blocks.size() - 1);
+                if (lastBlock.isEmpty() && lastBlock.getDefaultBlock() == null) {
+                    for (Block toLinkBlock : toLinkBlocks)
+                        toLinkBlock.setDefaultBlock(lastBlock);
+                } else {
+                    Block targetBlock = new Block();
+                    for (Block toLinkBlock : toLinkBlocks)
+                        toLinkBlock.setDefaultBlock(targetBlock);
+                    if (lastBlock.getDefaultBlock() == null)
+                        lastBlock.setDefaultBlock(targetBlock);
+                    blocks.add(targetBlock);
+                }
+            }
         }
     }
 

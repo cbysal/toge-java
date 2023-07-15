@@ -65,6 +65,10 @@ public class Block implements Iterable<VIR> {
         return irs.add(ir);
     }
 
+    public boolean addAll(Block block) {
+        return irs.addAll(block.irs);
+    }
+
     public VIR get(int index) {
         return irs.get(index);
     }
