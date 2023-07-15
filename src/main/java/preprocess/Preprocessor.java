@@ -10,17 +10,16 @@ public class Preprocessor {
     private static final Pattern ESCAPED_NEW_LINE_PATTERN = Pattern.compile("\\\\\\n");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("//.*|/\\*[\\s\\S]*?\\*/");
     private boolean isProcessed;
-    private final Path input, output;
+    private final Path input;
     private String content;
 
-    public Preprocessor(Path input, Path output) {
+    public Preprocessor(Path input) {
         this.input = input;
-        this.output = output;
     }
 
-    public void preprocess() {
+    public String preprocess() {
         if (isProcessed) {
-            return;
+            return content;
         }
         isProcessed = true;
         try {
@@ -31,11 +30,7 @@ public class Preprocessor {
         replaceMacroDef();
         removeEscapedNewLine();
         removeComment();
-        try {
-            Files.writeString(output, content);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return content;
     }
 
     private void replaceMacroDef() {

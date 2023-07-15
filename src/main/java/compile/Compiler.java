@@ -1,6 +1,6 @@
 package compile;
 
-import client.option.OptionPool;
+import execute.Executor;
 import compile.codegen.CodeGenerator;
 import compile.codegen.mirgen.MIRGenerator;
 import compile.codegen.mirgen.MachineFunction;
@@ -24,13 +24,14 @@ import java.nio.file.Path;
 import java.util.Map;
 
 public class Compiler {
-    private final OptionPool options;
+    private final Executor.OptionPool options;
     private boolean isProcessed = false;
-    private final Path inputFile, outputFile;
+    private final String input;
+    private final Path outputFile;
 
-    public Compiler(OptionPool options, Path inputFile, Path outputFile) {
+    public Compiler(Executor.OptionPool options, String input, Path outputFile) {
         this.options = options;
-        this.inputFile = inputFile;
+        this.input = input;
         this.outputFile = outputFile;
     }
 
@@ -38,12 +39,6 @@ public class Compiler {
         if (isProcessed)
             return;
         isProcessed = true;
-        String input;
-        try {
-            input = Files.readString(inputFile);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
         LexicalParser lexicalParser = new LexicalParser(input);
         TokenList tokens = lexicalParser.getTokens();
         SymbolTable symbolTable = new SymbolTable();
@@ -53,37 +48,37 @@ public class Compiler {
         Map<String, GlobalSymbol> consts = virGenerator.getConsts();
         Map<String, GlobalSymbol> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
-        if (options.containsKey(OptionPool.PRINT_VIR_BEFORE_OPTIMIZATION))
+        if (options.containsKey(Executor.OptionPool.PRINT_VIR_BEFORE_OPTIMIZATION))
             printVIR(vFuncs);
-        if (options.containsKey(OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION))
-            emitVIR(options.get(OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION), vFuncs);
+        if (options.containsKey(Executor.OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION))
+            emitVIR(options.get(Executor.OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION), vFuncs);
         VIROptimizer virOptimizer = new VIROptimizer(consts, globals, vFuncs);
         virOptimizer.optimize();
-        if (options.containsKey(OptionPool.PRINT_VIR_AFTER_OPTIMIZATION))
+        if (options.containsKey(Executor.OptionPool.PRINT_VIR_AFTER_OPTIMIZATION))
             printVIR(vFuncs);
-        if (options.containsKey(OptionPool.EMIT_VIR_AFTER_OPTIMIZATION))
-            emitVIR(options.get(OptionPool.EMIT_VIR_AFTER_OPTIMIZATION), vFuncs);
+        if (options.containsKey(Executor.OptionPool.EMIT_VIR_AFTER_OPTIMIZATION))
+            emitVIR(options.get(Executor.OptionPool.EMIT_VIR_AFTER_OPTIMIZATION), vFuncs);
         MIRGenerator mirGenerator = new MIRGenerator(consts, globals, vFuncs);
         consts = mirGenerator.getConsts();
         globals = mirGenerator.getGlobals();
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
-        if (options.containsKey(OptionPool.PRINT_MIR))
+        if (options.containsKey(Executor.OptionPool.PRINT_MIR))
             printMIR(mFuncs);
-        if (options.containsKey(OptionPool.EMIT_MIR))
-            emitMIR(options.get(OptionPool.EMIT_MIR), mFuncs);
+        if (options.containsKey(Executor.OptionPool.EMIT_MIR))
+            emitMIR(options.get(Executor.OptionPool.EMIT_MIR), mFuncs);
         RegAllocator regAllocator = new RegAllocator(mFuncs);
         regAllocator.allocate();
         CodeGenerator codeGenerator = new CodeGenerator(consts, globals, mFuncs);
         String output = codeGenerator.getOutput();
-        if (options.containsKey(OptionPool.PRINT_ASM))
+        if (options.containsKey(Executor.OptionPool.PRINT_ASM))
             System.out.println(output);
         try {
             Files.writeString(outputFile, output);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        if (options.containsKey(OptionPool.EMIT_ASM))
-            emitASM(new File(options.get(OptionPool.EMIT_ASM)), output);
+        if (options.containsKey(Executor.OptionPool.EMIT_ASM))
+            emitASM(new File(options.get(Executor.OptionPool.EMIT_ASM)), output);
     }
 
     public void compile() {

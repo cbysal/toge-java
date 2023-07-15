@@ -1,13 +1,11 @@
-import client.TaskParser;
-import client.task.Task;
+import execute.Executor;
 
 public class Toge {
     private Toge() {
     }
 
     public static void main(String[] args) {
-        TaskParser taskParser = new TaskParser(args);
-        Task task = taskParser.getTask();
-        task.run();
+        Executor executor = new Executor(args);
+        executor.execute();
     }
 }
