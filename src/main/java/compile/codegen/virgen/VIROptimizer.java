@@ -292,7 +292,7 @@ public class VIROptimizer {
                 reachableBlocks.add(curBlock);
                 if (curBlock.getDefaultBlock() != null)
                     frontier.offer(curBlock.getDefaultBlock());
-                curBlock.getCondBlocks().stream().map(Pair::second).forEach(frontier::offer);
+                curBlock.getCondBlocks().stream().map(Pair::second).filter(Objects::nonNull).forEach(frontier::offer);
             }
             List<Block> newBlocks = blocks.stream().filter(reachableBlocks::contains).collect(Collectors.toList());
             func.setBlocks(newBlocks);
@@ -486,6 +486,7 @@ public class VIROptimizer {
                         Map<ParamSymbol, VReg> paramToRegMap = new HashMap<>();
                         Map<VReg, VReg> paramRegCopyMap = new HashMap<>();
                         Block preCallBlock = new Block();
+                        Block lastBlock = new Block();
                         for (int i = 0; i < toReplaceCall.getParams().size(); i++) {
                             ParamSymbol param = toReplaceCall.getFunc().getParams().get(i);
                             if (toReplaceCall.getParams().get(i) instanceof VReg reg) {
@@ -519,7 +520,10 @@ public class VIROptimizer {
                         }
                         for (Block oldBlock : oldBlocks) {
                             Block newBlock = oldToNewMap.get(oldBlock);
-                            newBlock.setDefaultBlock(oldToNewMap.get(oldBlock.getDefaultBlock()));
+                            if (oldBlock.getDefaultBlock() == null)
+                                newBlock.setDefaultBlock(lastBlock);
+                            else
+                                newBlock.setDefaultBlock(oldToNewMap.get(oldBlock.getDefaultBlock()));
                             for (Pair<Block.Cond, Block> oldCondBlockEntry : oldBlock.getCondBlocks()) {
                                 Block.Cond oldCond = oldCondBlockEntry.first();
                                 Block oldCondBlock = oldCondBlockEntry.second();
@@ -544,7 +548,11 @@ public class VIROptimizer {
                                     }
                                 }
                                 Block.Cond newCond = new Block.Cond(oldCond.type(), left, right);
-                                Block newCondBlock = oldToNewMap.get(oldCondBlock);
+                                Block newCondBlock;
+                                if (oldCondBlock == null)
+                                    newCondBlock = lastBlock;
+                                else
+                                    newCondBlock = oldToNewMap.get(oldCondBlock);
                                 newBlock.setCondBlock(newCond, newCondBlock);
                             }
                         }
@@ -773,13 +781,11 @@ public class VIROptimizer {
                                 throw new RuntimeException();
                             }
                         }
-                        Block lastBlock = new Block();
                         lastBlock.setDefaultBlock(curBlock.getDefaultBlock());
                         curBlock.getCondBlocks().forEach(lastBlock::setCondBlock);
                         curBlock.setDefaultBlock(preCallBlock);
                         curBlock.clearCondBlocks();
                         preCallBlock.setDefaultBlock(newBlocks.get(0));
-                        newBlocks.get(newBlocks.size() - 1).setDefaultBlock(lastBlock);
                         for (int i = irId + 1; i < curBlock.size(); i++) {
                             lastBlock.add(curBlock.get(i));
                         }
@@ -838,13 +844,19 @@ public class VIROptimizer {
                 Block firstBlock = blocks.get(0);
                 if (firstBlock.isEmpty() && firstBlock.getCondBlocks().isEmpty()) {
                     Block nextBlock = firstBlock.getDefaultBlock();
-                    if (nextBlock == null) {
-                        blocks.remove(firstBlock);
-                        continue;
-                    }
                     int nextIndex = blocks.indexOf(nextBlock);
                     blocks.set(0, nextBlock);
                     blocks.remove(nextIndex);
+                    for (Block block : blocks) {
+                        List<Pair<Block.Cond, Block>> condBlocks = block.getCondBlocks();
+                        for (int i = 0; i < condBlocks.size(); i++) {
+                            Pair<Block.Cond, Block> condBlock = condBlocks.get(i);
+                            if (condBlock.second() == firstBlock)
+                                condBlocks.set(i, new Pair<>(condBlock.first(), nextBlock));
+                        }
+                        if (block.getDefaultBlock() == firstBlock)
+                            block.setDefaultBlock(nextBlock);
+                    }
                     continue;
                 }
                 Block curBlock = null, toMergeBlock = null;
@@ -889,56 +901,6 @@ public class VIROptimizer {
                     toContinue = true;
                 }
             } while (toContinue);
-            List<Block> toLinkBlocks = new ArrayList<>();
-            for (int i = 0; i < blocks.size() - 1; i++) {
-                Block block = blocks.get(i);
-                boolean toLink = false;
-                for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks()) {
-                    if (condBlock.second() == null) {
-                        toLink = true;
-                        break;
-                    }
-                }
-                if (block.getDefaultBlock() == null)
-                    toLink = true;
-                if (toLink)
-                    toLinkBlocks.add(block);
-            }
-            Block lastBlock = blocks.get(blocks.size() - 1);
-            if (lastBlock.isEmpty() && lastBlock.getCondBlocks().isEmpty() && lastBlock.getDefaultBlock() == null) {
-                for (Block toLinkBlock : toLinkBlocks) {
-                    List<Pair<Block.Cond, Block>> condBlocks = toLinkBlock.getCondBlocks();
-                    for (int i = 0; i < condBlocks.size(); i++) {
-                        Pair<Block.Cond, Block> condBlock = condBlocks.get(i);
-                        if (condBlock.second() == null)
-                            condBlocks.set(i, new Pair<>(condBlock.first(), lastBlock));
-                    }
-                    if (toLinkBlock.getDefaultBlock() == null)
-                        toLinkBlock.setDefaultBlock(lastBlock);
-                }
-            } else {
-                Block targetBlock = new Block();
-                for (Block toLinkBlock : toLinkBlocks) {
-                    List<Pair<Block.Cond, Block>> condBlocks = toLinkBlock.getCondBlocks();
-                    for (int i = 0; i < condBlocks.size(); i++) {
-                        Pair<Block.Cond, Block> condBlock = condBlocks.get(i);
-                        if (condBlock.second() == null)
-                            condBlocks.set(i, new Pair<>(condBlock.first(), targetBlock));
-                    }
-                    if (toLinkBlock.getDefaultBlock() == null)
-                        toLinkBlock.setDefaultBlock(targetBlock);
-                }
-                List<Pair<Block.Cond, Block>> condBlocks = lastBlock.getCondBlocks();
-                for (int i = 0; i < condBlocks.size(); i++) {
-                    Pair<Block.Cond, Block> condBlock = condBlocks.get(i);
-                    if (condBlock.second() == null)
-                        condBlocks.set(i, new Pair<>(condBlock.first(), targetBlock));
-                }
-                if (lastBlock.getDefaultBlock() == null) {
-                    lastBlock.setDefaultBlock(targetBlock);
-                }
-                blocks.add(targetBlock);
-            }
         }
     }
 

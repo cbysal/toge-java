@@ -1,6 +1,7 @@
 package compile.codegen.mirgen.trans;
 
 import common.Pair;
+import compile.codegen.Label;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.virgen.Block;
@@ -13,13 +14,18 @@ import java.util.List;
 import java.util.Map;
 
 public final class MIROpTrans {
-    public static void transBlockBranches(List<MIR> irs, Block block) {
+    public static void transBlockBranches(List<MIR> irs, Block block, Label retLabel) {
         for (Pair<Block.Cond, Block> entry : block.getCondBlocks()) {
             Block.Cond cond = entry.first();
             Block.Cond.Type type = cond.type();
             VIRItem item1 = cond.left();
             VIRItem item2 = cond.right();
             Block targetBlock = entry.second();
+            Label targetLabel;
+            if (targetBlock == null)
+                targetLabel = retLabel;
+            else
+                targetLabel = targetBlock.getLabel();
             VReg reg1, reg2;
             if (item1 instanceof VReg reg) {
                 reg1 = reg;
@@ -45,7 +51,7 @@ public final class MIROpTrans {
                 VReg midReg = new VReg(Type.INT);
                 if (type == Block.Cond.Type.NE) {
                     irs.add(new RrrMIR(RrrMIR.Op.EQ, midReg, reg1, reg2));
-                    irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, targetBlock.getLabel()));
+                    irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, targetLabel));
                 } else {
                     irs.add(new RrrMIR(switch (type) {
                         case EQ -> RrrMIR.Op.EQ;
@@ -55,7 +61,7 @@ public final class MIROpTrans {
                         case LT -> RrrMIR.Op.LT;
                         default -> throw new IllegalStateException("Unexpected value: " + type);
                     }, midReg, reg1, reg2));
-                    irs.add(new BMIR(BMIR.Op.NE, midReg, MReg.ZERO, targetBlock.getLabel()));
+                    irs.add(new BMIR(BMIR.Op.NE, midReg, MReg.ZERO, targetLabel));
                 }
             } else {
                 irs.add(new BMIR(switch (type) {
@@ -65,12 +71,16 @@ public final class MIROpTrans {
                     case LE -> BMIR.Op.LE;
                     case LT -> BMIR.Op.LT;
                     case NE -> BMIR.Op.NE;
-                }, reg1, reg2, targetBlock.getLabel()));
+                }, reg1, reg2, targetLabel));
             }
         }
         Block defaultBlock = block.getDefaultBlock();
-        if (defaultBlock != null)
-            irs.add(new BMIR(defaultBlock.getLabel()));
+        Label targetLabel;
+        if (defaultBlock == null)
+            targetLabel = retLabel;
+        else
+            targetLabel = defaultBlock.getLabel();
+        irs.add(new BMIR(targetLabel));
     }
 
     public static void transBinary(List<MIR> irs, BinaryVIR binaryVIR) {

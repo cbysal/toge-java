@@ -55,6 +55,17 @@ public class VIRGenerator {
                 if (block.getDefaultBlock() == null)
                     block.setDefaultBlock(blocks.get(i + 1));
             }
+            Block retBlock = blocks.remove(blocks.size() - 1);
+            for (Block block : blocks) {
+                List<Pair<Block.Cond, Block>> condBlocks = block.getCondBlocks();
+                for (int i = 0; i < condBlocks.size(); i++) {
+                    Pair<Block.Cond, Block> condBlock = condBlocks.get(i);
+                    if (condBlock.second() == retBlock)
+                        condBlocks.set(i, new Pair<>(condBlock.first(), null));
+                }
+                if (block.getDefaultBlock() == retBlock)
+                    block.setDefaultBlock(null);
+            }
         }
     }
 

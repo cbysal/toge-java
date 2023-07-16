@@ -1,6 +1,7 @@
 package compile.codegen.mirgen;
 
 import common.Pair;
+import compile.codegen.Label;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
@@ -118,6 +119,7 @@ public class MIRGenerator {
                 replaceMap.put(vFunc.getRetVal(), MReg.A0);
         }
         Map<Symbol, Integer> localOffsets = locals.second();
+        Label retLabel = new Label();
         for (Block block : vFunc.getBlocks()) {
             mFunc.addIR(new LabelMIR(block.getLabel()));
             for (VIR vir : block) {
@@ -138,8 +140,9 @@ public class MIRGenerator {
                 if (vir instanceof StoreVIR storeVIR)
                     MIROpTrans.transStore(mFunc.getIrs(), storeVIR, localOffsets, paramOffsets);
             }
-            MIROpTrans.transBlockBranches(mFunc.getIrs(), block);
+            MIROpTrans.transBlockBranches(mFunc.getIrs(), block, retLabel);
         }
+        mFunc.getIrs().add(new LabelMIR(retLabel));
         for (MIR mir : mFunc.getIrs())
             mir.replaceReg(replaceMap);
         return mFunc;
