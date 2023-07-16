@@ -8,7 +8,7 @@ public class IntLitToken extends Token {
         this.value = value;
     }
 
-    public int getValue() {
+    public int second() {
         return value;
     }
 

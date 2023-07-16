@@ -28,7 +28,7 @@ public class LIVIR implements VIR {
         return target;
     }
 
-    public int getValue() {
+    public int second() {
         return value;
     }
 

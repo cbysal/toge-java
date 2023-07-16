@@ -1,5 +1,6 @@
 package compile.codegen.virgen;
 
+import common.Pair;
 import compile.codegen.Label;
 import compile.codegen.virgen.vir.VIR;
 import compile.codegen.virgen.vir.VIRItem;
@@ -16,7 +17,7 @@ public class Block implements Iterable<VIR> {
     private final Label label;
     private boolean isRet;
     private Block defaultBlock;
-    private final List<Map.Entry<Cond, Block>> condBlocks = new ArrayList<>();
+    private final List<Pair<Cond, Block>> condBlocks = new ArrayList<>();
     private final List<VIR> irs = new ArrayList<>();
 
     public Block() {
@@ -39,15 +40,15 @@ public class Block implements Iterable<VIR> {
         return defaultBlock;
     }
 
-    public void setCondBlock(Map.Entry<Cond, Block> entry) {
+    public void setCondBlock(Pair<Cond, Block> entry) {
         condBlocks.add(entry);
     }
 
     public void setCondBlock(Cond cond, Block condBlock) {
-        condBlocks.add(Map.entry(cond, condBlock));
+        condBlocks.add(new Pair<>(cond, condBlock));
     }
 
-    public List<Map.Entry<Cond, Block>> getCondBlocks() {
+    public List<Pair<Cond, Block>> getCondBlocks() {
         return condBlocks;
     }
 

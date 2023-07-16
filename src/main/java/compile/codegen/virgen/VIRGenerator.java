@@ -1,5 +1,6 @@
 package compile.codegen.virgen;
 
+import common.Pair;
 import compile.codegen.virgen.vir.*;
 import compile.symbol.DataSymbol;
 import compile.symbol.GlobalSymbol;
@@ -58,10 +59,10 @@ public class VIRGenerator {
     }
 
     private void parseAssignStmt(AssignStmtAST assignStmt) {
-        Map.Entry<DataSymbol, List<VIRItem>> lValUnit = parseLVal(assignStmt.lVal());
+        Pair<DataSymbol, List<VIRItem>> lValUnit = parseLVal(assignStmt.lVal());
         VReg rReg = parseExp(assignStmt.rVal());
-        rReg = typeConversion(rReg, lValUnit.getKey().getType());
-        curBlock.add(new StoreVIR(lValUnit.getKey(), lValUnit.getValue(), rReg));
+        rReg = typeConversion(rReg, lValUnit.first().getType());
+        curBlock.add(new StoreVIR(lValUnit.first(), lValUnit.second(), rReg));
     }
 
     private VReg parseBinaryExp(BinaryExpAST binaryExp) {
@@ -337,15 +338,15 @@ public class VIRGenerator {
         parseCond(lOrExp.right());
     }
 
-    private Map.Entry<DataSymbol, List<VIRItem>> parseLVal(LValAST lVal) {
+    private Pair<DataSymbol, List<VIRItem>> parseLVal(LValAST lVal) {
         if (lVal.isSingle())
-            return Map.entry(lVal.symbol(), List.of());
+            return new Pair<>(lVal.symbol(), List.of());
         List<VIRItem> dimensions = new ArrayList<>();
         for (ExpAST dimension : lVal.dimensions()) {
             VReg reg = parseExp(dimension);
             dimensions.add(reg);
         }
-        return Map.entry(lVal.symbol(), dimensions);
+        return new Pair<>(lVal.symbol(), dimensions);
     }
 
     private void parseRetStmt(RetStmtAST retStmt) {

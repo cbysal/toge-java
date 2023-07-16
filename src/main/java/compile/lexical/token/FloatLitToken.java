@@ -8,7 +8,7 @@ public class FloatLitToken extends Token {
         this.value = value;
     }
 
-    public float getValue() {
+    public float second() {
         return value;
     }
 
