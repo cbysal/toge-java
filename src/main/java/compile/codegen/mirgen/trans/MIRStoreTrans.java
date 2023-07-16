@@ -1,5 +1,6 @@
 package compile.codegen.mirgen.trans;
 
+import common.Pair;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.StoreVIR;
@@ -34,10 +35,10 @@ public final class MIRStoreTrans {
 
     private static void transStoreGlobalElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
                                                 DataSymbol symbol) {
-        Map.Entry<Integer, List<Map.Entry<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
-        int offset = offsetRegDimensions.getKey();
-        List<Map.Entry<VReg, Integer>> regDimensions = offsetRegDimensions.getValue();
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
+        int offset = offsetRegDimensions.first();
+        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (regDimensions.isEmpty()) {
             VReg midReg = new VReg(Type.INT);
             irs.add(new LlaMIR(midReg, symbol));
@@ -70,10 +71,10 @@ public final class MIRStoreTrans {
 
     private static void transStoreLocalElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
                                                DataSymbol symbol, int offset) {
-        Map.Entry<Integer, List<Map.Entry<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
-        offset += offsetRegDimensions.getKey();
-        List<Map.Entry<VReg, Integer>> regDimensions = offsetRegDimensions.getValue();
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
+        offset += offsetRegDimensions.first();
+        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (regDimensions.isEmpty()) {
             irs.add(new StoreItemMIR(StoreItemMIR.Item.LOCAL, source, offset));
             return;
@@ -89,29 +90,28 @@ public final class MIRStoreTrans {
         irs.add(new StoreItemMIR(StoreItemMIR.Item.LOCAL, source, offset));
     }
 
-    static void transStoreParam(List<MIR> irs, StoreVIR storeVIR,
-                                Map<Symbol, Map.Entry<Boolean, Integer>> paramOffsets) {
+    static void transStoreParam(List<MIR> irs, StoreVIR storeVIR, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
         DataSymbol symbol = storeVIR.getSymbol();
         VReg source = storeVIR.getSource();
-        Map.Entry<Boolean, Integer> rawOffset = paramOffsets.get(symbol);
+        Pair<Boolean, Integer> rawOffset = paramOffsets.get(symbol);
         if (symbol.isSingle()) {
-            transStoreParamSingle(irs, source, rawOffset.getKey(), rawOffset.getValue());
+            transStoreParamSingle(irs, source, rawOffset.first(), rawOffset.second());
             return;
         }
-        transStoreParamElement(irs, source, storeVIR.getDimensions(), symbol, rawOffset.getKey(), rawOffset.getValue());
+        transStoreParamElement(irs, source, storeVIR.getDimensions(), symbol, rawOffset.first(), rawOffset.second());
     }
 
     private static void transStoreParamElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
                                                DataSymbol symbol, Boolean isInner, Integer offset) {
-        Map.Entry<Integer, List<Map.Entry<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
-        int innerOffset = offsetRegDimensions.getKey();
-        List<Map.Entry<VReg, Integer>> regDimensions = offsetRegDimensions.getValue();
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
+        int innerOffset = offsetRegDimensions.first();
+        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         VReg midReg = new VReg(Type.INT);
         irs.add(new LoadItemMIR(isInner ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, offset));
-        for (Map.Entry<VReg, Integer> regDimension : regDimensions) {
+        for (Pair<VReg, Integer> regDimension : regDimensions) {
             VReg midReg1 = new VReg(Type.INT);
-            MIROpHelper.addRtRbRsImm(irs, midReg1, midReg, regDimension.getKey(), regDimension.getValue());
+            MIROpHelper.addRtRbRsImm(irs, midReg1, midReg, regDimension.first(), regDimension.second());
             midReg = midReg1;
         }
         strRsRtImm(irs, source, midReg, innerOffset);

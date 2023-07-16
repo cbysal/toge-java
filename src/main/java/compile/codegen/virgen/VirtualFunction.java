@@ -1,5 +1,6 @@
 package compile.codegen.virgen;
 
+import common.Pair;
 import compile.codegen.virgen.vir.VIR;
 import compile.symbol.FuncSymbol;
 import compile.symbol.LocalSymbol;
@@ -7,7 +8,6 @@ import compile.symbol.LocalSymbol;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 public class VirtualFunction {
     private final FuncSymbol symbol;
@@ -78,9 +78,9 @@ public class VirtualFunction {
             builder.append(block).append(":\n");
             for (VIR ir : block)
                 builder.append(ir).append('\n');
-            for (Map.Entry<Block.Cond, Block> entry : block.getCondBlocks()) {
-                Block.Cond cond = entry.getKey();
-                Block targetBlock = entry.getValue();
+            for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks()) {
+                Block.Cond cond = condBlock.first();
+                Block targetBlock = condBlock.second();
                 builder.append("B").append(cond.type()).append("     ").append(cond.left()).append(", ").append(cond.right()).append(", ").append(targetBlock).append('\n');
             }
             if (block.getDefaultBlock() != null)

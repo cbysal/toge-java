@@ -49,12 +49,12 @@ public class TokenList {
 
     public int nextInt() {
         Token token = expectAndFetch(TokenType.INT_LIT);
-        return ((IntLitToken) token).getValue(); // safe, because IntToken has the type INT_LIT
+        return ((IntLitToken) token).second(); // safe, because IntToken has the type INT_LIT
     }
 
     public float nextFloat() {
         Token token = expectAndFetch(TokenType.FLOAT_LIT);
-        return ((FloatLitToken) token).getValue(); // safe, because FloatToken has the type FLOAT_LIT
+        return ((FloatLitToken) token).second(); // safe, because FloatToken has the type FLOAT_LIT
     }
 
     public String nextIdentity() {

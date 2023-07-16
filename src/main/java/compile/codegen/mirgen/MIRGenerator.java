@@ -1,5 +1,6 @@
 package compile.codegen.mirgen;
 
+import common.Pair;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
@@ -34,14 +35,14 @@ public class MIRGenerator {
         vir2Mir();
     }
 
-    private Map.Entry<Integer, Integer> getCallerNumbers(FuncSymbol func) {
+    private Pair<Integer, Integer> getCallerNumbers(FuncSymbol func) {
         int iSize = 0, fSize = 0;
         for (ParamSymbol param : func.getParams())
             if (!param.isSingle() || param.getType() == Type.INT)
                 iSize = Integer.min(iSize + 1, MReg.I_CALLER_REGS.size());
             else
                 fSize = Integer.min(fSize + 1, MReg.F_CALLER_REGS.size());
-        return Map.entry(iSize, fSize);
+        return new Pair<>(iSize, fSize);
     }
 
     public Map<String, GlobalSymbol> getConsts() {
@@ -59,7 +60,7 @@ public class MIRGenerator {
         return globals;
     }
 
-    private Map.Entry<Integer, Map<Symbol, Integer>> calcLocalOffsets(List<LocalSymbol> locals) {
+    private Pair<Integer, Map<Symbol, Integer>> calcLocalOffsets(List<LocalSymbol> locals) {
         int localSize = 0;
         Map<Symbol, Integer> localOffsets = new HashMap<>();
         for (LocalSymbol localSymbol : locals) {
@@ -67,11 +68,11 @@ public class MIRGenerator {
             localOffsets.put(localSymbol, localSize);
             localSize += size;
         }
-        return Map.entry(localSize, localOffsets);
+        return new Pair<>(localSize, localOffsets);
     }
 
-    private Map<Symbol, Map.Entry<Boolean, Integer>> calcParamOffsets(List<ParamSymbol> params) {
-        Map<Symbol, Map.Entry<Boolean, Integer>> paramOffsets = new HashMap<>();
+    private Map<Symbol, Pair<Boolean, Integer>> calcParamOffsets(List<ParamSymbol> params) {
+        Map<Symbol, Pair<Boolean, Integer>> paramOffsets = new HashMap<>();
         int fCallerNum = 0;
         for (ParamSymbol param : params)
             if (param.isSingle() && param.getType() == Type.FLOAT)
@@ -81,16 +82,16 @@ public class MIRGenerator {
         for (ParamSymbol param : params) {
             if (!param.isSingle() || param.getType() == Type.INT) {
                 if (iSize < MReg.I_CALLER_REGS.size())
-                    paramOffsets.put(param, Map.entry(true, (iSize + fCallerNum) * 8));
+                    paramOffsets.put(param, new Pair<>(true, (iSize + fCallerNum) * 8));
                 else
-                    paramOffsets.put(param, Map.entry(false,
+                    paramOffsets.put(param, new Pair<>(false,
                             (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                 iSize++;
             } else {
                 if (fSize < MReg.F_CALLER_REGS.size())
-                    paramOffsets.put(param, Map.entry(true, fSize * 8));
+                    paramOffsets.put(param, new Pair<>(true, fSize * 8));
                 else
-                    paramOffsets.put(param, Map.entry(false,
+                    paramOffsets.put(param, new Pair<>(false,
                             (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                 fSize++;
             }
@@ -104,11 +105,11 @@ public class MIRGenerator {
     }
 
     private MachineFunction vir2MirSingle(VirtualFunction vFunc) {
-        Map<Symbol, Map.Entry<Boolean, Integer>> paramOffsets = calcParamOffsets(vFunc.getSymbol().getParams());
-        Map.Entry<Integer, Map<Symbol, Integer>> locals = calcLocalOffsets(vFunc.getLocals());
-        Map.Entry<Integer, Integer> callerNums = getCallerNumbers(vFunc.getSymbol());
-        MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.getKey(), callerNums.getKey(),
-                callerNums.getValue());
+        Map<Symbol, Pair<Boolean, Integer>> paramOffsets = calcParamOffsets(vFunc.getSymbol().getParams());
+        Pair<Integer, Map<Symbol, Integer>> locals = calcLocalOffsets(vFunc.getLocals());
+        Pair<Integer, Integer> callerNums = getCallerNumbers(vFunc.getSymbol());
+        MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.first(), callerNums.first(),
+                callerNums.second());
         Map<VReg, MReg> replaceMap = new HashMap<>();
         if (vFunc.getRetVal() != null) {
             if (vFunc.getRetVal().getType() == Type.FLOAT)
@@ -116,7 +117,7 @@ public class MIRGenerator {
             else
                 replaceMap.put(vFunc.getRetVal(), MReg.A0);
         }
-        Map<Symbol, Integer> localOffsets = locals.getValue();
+        Map<Symbol, Integer> localOffsets = locals.second();
         for (Block block : vFunc.getBlocks()) {
             mFunc.addIR(new LabelMIR(block.getLabel()));
             for (VIR vir : block) {
