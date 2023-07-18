@@ -57,21 +57,21 @@ public class BMIR implements MIR {
             return List.of(this);
         }
         if (src1.equals(reg) && src2.equals(reg)) {
-            VReg src1 = new VReg(this.src1.getType());
-            VReg src2 = new VReg(this.src2.getType());
+            VReg src1 = new VReg(reg.getType(), reg.getSize());
+            VReg src2 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src1, offset);
             MIR ir2 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src2, offset);
             MIR ir3 = new BMIR(op, src1, src2, label);
             return List.of(ir1, ir2, ir3);
         }
         if (src1.equals(reg)) {
-            VReg src1 = new VReg(this.src1.getType());
+            VReg src1 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src1, offset);
             MIR ir2 = new BMIR(op, src1, src2, label);
             return List.of(ir1, ir2);
         }
         if (src2.equals(reg)) {
-            VReg src2 = new VReg(this.src2.getType());
+            VReg src2 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src2, offset);
             MIR ir2 = new BMIR(op, src1, src2, label);
             return List.of(ir1, ir2);

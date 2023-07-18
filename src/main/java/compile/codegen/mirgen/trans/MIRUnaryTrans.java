@@ -19,7 +19,7 @@ public final class MIRUnaryTrans {
 
     private static void transLNotRegReg(List<MIR> irs, VReg target, VReg source) {
         if (source.getType() == Type.FLOAT) {
-            VReg midReg = new VReg(Type.FLOAT);
+            VReg midReg = new VReg(Type.FLOAT, 4);
             irs.add(new CvtMIR(midReg, MReg.ZERO));
             irs.add(new RrrMIR(RrrMIR.Op.EQ, target, source, midReg));
         } else {

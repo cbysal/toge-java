@@ -80,7 +80,7 @@ public class VIRGenerator {
         VReg lReg = parseExp(binaryExp.left());
         VReg rReg = parseExp(binaryExp.right());
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
-        VReg result = new VReg(targetType);
+        VReg result = new VReg(targetType, Integer.max(lReg.getSize(), rReg.getSize()));
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
         BinaryVIR binaryVIR = new BinaryVIR(switch (binaryExp.op()) {
@@ -132,7 +132,7 @@ public class VIRGenerator {
         VReg lReg = parseExp(cmpExp.left());
         VReg rReg = parseExp(cmpExp.right());
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
-        VReg result = new VReg(Type.INT);
+        VReg result = new VReg(Type.INT, 4);
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
         curBlock.add(new BinaryVIR(switch (cmpExp.op()) {
@@ -224,7 +224,7 @@ public class VIRGenerator {
 
     private VReg parseLNotExp(LNotExpAST lNotExp) {
         VReg nReg = parseExp(lNotExp.next());
-        VReg result = new VReg(Type.INT);
+        VReg result = new VReg(Type.INT, 4);
         curBlock.add(new UnaryVIR(UnaryVIR.Type.L_NOT, result, nReg));
         return result;
     }
@@ -234,7 +234,7 @@ public class VIRGenerator {
     }
 
     private VReg parseFloatLitExp(FloatLitExpAST root) {
-        VReg reg = new VReg(Type.FLOAT);
+        VReg reg = new VReg(Type.FLOAT, 4);
         curBlock.add(new LIVIR(reg, root.value()));
         return reg;
     }
@@ -250,8 +250,8 @@ public class VIRGenerator {
             params.add(param);
         }
         VReg retReg = switch (funcCallExp.func().getType()) {
-            case FLOAT -> new VReg(Type.FLOAT);
-            case INT -> new VReg(Type.INT);
+            case FLOAT -> new VReg(Type.FLOAT, 4);
+            case INT -> new VReg(Type.INT, 4);
             case VOID -> null;
         };
         curBlock.add(new CallVIR(funcCallExp.func(), retReg, params));
@@ -308,7 +308,7 @@ public class VIRGenerator {
     }
 
     private VReg parseIntLitExp(IntLitExpAST root) {
-        VReg reg = new VReg(Type.INT);
+        VReg reg = new VReg(Type.INT, 4);
         curBlock.add(new LIVIR(reg, root.value()));
         return reg;
     }
@@ -447,13 +447,13 @@ public class VIRGenerator {
         switch (unaryCond.op()) {
             case F2I, I2F -> {
                 VReg source = parseExp(unaryCond.next());
-                VReg result = new VReg(Type.INT);
+                VReg result = new VReg(Type.INT, 4);
                 curBlock.add(new UnaryVIR(switch (unaryCond.op()) {
                     case F2I -> UnaryVIR.Type.F2I;
                     case I2F -> UnaryVIR.Type.I2F;
                     default -> throw new RuntimeException();
                 }, result, source));
-                VReg zero = new VReg(Type.INT);
+                VReg zero = new VReg(Type.INT, 4);
                 curBlock.add(new LIVIR(zero, 0));
                 curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
                 if (curBlock.getDefaultBlock() == null)
@@ -469,7 +469,7 @@ public class VIRGenerator {
             case F2I -> typeConversion(nVal, Type.INT);
             case I2F -> typeConversion(nVal, Type.FLOAT);
             case NEG -> {
-                VReg result = new VReg(nVal.getType());
+                VReg result = new VReg(nVal.getType(), nVal.getSize());
                 curBlock.add(new UnaryVIR(UnaryVIR.Type.NEG, result, nVal));
                 yield result;
             }
@@ -478,7 +478,7 @@ public class VIRGenerator {
 
     private void parseValueCond(ExpAST root) {
         VReg result = parseExp(root);
-        VReg zero = new VReg(Type.INT);
+        VReg zero = new VReg(Type.INT, 4);
         curBlock.add(new LIVIR(zero, 0));
         curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
         if (curBlock.getDefaultBlock() == null)
@@ -487,7 +487,7 @@ public class VIRGenerator {
 
     private VReg parseVarExp(VarExpAST varExp) {
         VReg result =
-                new VReg(varExp.dimensions().size() == varExp.symbol().getDimensionSize() && varExp.symbol().getType() == Type.FLOAT ? Type.FLOAT : Type.INT);
+                new VReg(varExp.dimensions().size() == varExp.symbol().getDimensionSize() && varExp.symbol().getType() == Type.FLOAT ? Type.FLOAT : Type.INT, varExp.dimensions().size() == varExp.symbol().getDimensionSize() || varExp.symbol().getType() == Type.FLOAT ? 4 : 8);
         if (varExp.isSingle()) {
             curBlock.add(new LoadVIR(result, varExp.symbol()));
             return result;
@@ -496,7 +496,7 @@ public class VIRGenerator {
         for (ExpAST dimension : varExp.dimensions()) {
             VReg reg = parseExp(dimension);
             if (reg.getType() == Type.FLOAT) {
-                VReg newReg = new VReg(Type.INT);
+                VReg newReg = new VReg(Type.INT, 4);
                 curBlock.add(new UnaryVIR(UnaryVIR.Type.F2I, newReg, reg));
                 reg = newReg;
             }
@@ -538,12 +538,12 @@ public class VIRGenerator {
         if (reg.getType() == targetType)
             return reg;
         if (reg.getType() == Type.FLOAT && targetType == Type.INT) {
-            VReg newReg = new VReg(Type.INT);
+            VReg newReg = new VReg(Type.INT, 4);
             curBlock.add(new UnaryVIR(UnaryVIR.Type.F2I, newReg, reg));
             reg = newReg;
         }
         if (reg.getType() == Type.INT && targetType == Type.FLOAT) {
-            VReg newReg = new VReg(Type.FLOAT);
+            VReg newReg = new VReg(Type.FLOAT, 4);
             curBlock.add(new UnaryVIR(UnaryVIR.Type.I2F, newReg, reg));
             reg = newReg;
         }

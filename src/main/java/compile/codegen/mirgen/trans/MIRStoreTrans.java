@@ -18,7 +18,7 @@ public final class MIRStoreTrans {
             irs.add(new StoreMIR(source, target, imm, 4));
             return;
         }
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 8);
         MIRBinaryTrans.transAddRegImmI(irs, midReg, target, imm);
         irs.add(new StoreMIR(source, midReg, 0, 4));
     }
@@ -40,20 +40,20 @@ public final class MIRStoreTrans {
         int offset = offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (regDimensions.isEmpty()) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LlaMIR(midReg, symbol));
             strRsRtImm(irs, source, midReg, offset);
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new LlaMIR(midReg1, symbol));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         strRsRtImm(irs, source, midReg2, offset);
     }
 
     private static void transStoreGlobalSingle(List<MIR> irs, VReg source, DataSymbol symbol) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 8);
         irs.add(new LlaMIR(midReg, symbol));
         irs.add(new StoreMIR(source, midReg, 0, 4));
     }
@@ -79,9 +79,9 @@ public final class MIRStoreTrans {
             irs.add(new StoreItemMIR(StoreItemMIR.Item.LOCAL, source, offset));
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new AddRegLocalMIR(midReg1, offset));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         strRsRtImm(irs, source, midReg2, 0);
     }
@@ -107,10 +107,10 @@ public final class MIRStoreTrans {
                 symbol.getSizes());
         int innerOffset = offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 8);
         irs.add(new LoadItemMIR(isInner ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, offset));
         for (Pair<VReg, Integer> regDimension : regDimensions) {
-            VReg midReg1 = new VReg(Type.INT);
+            VReg midReg1 = new VReg(Type.INT, 8);
             MIROpHelper.addRtRbRsImm(irs, midReg1, midReg, regDimension.first(), regDimension.second());
             midReg = midReg1;
         }

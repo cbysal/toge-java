@@ -19,7 +19,7 @@ public final class MIROpHelper {
                                              VReg source) {
         for (int i = 0; i < regDimensions.size() - 1; i++) {
             Pair<VReg, Integer> regDimension = regDimensions.get(i);
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             addRtRbRsImm(irs, midReg, source, regDimension.first(), regDimension.second());
             source = midReg;
         }
@@ -28,8 +28,8 @@ public final class MIROpHelper {
     }
 
     public static void addRtRbRsImm(List<MIR> irs, VReg target, VReg source1, VReg source2, int imm) {
-        VReg midReg1 = new VReg(Type.INT);
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 4);
+        VReg midReg2 = new VReg(Type.INT, 4);
         loadImmToReg(irs, midReg1, imm);
         irs.add(new RrrMIR(RrrMIR.Op.MUL, midReg2, source2, midReg1));
         irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg2));
@@ -67,7 +67,7 @@ public final class MIROpHelper {
     }
 
     private static void loadImmToFReg(List<MIR> irs, Reg reg, int imm) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         loadImmToIReg(irs, midReg, imm);
         irs.add(new MvMIR(reg, midReg));
     }

@@ -87,7 +87,7 @@ public class MReg extends Reg {
             , MReg.FS6, MReg.FS7, MReg.FS8, MReg.FS9, MReg.FS10, MReg.FS11);
 
     private MReg(Type type, String name) {
-        super(type);
+        super(type, 8);
         this.name = name;
     }
 

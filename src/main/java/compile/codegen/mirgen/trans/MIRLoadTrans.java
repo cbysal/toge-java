@@ -19,7 +19,7 @@ public final class MIRLoadTrans {
                 irs.add(new LoadMIR(target, source, imm, 4));
                 return;
             }
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             MIRBinaryTrans.transAddRegImmI(irs, midReg, source, imm);
             irs.add(new LoadMIR(target, midReg, 0, 4));
         } else {
@@ -27,7 +27,7 @@ public final class MIRLoadTrans {
                 irs.add(new LoadMIR(target, source, imm, 4));
                 return;
             }
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             MIRBinaryTrans.transAddRegImmI(irs, midReg, source, imm);
             irs.add(new LoadMIR(target, midReg, 0, 4));
         }
@@ -48,8 +48,8 @@ public final class MIRLoadTrans {
     }
 
     private static void transLoadConstArray(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
         int offset = offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (offset == 0 && regDimensions.isEmpty()) {
@@ -57,44 +57,44 @@ public final class MIRLoadTrans {
             return;
         }
         if (offset == 0) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LlaMIR(midReg, symbol));
             MIROpHelper.addRegDimensionsToReg(irs, target, regDimensions, midReg);
             return;
         }
         if (regDimensions.isEmpty()) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LlaMIR(midReg, symbol));
             MIRBinaryTrans.transAddRegImmI(irs, target, midReg, offset);
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new LlaMIR(midReg1, symbol));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         MIRBinaryTrans.transAddRegImmI(irs, target, midReg2, offset);
     }
 
     private static void transLoadConstElement(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
         int offset = offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (regDimensions.isEmpty()) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LlaMIR(midReg, symbol));
             ldrRtRsImm(irs, target, midReg, offset);
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new LlaMIR(midReg1, symbol));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         ldrRtRsImm(irs, target, midReg2, offset);
     }
 
     private static void transLoadConstSingle(List<MIR> irs, VReg target, DataSymbol symbol) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 8);
         irs.add(new LlaMIR(midReg, symbol));
         ldrRtRsImm(irs, target, midReg, 0);
     }
@@ -114,8 +114,8 @@ public final class MIRLoadTrans {
     }
 
     private static void transLoadGlobalArray(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
         int offset = offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (offset == 0 && regDimensions.isEmpty()) {
@@ -123,44 +123,44 @@ public final class MIRLoadTrans {
             return;
         }
         if (offset == 0) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LlaMIR(midReg, symbol));
             MIROpHelper.addRegDimensionsToReg(irs, target, regDimensions, midReg);
         }
         if (regDimensions.isEmpty()) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LlaMIR(midReg, symbol));
             MIRBinaryTrans.transAddRegImmI(irs, target, midReg, offset);
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new LlaMIR(midReg1, symbol));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         MIRBinaryTrans.transAddRegImmI(irs, target, midReg2, offset);
     }
 
     private static void transLoadGlobalElement(List<MIR> irs, VReg target, List<VIRItem> dimensions,
                                                DataSymbol symbol) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
         int offset = offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (regDimensions.isEmpty()) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LlaMIR(midReg, symbol));
             ldrRtRsImm(irs, target, midReg, offset);
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new LlaMIR(midReg1, symbol));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         ldrRtRsImm(irs, target, midReg2, offset);
     }
 
     private static void transLoadGlobalSingle(List<MIR> irs, VReg target, DataSymbol symbol) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 8);
         irs.add(new LlaMIR(midReg, symbol));
         ldrRtRsImm(irs, target, midReg, 0);
     }
@@ -182,32 +182,32 @@ public final class MIRLoadTrans {
 
     private static void transLoadLocalArray(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol,
                                             int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
         offset += offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (regDimensions.isEmpty()) {
             irs.add(new AddRegLocalMIR(target, offset));
             return;
         }
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 8);
         irs.add(new AddRegLocalMIR(midReg, offset));
         MIROpHelper.addRegDimensionsToReg(irs, target, regDimensions, midReg);
     }
 
     private static void transLoadLocalElement(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol
             , int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
         offset += offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (regDimensions.isEmpty()) {
             irs.add(new LoadItemMIR(LoadItemMIR.Item.LOCAL, target, offset));
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new AddRegLocalMIR(midReg1, offset));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         ldrRtRsImm(irs, target, midReg2, 0);
     }
@@ -233,8 +233,8 @@ public final class MIRLoadTrans {
 
     private static void transLoadParamArray(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol,
                                             boolean isInner, int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
         int innerOffset = offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (innerOffset == 0 && regDimensions.isEmpty()) {
@@ -243,43 +243,43 @@ public final class MIRLoadTrans {
             return;
         }
         if (innerOffset == 0) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LoadItemMIR(isInner ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg,
                     offset));
             MIROpHelper.addRegDimensionsToReg(irs, target, regDimensions, midReg);
         }
         if (regDimensions.isEmpty()) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LoadItemMIR(isInner ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg,
                     offset));
             MIRBinaryTrans.transAddRegImmI(irs, target, midReg, innerOffset);
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new LoadItemMIR(isInner ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1,
                 offset));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         MIRBinaryTrans.transAddRegImmI(irs, target, midReg2, innerOffset);
     }
 
     private static void transLoadParamElement(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol
             , boolean isInner, int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions
-                , symbol.getSizes());
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
+                symbol.getSizes());
         int innerOffset = offsetRegDimensions.first();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
         if (regDimensions.isEmpty()) {
-            VReg midReg = new VReg(Type.INT);
+            VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LoadItemMIR(isInner ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg,
                     offset));
             ldrRtRsImm(irs, target, midReg, innerOffset);
             return;
         }
-        VReg midReg1 = new VReg(Type.INT);
+        VReg midReg1 = new VReg(Type.INT, 8);
         irs.add(new LoadItemMIR(isInner ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1,
                 offset));
-        VReg midReg2 = new VReg(Type.INT);
+        VReg midReg2 = new VReg(Type.INT, 8);
         MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
         ldrRtRsImm(irs, target, midReg2, innerOffset);
     }

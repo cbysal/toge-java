@@ -18,7 +18,7 @@ public class VirtualFunction {
     public VirtualFunction(FuncSymbol symbol) {
         this.symbol = symbol;
         this.retVal = switch (symbol.getType()) {
-            case FLOAT, INT -> new VReg(symbol.getType());
+            case FLOAT, INT -> new VReg(symbol.getType(), 4);
             case VOID -> null;
         };
     }

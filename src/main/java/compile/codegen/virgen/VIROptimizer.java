@@ -490,14 +490,14 @@ public class VIROptimizer {
                         for (int i = 0; i < toReplaceCall.getParams().size(); i++) {
                             ParamSymbol param = toReplaceCall.getFunc().getParams().get(i);
                             if (toReplaceCall.getParams().get(i) instanceof VReg reg) {
-                                VReg newReg = new VReg(reg.getType());
+                                VReg newReg = new VReg(reg.getType(), reg.getSize());
                                 paramToRegMap.put(param, newReg);
                                 preCallBlock.add(new MovVIR(newReg, reg));
                                 paramRegCopyMap.put(newReg, reg);
                                 continue;
                             }
                             if (toReplaceCall.getParams().get(i) instanceof Value value) {
-                                VReg reg = new VReg(toReplaceCall.getFunc().getParams().get(i).getType());
+                                VReg reg = new VReg(toReplaceCall.getFunc().getParams().get(i).getType(), 4);
                                 paramToRegMap.put(param, reg);
                                 if (value.getType() == Type.FLOAT)
                                     preCallBlock.add(new LIVIR(reg, value.getFloat()));
@@ -532,7 +532,7 @@ public class VIROptimizer {
                                     if (regMap.containsKey(reg))
                                         left = regMap.get(reg);
                                     else {
-                                        VReg newReg = new VReg(reg.getType());
+                                        VReg newReg = new VReg(reg.getType(), reg.getSize());
                                         left = newReg;
                                         regMap.put(reg, newReg);
                                     }
@@ -542,7 +542,7 @@ public class VIROptimizer {
                                     if (regMap.containsKey(reg))
                                         right = regMap.get(reg);
                                     else {
-                                        VReg newReg = new VReg(reg.getType());
+                                        VReg newReg = new VReg(reg.getType(), reg.getSize());
                                         right = newReg;
                                         regMap.put(reg, newReg);
                                     }
@@ -564,7 +564,7 @@ public class VIROptimizer {
                                     if (regMap.containsKey(result))
                                         result = regMap.get(result);
                                     else {
-                                        result = new VReg(result.getType());
+                                        result = new VReg(result.getType(), result.getSize());
                                         regMap.put(binaryVIR.getResult(), result);
                                     }
                                     VIRItem left = binaryVIR.getLeft();
@@ -572,7 +572,7 @@ public class VIROptimizer {
                                         if (regMap.containsKey(reg))
                                             left = regMap.get(reg);
                                         else {
-                                            VReg newReg = new VReg(reg.getType());
+                                            VReg newReg = new VReg(reg.getType(), reg.getSize());
                                             left = newReg;
                                             regMap.put(reg, newReg);
                                         }
@@ -582,7 +582,7 @@ public class VIROptimizer {
                                         if (regMap.containsKey(reg))
                                             right = regMap.get(reg);
                                         else {
-                                            VReg newReg = new VReg(reg.getType());
+                                            VReg newReg = new VReg(reg.getType(), reg.getSize());
                                             right = newReg;
                                             regMap.put(reg, newReg);
                                         }
@@ -597,7 +597,7 @@ public class VIROptimizer {
                                             if (regMap.containsKey(reg))
                                                 params.add(regMap.get(reg));
                                             else {
-                                                VReg newReg = new VReg(reg.getType());
+                                                VReg newReg = new VReg(reg.getType(), reg.getSize());
                                                 params.add(newReg);
                                                 regMap.put(reg, newReg);
                                             }
@@ -608,7 +608,7 @@ public class VIROptimizer {
                                     if (regMap.containsKey(retVal))
                                         retVal = regMap.get(retVal);
                                     else {
-                                        retVal = new VReg(retVal.getType());
+                                        retVal = new VReg(retVal.getType(), retVal.getSize());
                                         regMap.put(callVIR.getRetVal(), retVal);
                                     }
                                     newBlock.add(new CallVIR(callVIR.getFunc(), retVal, params));
@@ -619,7 +619,7 @@ public class VIROptimizer {
                                     if (regMap.containsKey(target))
                                         target = regMap.get(target);
                                     else {
-                                        target = new VReg(target.getType());
+                                        target = new VReg(target.getType(), target.getSize());
                                         regMap.put(liVIR.getTarget(), target);
                                     }
                                     newBlock.add(new LIVIR(target, liVIR.second()));
@@ -632,7 +632,7 @@ public class VIROptimizer {
                                         if (regMap.containsKey(target))
                                             target = regMap.get(target);
                                         else {
-                                            target = new VReg(target.getType());
+                                            target = new VReg(target.getType(), target.getSize());
                                             regMap.put(loadVIR.getTarget(), target);
                                         }
                                         if (paramSymbol.isSingle()) {
@@ -646,7 +646,7 @@ public class VIROptimizer {
                                                     if (regMap.containsKey(reg))
                                                         dimensions.add(regMap.get(reg));
                                                     else {
-                                                        VReg newReg = new VReg(reg.getType());
+                                                        VReg newReg = new VReg(reg.getType(), reg.getSize());
                                                         dimensions.add(newReg);
                                                         regMap.put(reg, newReg);
                                                     }
@@ -661,7 +661,7 @@ public class VIROptimizer {
                                     if (regMap.containsKey(target))
                                         target = regMap.get(target);
                                     else {
-                                        target = new VReg(target.getType());
+                                        target = new VReg(target.getType(), target.getSize());
                                         regMap.put(loadVIR.getTarget(), target);
                                     }
                                     List<VIRItem> dimensions = new ArrayList<>();
@@ -670,7 +670,7 @@ public class VIROptimizer {
                                             if (regMap.containsKey(reg))
                                                 dimensions.add(regMap.get(reg));
                                             else {
-                                                VReg newReg = new VReg(reg.getType());
+                                                VReg newReg = new VReg(reg.getType(), reg.getSize());
                                                 dimensions.add(newReg);
                                                 regMap.put(reg, newReg);
                                             }
@@ -687,14 +687,14 @@ public class VIROptimizer {
                                     if (regMap.containsKey(target))
                                         target = regMap.get(target);
                                     else {
-                                        target = new VReg(target.getType());
+                                        target = new VReg(target.getType(), target.getSize());
                                         regMap.put(movVIR.getTarget(), target);
                                     }
                                     VReg source = movVIR.getSource();
                                     if (regMap.containsKey(source))
                                         source = regMap.get(source);
                                     else {
-                                        source = new VReg(source.getType());
+                                        source = new VReg(source.getType(), source.getSize());
                                         regMap.put(movVIR.getSource(), source);
                                     }
                                     newBlock.add(new MovVIR(target, source));
@@ -707,7 +707,7 @@ public class VIROptimizer {
                                         if (regMap.containsKey(source))
                                             source = regMap.get(source);
                                         else {
-                                            source = new VReg(source.getType());
+                                            source = new VReg(source.getType(), source.getSize());
                                             regMap.put(storeVIR.getSource(), source);
                                         }
                                         if (paramSymbol.isSingle()) {
@@ -721,7 +721,7 @@ public class VIROptimizer {
                                                     if (regMap.containsKey(reg))
                                                         dimensions.add(regMap.get(reg));
                                                     else {
-                                                        VReg newReg = new VReg(reg.getType());
+                                                        VReg newReg = new VReg(reg.getType(), reg.getSize());
                                                         dimensions.add(newReg);
                                                         regMap.put(reg, newReg);
                                                     }
@@ -740,7 +740,7 @@ public class VIROptimizer {
                                             if (regMap.containsKey(reg))
                                                 dimensions.add(regMap.get(reg));
                                             else {
-                                                VReg newReg = new VReg(reg.getType());
+                                                VReg newReg = new VReg(reg.getType(), reg.getSize());
                                                 dimensions.add(newReg);
                                                 regMap.put(reg, newReg);
                                             }
@@ -751,7 +751,7 @@ public class VIROptimizer {
                                     if (regMap.containsKey(source))
                                         source = regMap.get(source);
                                     else {
-                                        source = new VReg(source.getType());
+                                        source = new VReg(source.getType(), source.getSize());
                                         regMap.put(storeVIR.getSource(), source);
                                     }
                                     newBlock.add(new StoreVIR(storeVIR.getSymbol(), dimensions, source));
@@ -762,7 +762,7 @@ public class VIROptimizer {
                                     if (regMap.containsKey(result))
                                         result = regMap.get(result);
                                     else {
-                                        result = new VReg(result.getType());
+                                        result = new VReg(result.getType(), result.getSize());
                                         regMap.put(unaryVIR.getResult(), result);
                                     }
                                     VIRItem source = unaryVIR.getSource();
@@ -770,7 +770,7 @@ public class VIROptimizer {
                                         if (regMap.containsKey(reg))
                                             source = regMap.get(reg);
                                         else {
-                                            VReg newReg = new VReg(reg.getType());
+                                            VReg newReg = new VReg(reg.getType(), reg.getSize());
                                             source = newReg;
                                             regMap.put(reg, newReg);
                                         }
@@ -917,7 +917,7 @@ public class VIROptimizer {
                         if (local2Reg.containsKey(local))
                             reg = local2Reg.get(local);
                         else {
-                            reg = new VReg(local.getType());
+                            reg = new VReg(local.getType(), 4);
                             local2Reg.put(local, reg);
                         }
                         MovVIR newIR = new MovVIR(loadVIR.getTarget(), reg);
@@ -929,7 +929,7 @@ public class VIROptimizer {
                         if (local2Reg.containsKey(local))
                             reg = local2Reg.get(local);
                         else {
-                            reg = new VReg(local.getType());
+                            reg = new VReg(local.getType(), 4);
                             local2Reg.put(local, reg);
                         }
                         MovVIR newIR = new MovVIR(reg, storeVIR.getSource());

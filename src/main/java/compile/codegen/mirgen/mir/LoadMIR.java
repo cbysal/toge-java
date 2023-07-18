@@ -44,21 +44,21 @@ public class LoadMIR implements MIR {
     @Override
     public List<MIR> spill(Reg reg, int offset) {
         if (target.equals(reg) && source.equals(reg)) {
-            VReg target = new VReg(this.target.getType());
-            VReg source = new VReg(this.source.getType());
+            VReg target = new VReg(reg.getType(), reg.getSize());
+            VReg source = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source, offset);
             MIR ir2 = new LoadMIR(target, source, imm, size);
             MIR ir3 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2, ir3);
         }
         if (target.equals(reg)) {
-            VReg target = new VReg(this.target.getType());
+            VReg target = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadMIR(target, source, imm, size);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2);
         }
         if (source.equals(reg)) {
-            VReg source = new VReg(this.source.getType());
+            VReg source = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source, offset);
             MIR ir2 = new LoadMIR(target, source, imm, size);
             return List.of(ir1, ir2);

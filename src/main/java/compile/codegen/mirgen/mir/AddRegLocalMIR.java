@@ -42,7 +42,7 @@ public class AddRegLocalMIR implements MIR {
     public List<MIR> spill(Reg reg, int offset) {
         List<MIR> irs = new ArrayList<>();
         if (target.equals(reg)) {
-            VReg target = new VReg(Type.INT);
+            VReg target = new VReg(reg.getType(), reg.getSize());
             irs.add(new AddRegLocalMIR(target, imm));
             irs.add(new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset));
             return irs;

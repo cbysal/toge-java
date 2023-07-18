@@ -46,7 +46,7 @@ public class StoreItemMIR implements MIR {
     @Override
     public List<MIR> spill(Reg reg, int offset) {
         if (src.equals(reg)) {
-            VReg source = new VReg(Type.INT);
+            VReg source = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source, offset);
             MIR ir2 = new StoreItemMIR(item, source, imm);
             return List.of(ir1, ir2);

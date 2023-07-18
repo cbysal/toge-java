@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class RrrMIR implements MIR {
     public enum Op {
-        ADD, SUB, MUL, DIV, REM, EQ, GE, GT, LE, LT
+        ADD, ADDW, SUB, MUL, DIV, REM, EQ, GE, GT, LE, LT
     }
 
     private final Op op;
@@ -50,9 +50,9 @@ public class RrrMIR implements MIR {
     @Override
     public List<MIR> spill(Reg reg, int offset) {
         if (target.equals(reg) && source1.equals(reg) && source2.equals(reg)) {
-            VReg target = new VReg(this.target.getType());
-            VReg source1 = new VReg(this.source1.getType());
-            VReg source2 = new VReg(this.source2.getType());
+            VReg target = new VReg(reg.getType(), reg.getSize());
+            VReg source1 = new VReg(reg.getType(), reg.getSize());
+            VReg source2 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir2 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir3 = new RrrMIR(op, target, source1, source2);
@@ -60,43 +60,43 @@ public class RrrMIR implements MIR {
             return List.of(ir1, ir2, ir3, ir4);
         }
         if (target.equals(reg) && source1.equals(reg)) {
-            VReg target = new VReg(this.target.getType());
-            VReg source1 = new VReg(this.source1.getType());
+            VReg target = new VReg(reg.getType(), reg.getSize());
+            VReg source1 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir2 = new RrrMIR(op, target, source1, source2);
             MIR ir3 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2, ir3);
         }
         if (target.equals(reg) && source2.equals(reg)) {
-            VReg target = new VReg(this.target.getType());
-            VReg source2 = new VReg(this.source2.getType());
+            VReg target = new VReg(reg.getType(), reg.getSize());
+            VReg source2 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source2, offset);
             MIR ir2 = new RrrMIR(op, target, source1, source2);
             MIR ir3 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2, ir3);
         }
         if (source1.equals(reg) && source2.equals(reg)) {
-            VReg source1 = new VReg(this.source1.getType());
-            VReg source2 = new VReg(this.source2.getType());
+            VReg source1 = new VReg(reg.getType(), reg.getSize());
+            VReg source2 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir2 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source2, offset);
             MIR ir3 = new RrrMIR(op, target, source1, source2);
             return List.of(ir1, ir2, ir3);
         }
         if (target.equals(reg)) {
-            VReg target = new VReg(this.target.getType());
+            VReg target = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new RrrMIR(op, target, source1, source2);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2);
         }
         if (source1.equals(reg)) {
-            VReg source1 = new VReg(this.source1.getType());
+            VReg source1 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir2 = new RrrMIR(op, target, source1, source2);
             return List.of(ir1, ir2);
         }
         if (source2.equals(reg)) {
-            VReg source2 = new VReg(this.source2.getType());
+            VReg source2 = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source2, offset);
             MIR ir2 = new RrrMIR(op, target, source1, source2);
             return List.of(ir1, ir2);
@@ -112,7 +112,7 @@ public class RrrMIR implements MIR {
                 default -> throw new IllegalStateException("Unexpected value: " + op);
             };
             case INT -> switch (op) {
-                case ADD, SUB, MUL, DIV -> op.toString().toLowerCase();
+                case ADD, ADDW, SUB, MUL, DIV -> op.toString().toLowerCase();
                 case REM -> String.format("%sw", op.toString().toLowerCase());
                 case EQ, GE, GT, LE, LT -> String.format("f%s.s", op.toString().toLowerCase());
             };

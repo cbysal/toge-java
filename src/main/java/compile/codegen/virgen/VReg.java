@@ -11,8 +11,8 @@ public class VReg extends Reg implements VIRItem {
     private static final AtomicInteger counter = new AtomicInteger(0);
     private final int id;
 
-    public VReg(Type type) {
-        super(type);
+    public VReg(Type type, int size) {
+        super(type, size);
         this.id = counter.getAndIncrement();
     }
 

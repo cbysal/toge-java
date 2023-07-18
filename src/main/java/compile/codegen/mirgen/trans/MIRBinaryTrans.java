@@ -10,7 +10,7 @@ import java.util.List;
 
 public final class MIRBinaryTrans {
     private static void transAddRegImmF(List<MIR> irs, VReg target, VReg source, float imm) {
-        VReg midReg = new VReg(Type.FLOAT);
+        VReg midReg = new VReg(Type.FLOAT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transAddRegRegF(irs, target, source, midReg);
     }
@@ -20,7 +20,7 @@ public final class MIRBinaryTrans {
             irs.add(new RriMIR(RriMIR.Op.ADDI, target, source, imm));
             return;
         }
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transAddRegRegI(irs, target, source, midReg);
     }
@@ -30,7 +30,10 @@ public final class MIRBinaryTrans {
     }
 
     private static void transAddRegRegI(List<MIR> irs, VReg target, VReg source1, VReg source2) {
-        irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, source2));
+        if (target.getSize() == 4)
+            irs.add(new RrrMIR(RrrMIR.Op.ADDW, target, source1, source2));
+        else
+            irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, source2));
     }
 
     static void transBinaryImmReg(List<MIR> irs, BinaryVIR binaryVIR, Value value, VReg reg) {
@@ -154,13 +157,13 @@ public final class MIRBinaryTrans {
     }
 
     private static void transCmpRegImmF(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source, float imm) {
-        VReg midReg = new VReg(Type.FLOAT);
+        VReg midReg = new VReg(Type.FLOAT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transCmpRegRegF(irs, type, target, source, midReg);
     }
 
     private static void transCmpRegImmI(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source, int imm) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transCmpRegRegI(irs, type, target, source, midReg);
     }
@@ -184,34 +187,34 @@ public final class MIRBinaryTrans {
     private static void transCmpRegRegI(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source1, VReg source2) {
         switch (type) {
             case EQ -> {
-                VReg midReg = new VReg(Type.INT);
+                VReg midReg = new VReg(Type.INT, 4);
                 irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
                 irs.add(new RriMIR(RriMIR.Op.SLTIU, target, midReg, 1));
             }
             case NE -> {
-                VReg midReg1 = new VReg(Type.INT);
-                VReg midReg2 = new VReg(Type.INT);
+                VReg midReg1 = new VReg(Type.INT, 4);
+                VReg midReg2 = new VReg(Type.INT, 4);
                 irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg1, source1, source2));
                 irs.add(new RriMIR(RriMIR.Op.SLTIU, midReg2, midReg1, 1));
                 irs.add(new RriMIR(RriMIR.Op.SLTIU, target, midReg2, 1));
             }
             case GE -> {
-                VReg midReg = new VReg(Type.INT);
+                VReg midReg = new VReg(Type.INT, 4);
                 irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source2, source1));
                 irs.add(new RriMIR(RriMIR.Op.SLTI, target, midReg, 1));
             }
             case GT -> {
-                VReg midReg = new VReg(Type.INT);
+                VReg midReg = new VReg(Type.INT, 4);
                 irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source2, source1));
                 irs.add(new RriMIR(RriMIR.Op.SLTI, target, midReg, 0));
             }
             case LE -> {
-                VReg midReg = new VReg(Type.INT);
+                VReg midReg = new VReg(Type.INT, 4);
                 irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
                 irs.add(new RriMIR(RriMIR.Op.SLTI, target, midReg, 1));
             }
             case LT -> {
-                VReg midReg = new VReg(Type.INT);
+                VReg midReg = new VReg(Type.INT, 4);
                 irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
                 irs.add(new RriMIR(RriMIR.Op.SLTI, target, midReg, 0));
             }
@@ -219,25 +222,25 @@ public final class MIRBinaryTrans {
     }
 
     private static void transDivImmRegF(List<MIR> irs, VReg target, float imm, VReg source) {
-        VReg midReg = new VReg(Type.FLOAT);
+        VReg midReg = new VReg(Type.FLOAT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transDivRegRegF(irs, target, midReg, source);
     }
 
     private static void transDivImmRegI(List<MIR> irs, VReg target, int imm, VReg source) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transDivRegRegI(irs, target, midReg, source);
     }
 
     private static void transDivRegImmF(List<MIR> irs, VReg target, VReg source, float imm) {
-        VReg midReg = new VReg(Type.FLOAT);
+        VReg midReg = new VReg(Type.FLOAT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transDivRegRegF(irs, target, source, midReg);
     }
 
     private static void transDivRegImmI(List<MIR> irs, VReg target, VReg source, int imm) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         irs.add(new RrrMIR(RrrMIR.Op.DIV, target, source, midReg));
     }
@@ -251,13 +254,13 @@ public final class MIRBinaryTrans {
     }
 
     private static void transModImmReg(List<MIR> irs, VReg target, int imm, VReg source) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transModRegReg(irs, target, midReg, source);
     }
 
     private static void transModRegImm(List<MIR> irs, VReg target, VReg source, int imm) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transModRegReg(irs, target, source, midReg);
     }
@@ -267,13 +270,13 @@ public final class MIRBinaryTrans {
     }
 
     private static void transMulRegImmF(List<MIR> irs, VReg target, VReg source, float imm) {
-        VReg midReg = new VReg(Type.FLOAT);
+        VReg midReg = new VReg(Type.FLOAT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transMulRegRegF(irs, target, source, midReg);
     }
 
     private static void transMulRegImmI(List<MIR> irs, VReg target, VReg source, int imm) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transMulRegRegI(irs, target, source, midReg);
     }
@@ -287,19 +290,19 @@ public final class MIRBinaryTrans {
     }
 
     private static void transSubImmRegF(List<MIR> irs, VReg target, float imm, VReg source) {
-        VReg midReg = new VReg(Type.FLOAT);
+        VReg midReg = new VReg(Type.FLOAT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transSubRegRegF(irs, target, midReg, source);
     }
 
     private static void transSubImmRegI(List<MIR> irs, VReg target, int imm, VReg source) {
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transSubRegRegI(irs, target, midReg, source);
     }
 
     private static void transSubRegImmF(List<MIR> irs, VReg target, VReg source, float imm) {
-        VReg midReg = new VReg(Type.FLOAT);
+        VReg midReg = new VReg(Type.FLOAT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transSubRegRegF(irs, target, source, midReg);
     }
@@ -309,7 +312,7 @@ public final class MIRBinaryTrans {
             irs.add(new RriMIR(RriMIR.Op.ADDI, target, source, -imm));
             return;
         }
-        VReg midReg = new VReg(Type.INT);
+        VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transSubRegRegI(irs, target, source, midReg);
     }

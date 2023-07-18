@@ -30,7 +30,7 @@ public final class MIROpTrans {
             if (item1 instanceof VReg reg) {
                 reg1 = reg;
             } else {
-                reg1 = new VReg(item1.getType());
+                reg1 = new VReg(item1.getType(), 4);
                 if (item1.getType() == Type.FLOAT) {
                     MIROpHelper.loadImmToReg(irs, reg1, ((Value) item1).getFloat());
                 } else {
@@ -40,7 +40,7 @@ public final class MIROpTrans {
             if (item2 instanceof VReg reg) {
                 reg2 = reg;
             } else {
-                reg2 = new VReg(item2.getType());
+                reg2 = new VReg(item2.getType(), 4);
                 if (item2.getType() == Type.FLOAT) {
                     MIROpHelper.loadImmToReg(irs, reg2, ((Value) item2).getFloat());
                 } else {
@@ -48,7 +48,7 @@ public final class MIROpTrans {
                 }
             }
             if (item1.getType() == Type.FLOAT || item2.getType() == Type.FLOAT) {
-                VReg midReg = new VReg(Type.INT);
+                VReg midReg = new VReg(Type.INT, 4);
                 if (type == Block.Cond.Type.NE) {
                     irs.add(new RrrMIR(RrrMIR.Op.EQ, midReg, reg1, reg2));
                     irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, targetLabel));
@@ -119,7 +119,7 @@ public final class MIROpTrans {
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg,
                                 (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     else if (param instanceof Value value) {
-                        VReg midReg = new VReg(Type.INT);
+                        VReg midReg = new VReg(Type.INT, 4);
                         MIROpHelper.loadImmToReg(irs, midReg, value.getFloat());
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg,
                                 (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
@@ -140,7 +140,7 @@ public final class MIROpTrans {
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg,
                                 (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     else if (param instanceof Value value) {
-                        VReg midReg = new VReg(Type.INT);
+                        VReg midReg = new VReg(Type.INT, 4);
                         MIROpHelper.loadImmToReg(irs, midReg, value.getInt());
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg,
                                 (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
