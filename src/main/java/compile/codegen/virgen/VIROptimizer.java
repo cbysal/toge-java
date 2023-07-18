@@ -27,6 +27,7 @@ public class VIROptimizer {
         singleLocal2Reg();
         mergeBlocks();
         constPass();
+        globalToImm();
         assignPass();
         deadcodeElimination();
         mergeBlocks();
@@ -37,6 +38,29 @@ public class VIROptimizer {
         assignPass();
         deadcodeElimination();
         mergeBlocks();
+    }
+
+    private void globalToImm() {
+        Set<GlobalSymbol> toRemoveGlobals =
+                globals.values().stream().filter(DataSymbol::isSingle).collect(Collectors.toSet());
+        for (VirtualFunction func : funcs.values())
+            for (Block block : func.getBlocks())
+                for (VIR ir : block)
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.getSymbol() instanceof GlobalSymbol global && global.isSingle())
+                        toRemoveGlobals.remove(global);
+
+        for (VirtualFunction func : funcs.values())
+            for (Block block : func.getBlocks())
+                for (int i = 0; i < block.size(); i++) {
+                    VIR ir = block.get(i);
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.getSymbol() instanceof GlobalSymbol global && toRemoveGlobals.contains(global)) {
+                        if (global.getType() == Type.INT)
+                            block.set(i, new LIVIR(loadVIR.getTarget(), global.getInt()));
+                        else
+                            block.set(i, new LIVIR(loadVIR.getTarget(), global.getFloat()));
+                    }
+                }
+        toRemoveGlobals.forEach(global -> globals.remove(global.getName(), global));
     }
 
     private void assignPass() {
