@@ -26,21 +26,20 @@ public class VIROptimizer {
         isProcessed = true;
         for (int i = 0; i < 2; i++) {
             singleLocal2Reg();
-            mergeBlocks();
-            constPass();
             globalToImm();
+            mergeBlocks();
+            constPassForBlock();
+            constPassForFunc();
             assignPass();
             deadcodeElimination();
             mergeBlocks();
             functionInline();
             deadcodeElimination();
             mergeBlocks();
-            constPass();
+            constPassForBlock();
+            constPassForFunc();
             assignPass();
-            deadcodeElimination();
             instrCombine();
-            constPass();
-            assignPass();
             deadcodeElimination();
             mergeBlocks();
         }
@@ -273,7 +272,7 @@ public class VIROptimizer {
         } while (toContinue);
     }
 
-    private void constPass() {
+    private void constPassForBlock() {
         boolean toContinue;
         do {
             toContinue = false;
@@ -358,6 +357,151 @@ public class VIROptimizer {
                                 toContinue = true;
                             }
                             regToValueMap.remove(unaryVIR.getResult());
+                            continue;
+                        }
+                    }
+                    Map<Block.Cond, Block> newCondBlocks = new HashMap<>();
+                    for (Pair<Block.Cond, Block> entry : block.getCondBlocks()) {
+                        Block.Cond cond = entry.first();
+                        VIRItem left = cond.left();
+                        VIRItem right = cond.right();
+                        Block targetBlock = entry.second();
+                        if (left instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                            left = reg.getType() == Type.FLOAT ?
+                                    new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                    new Value(regToValueMap.get(reg));
+                            toContinue = true;
+                        }
+                        if (right instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                            right = reg.getType() == Type.FLOAT ?
+                                    new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                    new Value(regToValueMap.get(reg));
+                            toContinue = true;
+                        }
+                        newCondBlocks.put(new Block.Cond(cond.type(), left, right), targetBlock);
+                    }
+                    block.clearCondBlocks();
+                    newCondBlocks.forEach(block::setCondBlock);
+                }
+            }
+            standardize();
+        } while (toContinue);
+    }
+
+    private void constPassForFunc() {
+        boolean toContinue;
+        do {
+            toContinue = false;
+            for (VirtualFunction func : funcs.values()) {
+                List<Block> blocks = func.getBlocks();
+                Map<VReg, Integer> writeCounter = new HashMap<>();
+                Map<VReg, Integer> regToValueMap = new HashMap<>();
+                for (Block block : blocks) {
+                    for (VIR ir : block) {
+                        if (ir instanceof BinaryVIR binaryVIR) {
+                            writeCounter.put(binaryVIR.getResult(), writeCounter.getOrDefault(binaryVIR.getResult(),
+                                    0) + 1);
+                            continue;
+                        }
+                        if (ir instanceof CallVIR callVIR) {
+                            if (callVIR.getRetVal() != null)
+                                writeCounter.put(callVIR.getRetVal(), writeCounter.getOrDefault(callVIR.getRetVal(),
+                                        0) + 1);
+                            continue;
+                        }
+                        if (ir instanceof LIVIR liVIR) {
+                            writeCounter.put(liVIR.getTarget(), writeCounter.getOrDefault(liVIR.getTarget(), 0) + 1);
+                            regToValueMap.put(liVIR.getTarget(), liVIR.second());
+                            continue;
+                        }
+                        if (ir instanceof LoadVIR loadVIR) {
+                            writeCounter.put(loadVIR.getTarget(),
+                                    writeCounter.getOrDefault(loadVIR.getTarget(), 0) + 1);
+                            continue;
+                        }
+                        if (ir instanceof MovVIR movVIR) {
+                            writeCounter.put(movVIR.getTarget(), writeCounter.getOrDefault(movVIR.getTarget(), 0) + 1);
+                            continue;
+                        }
+                        if (ir instanceof UnaryVIR unaryVIR) {
+                            writeCounter.put(unaryVIR.getResult(),
+                                    writeCounter.getOrDefault(unaryVIR.getResult(), 0) + 1);
+                            continue;
+                        }
+                    }
+                }
+                for (Map.Entry<VReg, Integer> entry : writeCounter.entrySet())
+                    if (entry.getValue() != 1)
+                        regToValueMap.remove(entry.getKey());
+                for (Block block : blocks) {
+                    for (int irId = 0; irId < block.size(); irId++) {
+                        VIR ir = block.get(irId);
+                        if (ir instanceof BinaryVIR binaryVIR) {
+                            VIRItem left = binaryVIR.getLeft();
+                            VIRItem right = binaryVIR.getRight();
+                            if (left instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                                left = reg.getType() == Type.FLOAT ?
+                                        new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                        new Value(regToValueMap.get(reg));
+                                toContinue = true;
+                            }
+                            if (right instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                                right = reg.getType() == Type.FLOAT ?
+                                        new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                        new Value(regToValueMap.get(reg));
+                                toContinue = true;
+                            }
+                            block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
+                            continue;
+                        }
+                        if (ir instanceof CallVIR callVIR) {
+                            List<VIRItem> params = callVIR.getParams();
+                            for (int j = 0; j < params.size(); j++)
+                                if (params.get(j) instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                                    params.set(j, reg.getType() == Type.FLOAT ?
+                                            new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                            new Value(regToValueMap.get(reg)));
+                                    toContinue = true;
+                                }
+                            continue;
+                        }
+                        if (ir instanceof LoadVIR loadVIR) {
+                            List<VIRItem> dimensions = loadVIR.getDimensions();
+                            for (int j = 0; j < dimensions.size(); j++)
+                                if (dimensions.get(j) instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                                    dimensions.set(j, reg.getType() == Type.FLOAT ?
+                                            new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                            new Value(regToValueMap.get(reg)));
+                                    toContinue = true;
+                                }
+                            continue;
+                        }
+                        if (ir instanceof MovVIR movVIR) {
+                            if (regToValueMap.containsKey(movVIR.getSource())) {
+                                block.set(irId, new LIVIR(movVIR.getTarget(), regToValueMap.get(movVIR.getSource())));
+                                toContinue = true;
+                            }
+                            continue;
+                        }
+                        if (ir instanceof StoreVIR storeVIR) {
+                            List<VIRItem> dimensions = storeVIR.getDimensions();
+                            for (int j = 0; j < dimensions.size(); j++)
+                                if (dimensions.get(j) instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                                    dimensions.set(j, reg.getType() == Type.FLOAT ?
+                                            new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                            new Value(regToValueMap.get(reg)));
+                                    toContinue = true;
+                                }
+                            continue;
+                        }
+                        if (ir instanceof UnaryVIR unaryVIR) {
+                            if (unaryVIR.getSource() instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                                block.set(irId, new UnaryVIR(unaryVIR.getType(), unaryVIR.getResult(),
+                                        reg.getType() == Type.FLOAT ?
+                                                new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
+                                                new Value(regToValueMap.get(reg))));
+                                toContinue = true;
+                            }
                             continue;
                         }
                     }
