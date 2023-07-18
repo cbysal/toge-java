@@ -37,7 +37,62 @@ public class VIROptimizer {
         constPass();
         assignPass();
         deadcodeElimination();
+        instrCombine();
+        constPass();
+        assignPass();
+        deadcodeElimination();
         mergeBlocks();
+    }
+
+    private void instrCombine() {
+        for (VirtualFunction func : funcs.values()) {
+            for (Block block : func.getBlocks()) {
+                Map<VReg, Pair<VReg, Value>> mulIRs = new HashMap<>();
+                for (int i = 0; i < block.size(); i++) {
+                    VIR ir = block.get(i);
+                    if (ir instanceof BinaryVIR binaryVIR) {
+                        if (binaryVIR.getType() == BinaryVIR.Type.MUL) {
+                            if (binaryVIR.getLeft() instanceof VReg reg && binaryVIR.getRight() instanceof Value value) {
+                                mulIRs.put(binaryVIR.getResult(), new Pair<>(reg, value));
+                            } else if (binaryVIR.getLeft() instanceof Value value && binaryVIR.getRight() instanceof VReg reg) {
+                                mulIRs.put(binaryVIR.getResult(), new Pair<>(reg, value));
+                            }
+                        } else if (binaryVIR.getType() == BinaryVIR.Type.DIV) {
+                            if (binaryVIR.getLeft() instanceof VReg reg && binaryVIR.getRight() instanceof Value value && mulIRs.containsKey(reg)) {
+                                Pair<VReg, Value> regValue = mulIRs.get(reg);
+                                if (regValue.second().equals(value))
+                                    block.set(i, new MovVIR(binaryVIR.getResult(), regValue.first()));
+                            }
+                            mulIRs.remove(binaryVIR.getResult());
+                        } else {
+                            mulIRs.remove(binaryVIR.getResult());
+                        }
+                        continue;
+                    }
+                    if (ir instanceof CallVIR callVIR) {
+                        if (callVIR.getRetVal() != null)
+                            mulIRs.remove(callVIR.getRetVal());
+                        continue;
+                    }
+                    if (ir instanceof LIVIR liVIR) {
+                        mulIRs.remove(liVIR.getTarget());
+                        continue;
+                    }
+                    if (ir instanceof LoadVIR loadVIR) {
+                        mulIRs.remove(loadVIR.getTarget());
+                        continue;
+                    }
+                    if (ir instanceof MovVIR movVIR) {
+                        mulIRs.remove(movVIR.getTarget());
+                        continue;
+                    }
+                    if (ir instanceof UnaryVIR unaryVIR) {
+                        mulIRs.remove(unaryVIR.getResult());
+                        continue;
+                    }
+                }
+            }
+        }
     }
 
     private void globalToImm() {

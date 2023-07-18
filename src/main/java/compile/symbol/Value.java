@@ -2,6 +2,8 @@ package compile.symbol;
 
 import compile.codegen.virgen.vir.VIRItem;
 
+import java.util.Objects;
+
 public final class Value implements VIRItem {
     private final Type type;
     private final int value;
@@ -95,6 +97,21 @@ public final class Value implements VIRItem {
         if (v.type == Type.FLOAT)
             return value != Float.intBitsToFloat(v.value);
         return value != v.value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Value value1 = (Value) o;
+        return value == value1.value && type == value1.type;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, value);
     }
 
     @Override
