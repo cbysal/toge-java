@@ -447,15 +447,16 @@ public class VIROptimizer {
             toInlineFunc = null;
             Map<FuncSymbol, Set<FuncSymbol>> funcCallRelations = new HashMap<>();
             FuncSymbol mainFunc = null;
+            for (VirtualFunction func : funcs.values())
+                funcCallRelations.put(func.getSymbol(), new HashSet<>());
             for (VirtualFunction func : funcs.values()) {
                 if (func.getSymbol().getName().equals("main"))
                     mainFunc = func.getSymbol();
-                Set<FuncSymbol> calledFuncs = new HashSet<>();
+                Set<FuncSymbol> calledFuncs = funcCallRelations.get(func.getSymbol());
                 for (Block block : func.getBlocks())
                     for (VIR ir : block)
-                        if (ir instanceof CallVIR callVIR)
+                        if (ir instanceof CallVIR callVIR && funcCallRelations.containsKey(callVIR.getFunc()))
                             calledFuncs.add(callVIR.getFunc());
-                funcCallRelations.put(func.getSymbol(), calledFuncs);
             }
             if (mainFunc == null)
                 throw new RuntimeException("No main function!");
@@ -611,11 +612,13 @@ public class VIROptimizer {
                                             params.add(param);
                                     }
                                     VReg retVal = callVIR.getRetVal();
-                                    if (regMap.containsKey(retVal))
-                                        retVal = regMap.get(retVal);
-                                    else {
-                                        retVal = new VReg(retVal.getType(), retVal.getSize());
-                                        regMap.put(callVIR.getRetVal(), retVal);
+                                    if (retVal != null) {
+                                        if (regMap.containsKey(retVal))
+                                            retVal = regMap.get(retVal);
+                                        else {
+                                            retVal = new VReg(retVal.getType(), retVal.getSize());
+                                            regMap.put(callVIR.getRetVal(), retVal);
+                                        }
                                     }
                                     newBlock.add(new CallVIR(callVIR.getFunc(), retVal, params));
                                     continue;
