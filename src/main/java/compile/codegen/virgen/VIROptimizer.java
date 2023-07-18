@@ -24,24 +24,26 @@ public class VIROptimizer {
         if (isProcessed)
             return;
         isProcessed = true;
-        singleLocal2Reg();
-        mergeBlocks();
-        constPass();
-        globalToImm();
-        assignPass();
-        deadcodeElimination();
-        mergeBlocks();
-        functionInline();
-        deadcodeElimination();
-        mergeBlocks();
-        constPass();
-        assignPass();
-        deadcodeElimination();
-        instrCombine();
-        constPass();
-        assignPass();
-        deadcodeElimination();
-        mergeBlocks();
+        for (int i = 0; i < 2; i++) {
+            singleLocal2Reg();
+            mergeBlocks();
+            constPass();
+            globalToImm();
+            assignPass();
+            deadcodeElimination();
+            mergeBlocks();
+            functionInline();
+            deadcodeElimination();
+            mergeBlocks();
+            constPass();
+            assignPass();
+            deadcodeElimination();
+            instrCombine();
+            constPass();
+            assignPass();
+            deadcodeElimination();
+            mergeBlocks();
+        }
     }
 
     private void instrCombine() {
@@ -51,7 +53,41 @@ public class VIROptimizer {
                 for (int i = 0; i < block.size(); i++) {
                     VIR ir = block.get(i);
                     if (ir instanceof BinaryVIR binaryVIR) {
-                        if (binaryVIR.getType() == BinaryVIR.Type.MUL) {
+                        if (binaryVIR.getType() == BinaryVIR.Type.ADD) {
+                            if (binaryVIR.getLeft() instanceof VReg reg1 && binaryVIR.getRight() instanceof VReg reg2) {
+                                if (reg1 == reg2) {
+                                    block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.getResult(), reg1,
+                                            new Value(2)));
+                                    mulIRs.put(binaryVIR.getResult(), new Pair<>(reg1, new Value(2)));
+                                    continue;
+                                }
+                                if (mulIRs.containsKey(reg1)) {
+                                    Pair<VReg, Value> regValue = mulIRs.get(reg1);
+                                    if (regValue.first() == reg2) {
+                                        block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.getResult(),
+                                                regValue.first(), new Value(regValue.second().getInt() + 1)));
+                                        mulIRs.put(binaryVIR.getResult(), new Pair<>(regValue.first(),
+                                                new Value(regValue.second().getInt() + 1)));
+                                    } else {
+                                        mulIRs.remove(binaryVIR.getResult());
+                                    }
+                                    continue;
+                                }
+                                if (mulIRs.containsKey(reg2)) {
+                                    Pair<VReg, Value> regValue = mulIRs.get(reg2);
+                                    if (regValue.first() == reg1) {
+                                        block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.getResult(),
+                                                regValue.first(), new Value(regValue.second().getInt() + 1)));
+                                        mulIRs.put(binaryVIR.getResult(), new Pair<>(regValue.first(),
+                                                new Value(regValue.second().getInt() + 1)));
+                                    } else {
+                                        mulIRs.remove(binaryVIR.getResult());
+                                    }
+                                    continue;
+                                }
+                            }
+                            mulIRs.remove(binaryVIR.getResult());
+                        } else if (binaryVIR.getType() == BinaryVIR.Type.MUL) {
                             if (binaryVIR.getLeft() instanceof VReg reg && binaryVIR.getRight() instanceof Value value) {
                                 mulIRs.put(binaryVIR.getResult(), new Pair<>(reg, value));
                             } else if (binaryVIR.getLeft() instanceof Value value && binaryVIR.getRight() instanceof VReg reg) {
