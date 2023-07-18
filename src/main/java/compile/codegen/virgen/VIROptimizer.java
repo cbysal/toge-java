@@ -485,6 +485,7 @@ public class VIROptimizer {
                     if (ir instanceof CallVIR toReplaceCall && toReplaceCall.getFunc().equals(toInlineSymbol)) {
                         Map<ParamSymbol, VReg> paramToRegMap = new HashMap<>();
                         Map<VReg, VReg> paramRegCopyMap = new HashMap<>();
+                        Map<LocalSymbol, LocalSymbol> localCopyMap = new HashMap<>();
                         Block preCallBlock = new Block();
                         Block lastBlock = new Block();
                         for (int i = 0; i < toReplaceCall.getParams().size(); i++) {
@@ -506,6 +507,11 @@ public class VIROptimizer {
                                 continue;
                             }
                             throw new RuntimeException();
+                        }
+                        for (LocalSymbol local : toInlineFunc.getLocals()) {
+                            LocalSymbol newLocal = local.clone();
+                            localCopyMap.put(local, newLocal);
+                            func.addLocal(newLocal);
                         }
                         Map<VReg, VReg> regMap = new HashMap<>();
                         if (toReplaceCall.getRetVal() != null)
@@ -677,9 +683,10 @@ public class VIROptimizer {
                                         } else
                                             dimensions.add(dimension);
                                     }
-                                    if (loadVIR.getSymbol() instanceof LocalSymbol localSymbol)
-                                        func.addLocal(localSymbol);
-                                    newBlock.add(new LoadVIR(target, dimensions, loadVIR.getSymbol()));
+                                    DataSymbol symbol = loadVIR.getSymbol();
+                                    if (symbol instanceof LocalSymbol local)
+                                        symbol = localCopyMap.get(local);
+                                    newBlock.add(new LoadVIR(target, dimensions, symbol));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof MovVIR movVIR) {
@@ -732,8 +739,9 @@ public class VIROptimizer {
                                         }
                                         continue;
                                     }
-                                    if (storeVIR.getSymbol() instanceof LocalSymbol localSymbol)
-                                        func.addLocal(localSymbol);
+                                    DataSymbol symbol = storeVIR.getSymbol();
+                                    if (symbol instanceof LocalSymbol local)
+                                        symbol = localCopyMap.get(local);
                                     List<VIRItem> dimensions = new ArrayList<>();
                                     for (VIRItem dimension : storeVIR.getDimensions()) {
                                         if (dimension instanceof VReg reg) {
@@ -754,7 +762,7 @@ public class VIROptimizer {
                                         source = new VReg(source.getType(), source.getSize());
                                         regMap.put(storeVIR.getSource(), source);
                                     }
-                                    newBlock.add(new StoreVIR(storeVIR.getSymbol(), dimensions, source));
+                                    newBlock.add(new StoreVIR(symbol, dimensions, source));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof UnaryVIR unaryVIR) {
@@ -937,6 +945,7 @@ public class VIROptimizer {
                     }
                 }
             }
+            func.getLocals().removeAll(locals);
         }
     }
 

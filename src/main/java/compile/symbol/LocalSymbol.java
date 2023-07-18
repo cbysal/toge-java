@@ -1,5 +1,6 @@
 package compile.symbol;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class LocalSymbol extends DataSymbol {
@@ -18,5 +19,11 @@ public class LocalSymbol extends DataSymbol {
         builder.append(type.toString().toLowerCase()).append(' ').append(name);
         dimensions.forEach(dimension -> builder.append('[').append(dimension).append(']'));
         return builder.toString();
+    }
+
+    @Override
+    public LocalSymbol clone() {
+        List<Integer> newDimensions = new ArrayList<>(dimensions);
+        return new LocalSymbol(type, name, newDimensions);
     }
 }
