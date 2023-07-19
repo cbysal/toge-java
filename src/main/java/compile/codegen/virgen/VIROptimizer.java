@@ -9,13 +9,10 @@ import java.util.stream.Collectors;
 
 public class VIROptimizer {
     private boolean isProcessed = false;
-    private final Map<String, GlobalSymbol> consts;
     private final Map<String, GlobalSymbol> globals;
     private final Map<String, VirtualFunction> funcs;
 
-    public VIROptimizer(Map<String, GlobalSymbol> consts, Map<String, GlobalSymbol> globals, Map<String,
-            VirtualFunction> funcs) {
-        this.consts = consts;
+    public VIROptimizer(Map<String, GlobalSymbol> globals, Map<String, VirtualFunction> funcs) {
         this.globals = globals;
         this.funcs = funcs;
     }

@@ -12,7 +12,6 @@ import java.util.*;
 public class VIRGenerator {
     private boolean isProcessed = false;
     private final RootAST rootAST;
-    private final Map<String, GlobalSymbol> consts = new HashMap<>();
     private final Map<String, GlobalSymbol> globals = new HashMap<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
     private VirtualFunction curFunc;
@@ -30,11 +29,6 @@ public class VIRGenerator {
         isProcessed = true;
         parseRoot(rootAST);
         formatVIRs();
-    }
-
-    public Map<String, GlobalSymbol> getConsts() {
-        checkIfIsProcessed();
-        return consts;
     }
 
     public Map<String, VirtualFunction> getFuncs() {
@@ -194,7 +188,7 @@ public class VIRGenerator {
 
     private void parseConstDef(ConstDefAST root) {
         GlobalSymbol global = root.symbol();
-        consts.put(global.getName(), global);
+        globals.put(global.getName(), global);
     }
 
     private void parseContinueStmt() {

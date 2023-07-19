@@ -45,21 +45,19 @@ public class Compiler {
         SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
         RootAST rootAST = syntaxParser.getRootAST();
         VIRGenerator virGenerator = new VIRGenerator(rootAST);
-        Map<String, GlobalSymbol> consts = virGenerator.getConsts();
         Map<String, GlobalSymbol> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
         if (options.containsKey(Executor.OptionPool.PRINT_VIR_BEFORE_OPTIMIZATION))
             printVIR(vFuncs);
         if (options.containsKey(Executor.OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION))
             emitVIR(options.get(Executor.OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION), vFuncs);
-        VIROptimizer virOptimizer = new VIROptimizer(consts, globals, vFuncs);
+        VIROptimizer virOptimizer = new VIROptimizer(globals, vFuncs);
         virOptimizer.optimize();
         if (options.containsKey(Executor.OptionPool.PRINT_VIR_AFTER_OPTIMIZATION))
             printVIR(vFuncs);
         if (options.containsKey(Executor.OptionPool.EMIT_VIR_AFTER_OPTIMIZATION))
             emitVIR(options.get(Executor.OptionPool.EMIT_VIR_AFTER_OPTIMIZATION), vFuncs);
-        MIRGenerator mirGenerator = new MIRGenerator(consts, globals, vFuncs);
-        consts = mirGenerator.getConsts();
+        MIRGenerator mirGenerator = new MIRGenerator(globals, vFuncs);
         globals = mirGenerator.getGlobals();
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
         if (options.containsKey(Executor.OptionPool.PRINT_MIR))
@@ -68,7 +66,7 @@ public class Compiler {
             emitMIR(options.get(Executor.OptionPool.EMIT_MIR), mFuncs);
         RegAllocator regAllocator = new RegAllocator(mFuncs);
         regAllocator.allocate();
-        CodeGenerator codeGenerator = new CodeGenerator(consts, globals, mFuncs);
+        CodeGenerator codeGenerator = new CodeGenerator(globals, mFuncs);
         String output = codeGenerator.getOutput();
         if (options.containsKey(Executor.OptionPool.PRINT_ASM))
             System.out.println(output);

@@ -17,14 +17,11 @@ import java.util.Map;
 
 public class MIRGenerator {
     private boolean isProcessed = false;
-    private final Map<String, GlobalSymbol> consts;
     private final Map<String, GlobalSymbol> globals;
     private final Map<String, VirtualFunction> vFuncs;
     private final Map<String, MachineFunction> mFuncs = new HashMap<>();
 
-    public MIRGenerator(Map<String, GlobalSymbol> consts, Map<String, GlobalSymbol> globals, Map<String,
-            VirtualFunction> vFuncs) {
-        this.consts = consts;
+    public MIRGenerator(Map<String, GlobalSymbol> globals, Map<String, VirtualFunction> vFuncs) {
         this.globals = globals;
         this.vFuncs = vFuncs;
     }
@@ -44,11 +41,6 @@ public class MIRGenerator {
             else
                 fSize = Integer.min(fSize + 1, MReg.F_CALLER_REGS.size());
         return new Pair<>(iSize, fSize);
-    }
-
-    public Map<String, GlobalSymbol> getConsts() {
-        checkIfIsProcessed();
-        return consts;
     }
 
     public Map<String, MachineFunction> getFuncs() {

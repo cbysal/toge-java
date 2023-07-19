@@ -11,34 +11,13 @@ import java.util.Map;
 
 public class CodeGenerator {
     private boolean isProcessed = false;
-    private final Map<String, GlobalSymbol> consts;
     private final Map<String, GlobalSymbol> globals;
     private final Map<String, MachineFunction> funcs;
     private String output = null;
 
-    public CodeGenerator(Map<String, GlobalSymbol> consts, Map<String, GlobalSymbol> globals, Map<String,
-            MachineFunction> funcs) {
-        this.consts = consts;
+    public CodeGenerator(Map<String, GlobalSymbol> globals, Map<String, MachineFunction> funcs) {
         this.globals = globals;
         this.funcs = funcs;
-    }
-
-    private void buildConsts(StringBuilder builder) {
-        if (!consts.isEmpty())
-            builder.append("\t.text\n");
-        for (GlobalSymbol constSymbol : consts.values()) {
-            int size = constSymbol.size();
-            builder.append("\t.align 8\n");
-            builder.append("\t.size ").append(constSymbol.getName()).append(", ").append(size).append('\n');
-            builder.append(constSymbol.getName()).append(":\n");
-            int num = size / 4;
-            if (constSymbol.isSingle()) {
-                builder.append("\t.word ").append(constSymbol.getInt()).append('\n');
-            } else {
-                for (int i = 0; i < num; i++)
-                    builder.append("\t.word ").append(constSymbol.getInt(i)).append('\n');
-            }
-        }
     }
 
     private void buildGlobals(StringBuilder builder) {
@@ -89,16 +68,11 @@ public class CodeGenerator {
         }
     }
 
-    private void buildHeader(StringBuilder builder) {
-        builder.append("\t.arch armv7ve\n").append("\t.fpu vfpv4\n").append("\t.arm\n");
-    }
-
     private void checkIfIsProcessed() {
         if (isProcessed)
             return;
         isProcessed = true;
         StringBuilder builder = new StringBuilder();
-        buildConsts(builder);
         buildGlobals(builder);
         buildFuncs(builder);
         output = builder.toString();
