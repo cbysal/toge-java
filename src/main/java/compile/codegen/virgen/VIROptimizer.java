@@ -719,23 +719,23 @@ public class VIROptimizer {
     }
 
     private void deadcodeEliminationOnRoot() {
-        Set<VReg> usedRegs = new HashSet<>();
-        Set<Symbol> usedSymbols = new HashSet<>();
+        Set<VReg> regFrontier = new HashSet<>();
+        Set<Symbol> symbolFrontier = new HashSet<>();
         Map<VReg, Set<VReg>> regToRegMap = new HashMap<>();
         Map<VReg, Set<Symbol>> regToSymbolMap = new HashMap<>();
         Map<Symbol, Set<VReg>> symbolToRegMap = new HashMap<>();
         for (VirtualFunction func : funcs.values()) {
             if (func.getRetVal() != null)
-                usedRegs.add(func.getRetVal());
-            usedSymbols.addAll(func.getSymbol().getParams());
+                regFrontier.add(func.getRetVal());
+            symbolFrontier.addAll(func.getSymbol().getParams());
             List<Block> blocks = func.getBlocks();
             for (Block block : blocks) {
-                block.getCondBlocks().stream().map(Pair::first).forEach(cond -> {
-                    if (cond.left() instanceof VReg reg)
-                        usedRegs.add(reg);
-                    if (cond.right() instanceof VReg reg)
-                        usedRegs.add(reg);
-                });
+                for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks()) {
+                    if (condBlock.first().left() instanceof VReg reg)
+                        regFrontier.add(reg);
+                    if (condBlock.first().right() instanceof VReg reg)
+                        regFrontier.add(reg);
+                }
                 for (VIR ir : block) {
                     if (ir instanceof BinaryVIR binaryVIR) {
                         if (binaryVIR.getLeft() instanceof VReg reg) {
@@ -753,7 +753,7 @@ public class VIROptimizer {
                     if (ir instanceof CallVIR callVIR) {
                         for (VIRItem param : callVIR.getParams())
                             if (param instanceof VReg reg)
-                                usedRegs.add(reg);
+                                regFrontier.add(reg);
                         continue;
                     }
                     if (ir instanceof LoadVIR loadVIR) {
@@ -793,21 +793,32 @@ public class VIROptimizer {
                 }
             }
         }
-        int sizeBefore, sizeAfter;
-        do {
-            sizeBefore = usedRegs.size() + usedSymbols.size();
-            Set<VReg> newRegs = new HashSet<>();
-            Set<Symbol> newSymbols = new HashSet<>();
-            for (VReg reg : usedRegs) {
-                newRegs.addAll(regToRegMap.getOrDefault(reg, Set.of()));
-                newSymbols.addAll(regToSymbolMap.getOrDefault(reg, Set.of()));
+        Set<VReg> usedRegs = new HashSet<>(regFrontier);
+        Set<Symbol> usedSymbols = new HashSet<>(symbolFrontier);
+        while (!regFrontier.isEmpty() || !symbolFrontier.isEmpty()) {
+            Set<VReg> newRegFrontier = new HashSet<>();
+            Set<Symbol> newSymbolFrontier = new HashSet<>();
+            for (VReg reg : regFrontier) {
+                for (VReg newReg : regToRegMap.getOrDefault(reg, Set.of()))
+                    if (!usedRegs.contains(newReg)) {
+                        usedRegs.add(newReg);
+                        newRegFrontier.add(newReg);
+                    }
+                for (Symbol newSymbol : regToSymbolMap.getOrDefault(reg, Set.of()))
+                    if (!usedSymbols.contains(newSymbol)) {
+                        usedSymbols.add(newSymbol);
+                        symbolFrontier.add(newSymbol);
+                    }
             }
-            for (Symbol symbol : usedSymbols)
-                newRegs.addAll(symbolToRegMap.getOrDefault(symbol, Set.of()));
-            usedRegs.addAll(newRegs);
-            usedSymbols.addAll(newSymbols);
-            sizeAfter = usedRegs.size() + usedSymbols.size();
-        } while (sizeBefore != sizeAfter);
+            for (Symbol symbol : symbolFrontier)
+                for (VReg newReg : symbolToRegMap.getOrDefault(symbol, Set.of()))
+                    if (!usedRegs.contains(newReg)) {
+                        usedRegs.add(newReg);
+                        newRegFrontier.add(newReg);
+                    }
+            regFrontier = newRegFrontier;
+            symbolFrontier = newSymbolFrontier;
+        }
         for (VirtualFunction func : funcs.values()) {
             List<Block> blocks = func.getBlocks();
             for (Block block : blocks) {
