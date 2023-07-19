@@ -5,11 +5,11 @@ import java.util.List;
 
 public class LocalSymbol extends DataSymbol {
 
-    LocalSymbol(Type type, String name) {
+    public LocalSymbol(Type type, String name) {
         super(type, name);
     }
 
-    LocalSymbol(Type type, String name, List<Integer> dimensions) {
+    public LocalSymbol(Type type, String name, List<Integer> dimensions) {
         super(type, name, dimensions);
     }
 
