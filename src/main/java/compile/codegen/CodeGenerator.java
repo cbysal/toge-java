@@ -11,11 +11,11 @@ import java.util.Map;
 
 public class CodeGenerator {
     private boolean isProcessed = false;
-    private final Map<String, GlobalSymbol> globals;
+    private final List<GlobalSymbol> globals;
     private final Map<String, MachineFunction> funcs;
     private String output = null;
 
-    public CodeGenerator(Map<String, GlobalSymbol> globals, Map<String, MachineFunction> funcs) {
+    public CodeGenerator(List<GlobalSymbol> globals, Map<String, MachineFunction> funcs) {
         this.globals = globals;
         this.funcs = funcs;
     }
@@ -23,7 +23,7 @@ public class CodeGenerator {
     private void buildGlobals(StringBuilder builder) {
         List<GlobalSymbol> symbolsInData = new ArrayList<>();
         List<GlobalSymbol> symbolsInBss = new ArrayList<>();
-        for (GlobalSymbol globalSymbol : globals.values())
+        for (GlobalSymbol globalSymbol : globals)
             if (!globalSymbol.isSingle() && globalSymbol.isInBss())
                 symbolsInBss.add(globalSymbol);
             else

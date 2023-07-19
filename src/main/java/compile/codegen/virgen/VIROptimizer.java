@@ -9,10 +9,10 @@ import java.util.stream.Collectors;
 
 public class VIROptimizer {
     private boolean isProcessed = false;
-    private final Map<String, GlobalSymbol> globals;
+    private final List<GlobalSymbol> globals;
     private final Map<String, VirtualFunction> funcs;
 
-    public VIROptimizer(Map<String, GlobalSymbol> globals, Map<String, VirtualFunction> funcs) {
+    public VIROptimizer(List<GlobalSymbol> globals, Map<String, VirtualFunction> funcs) {
         this.globals = globals;
         this.funcs = funcs;
     }
@@ -21,9 +21,10 @@ public class VIROptimizer {
         if (isProcessed)
             return;
         isProcessed = true;
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 3; i++) {
             singleLocal2Reg();
             globalToImm();
+            splitGlobals();
             mergeBlocks();
             constPassForBlock();
             constPassForFunc();
@@ -39,6 +40,81 @@ public class VIROptimizer {
             instrCombine();
             deadcodeElimination();
             mergeBlocks();
+        }
+    }
+
+    private void splitGlobals() {
+        Set<GlobalSymbol> globals =
+                this.globals.stream().filter(global -> !global.isSingle()).collect(Collectors.toSet());
+        for (VirtualFunction func : funcs.values()) {
+            for (Block block : func.getBlocks()) {
+                for (VIR ir : block) {
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.getSymbol() instanceof GlobalSymbol global && globals.contains(global)) {
+                        List<VIRItem> dimensions = loadVIR.getDimensions();
+                        if (dimensions.isEmpty() || dimensions.get(0) instanceof VReg)
+                            globals.remove(global);
+                        continue;
+                    }
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.getSymbol() instanceof GlobalSymbol global && globals.contains(global)) {
+                        List<VIRItem> dimensions = storeVIR.getDimensions();
+                        if (dimensions.isEmpty() || dimensions.get(0) instanceof VReg)
+                            globals.remove(global);
+                        continue;
+                    }
+                }
+            }
+        }
+        this.globals.removeAll(globals);
+        Map<GlobalSymbol, List<GlobalSymbol>> newGlobalMap = new HashMap<>();
+        for (GlobalSymbol global : globals) {
+            List<GlobalSymbol> newGlobals = new ArrayList<>();
+            newGlobalMap.put(global, newGlobals);
+            if (global.getDimensions().size() == 1) {
+                int dimension = global.getDimensions().get(0);
+                for (int i = 0; i < dimension; i++) {
+                    if (global.getType() == Type.INT)
+                        newGlobals.add(new GlobalSymbol(global.isConst(), global.getType(),
+                                global.getName() + "." + i, global.getInt(i)));
+                    else
+                        newGlobals.add(new GlobalSymbol(global.isConst(), global.getType(),
+                                global.getName() + "." + i, global.getFloat(i)));
+                }
+            } else {
+                List<Integer> oldDimensions = global.getDimensions();
+                List<Map<Integer, Integer>> initMapList = new ArrayList<>();
+                for (int i = 0; i < oldDimensions.get(0); i++)
+                    initMapList.add(new HashMap<>());
+                Map<Integer, Integer> initMap = global.getValues();
+                int newSize = global.size() / 4 / oldDimensions.get(0);
+                for (Map.Entry<Integer, Integer> entry : initMap.entrySet()) {
+                    int index = entry.getKey() / newSize;
+                    initMapList.get(index).put(entry.getKey() % newSize, entry.getValue());
+                }
+                for (int i = 0; i < oldDimensions.get(0); i++) {
+                    newGlobals.add(new GlobalSymbol(global.isConst(), global.getType(), global.getName() + "." + i,
+                            oldDimensions.subList(1, oldDimensions.size()), initMapList.get(i)));
+                }
+            }
+        }
+        newGlobalMap.values().forEach(this.globals::addAll);
+        for (VirtualFunction func : funcs.values()) {
+            for (Block block : func.getBlocks()) {
+                for (int i = 0; i < block.size(); i++) {
+                    VIR ir = block.get(i);
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.getSymbol() instanceof GlobalSymbol global && newGlobalMap.containsKey(global)) {
+                        List<VIRItem> dimensions = loadVIR.getDimensions();
+                        block.set(i, new LoadVIR(loadVIR.getTarget(), dimensions.subList(1, dimensions.size()),
+                                newGlobalMap.get(global).get(((Value) dimensions.get(0)).getInt())));
+                        continue;
+                    }
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.getSymbol() instanceof GlobalSymbol global && newGlobalMap.containsKey(global)) {
+                        List<VIRItem> dimensions = storeVIR.getDimensions();
+                        block.set(i, new StoreVIR(newGlobalMap.get(global).get(((Value) dimensions.get(0)).getInt()),
+                                dimensions.subList(1, dimensions.size()), storeVIR.getSource()));
+                        continue;
+                    }
+                }
+            }
         }
     }
 
@@ -128,8 +204,7 @@ public class VIROptimizer {
     }
 
     private void globalToImm() {
-        Set<GlobalSymbol> toRemoveGlobals =
-                globals.values().stream().filter(DataSymbol::isSingle).collect(Collectors.toSet());
+        Set<GlobalSymbol> toRemoveGlobals = globals.stream().filter(DataSymbol::isSingle).collect(Collectors.toSet());
         for (VirtualFunction func : funcs.values())
             for (Block block : func.getBlocks())
                 for (VIR ir : block)
@@ -147,7 +222,7 @@ public class VIROptimizer {
                             block.set(i, new LIVIR(loadVIR.getTarget(), global.getFloat()));
                     }
                 }
-        toRemoveGlobals.forEach(global -> globals.remove(global.getName(), global));
+        toRemoveGlobals.forEach(globals::remove);
     }
 
     private void assignPass() {

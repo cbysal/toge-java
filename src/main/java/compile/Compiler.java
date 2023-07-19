@@ -21,6 +21,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 public class Compiler {
@@ -45,7 +46,7 @@ public class Compiler {
         SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
         RootAST rootAST = syntaxParser.getRootAST();
         VIRGenerator virGenerator = new VIRGenerator(rootAST);
-        Map<String, GlobalSymbol> globals = virGenerator.getGlobals();
+        List<GlobalSymbol> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
         if (options.containsKey(Executor.OptionPool.PRINT_VIR_BEFORE_OPTIMIZATION))
             printVIR(vFuncs);

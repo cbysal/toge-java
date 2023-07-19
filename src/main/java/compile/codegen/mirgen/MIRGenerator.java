@@ -17,11 +17,11 @@ import java.util.Map;
 
 public class MIRGenerator {
     private boolean isProcessed = false;
-    private final Map<String, GlobalSymbol> globals;
+    private final List<GlobalSymbol> globals;
     private final Map<String, VirtualFunction> vFuncs;
     private final Map<String, MachineFunction> mFuncs = new HashMap<>();
 
-    public MIRGenerator(Map<String, GlobalSymbol> globals, Map<String, VirtualFunction> vFuncs) {
+    public MIRGenerator(List<GlobalSymbol> globals, Map<String, VirtualFunction> vFuncs) {
         this.globals = globals;
         this.vFuncs = vFuncs;
     }
@@ -48,7 +48,7 @@ public class MIRGenerator {
         return mFuncs;
     }
 
-    public Map<String, GlobalSymbol> getGlobals() {
+    public List<GlobalSymbol> getGlobals() {
         checkIfIsProcessed();
         return globals;
     }

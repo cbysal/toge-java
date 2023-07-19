@@ -25,6 +25,10 @@ public abstract class DataSymbol extends Symbol {
         }
     }
 
+    public List<Integer> getDimensions() {
+        return dimensions;
+    }
+
     public int getDimensionSize() {
         return dimensions.size();
     }

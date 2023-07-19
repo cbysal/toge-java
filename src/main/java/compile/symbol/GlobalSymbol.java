@@ -8,21 +8,21 @@ public class GlobalSymbol extends DataSymbol {
     private final int value;
     private final Map<Integer, Integer> values;
 
-    GlobalSymbol(boolean isConst, Type type, String name, float value) {
+    public GlobalSymbol(boolean isConst, Type type, String name, float value) {
         super(type, name);
         this.isConst = isConst;
         this.value = Float.floatToIntBits(value);
         this.values = null;
     }
 
-    GlobalSymbol(boolean isConst, Type type, String name, int value) {
+    public GlobalSymbol(boolean isConst, Type type, String name, int value) {
         super(type, name);
         this.isConst = isConst;
         this.value = value;
         this.values = null;
     }
 
-    GlobalSymbol(boolean isConst, Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
+    public GlobalSymbol(boolean isConst, Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
         super(type, name, dimensions);
         this.isConst = isConst;
         this.value = 0;
@@ -59,6 +59,10 @@ public class GlobalSymbol extends DataSymbol {
         if (isSingle())
             throw new RuntimeException();
         return values.getOrDefault(index, 0);
+    }
+
+    public Map<Integer, Integer> getValues() {
+        return values;
     }
 
     @Override

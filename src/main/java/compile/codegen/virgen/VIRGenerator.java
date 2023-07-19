@@ -12,7 +12,7 @@ import java.util.*;
 public class VIRGenerator {
     private boolean isProcessed = false;
     private final RootAST rootAST;
-    private final Map<String, GlobalSymbol> globals = new HashMap<>();
+    private final List<GlobalSymbol> globals = new ArrayList<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
     private VirtualFunction curFunc;
     private Block curBlock, trueBlock, falseBlock, retBlock;
@@ -36,7 +36,7 @@ public class VIRGenerator {
         return funcs;
     }
 
-    public Map<String, GlobalSymbol> getGlobals() {
+    public List<GlobalSymbol> getGlobals() {
         checkIfIsProcessed();
         return globals;
     }
@@ -187,8 +187,7 @@ public class VIRGenerator {
     }
 
     private void parseConstDef(ConstDefAST root) {
-        GlobalSymbol global = root.symbol();
-        globals.put(global.getName(), global);
+        globals.add(root.symbol());
     }
 
     private void parseContinueStmt() {
@@ -263,8 +262,7 @@ public class VIRGenerator {
     }
 
     private void parseGlobalDef(GlobalDefAST root) {
-        GlobalSymbol global = root.symbol();
-        globals.put(global.getName(), global);
+        globals.add(root.symbol());
     }
 
     private void parseIfStmt(IfStmtAST ifStmt) {
