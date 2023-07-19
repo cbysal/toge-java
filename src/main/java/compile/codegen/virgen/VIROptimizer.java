@@ -79,9 +79,9 @@ public class VIROptimizer {
                 if (block.getCondBlocks().size() == 1) {
                     Block.Cond cond = block.getCondBlocks().get(0).first();
                     VReg passReg;
-                    if ((cond.type() == Block.Cond.Type.LE || cond.type() == Block.Cond.Type.LT) && cond.left() instanceof VReg reg && cond.right() instanceof Value value) {
+                    if ((cond.type() == Block.Cond.Type.LE || cond.type() == Block.Cond.Type.LT) && cond.left() instanceof VReg reg && cond.right() instanceof Value value && (value.getType() == Type.FLOAT ? value.getFloat() : value.getInt()) == 0) {
                         passReg = reg;
-                    } else if ((cond.type() == Block.Cond.Type.GE || cond.type() == Block.Cond.Type.GT) && cond.left() instanceof Value value && cond.right() instanceof VReg reg) {
+                    } else if ((cond.type() == Block.Cond.Type.GE || cond.type() == Block.Cond.Type.GT) && cond.left() instanceof Value value && cond.right() instanceof VReg reg && (value.getType() == Type.FLOAT ? value.getFloat() : value.getInt()) == 0) {
                         passReg = reg;
                     } else
                         continue;
