@@ -35,6 +35,7 @@ public class VIROptimizer {
             toContinue |= deadcodeElimination();
             toContinue |= mergeBlocks();
             toContinue |= instrCombine();
+            toContinue |= peekHoleForBlock();
             toContinue |= deadcodeElimination();
             toContinue |= mergeBlocks();
         } while (toContinue);
@@ -52,9 +53,71 @@ public class VIROptimizer {
             toContinue |= deadcodeElimination();
             toContinue |= mergeBlocks();
             toContinue |= instrCombine();
+            toContinue |= peekHoleForBlock();
             toContinue |= deadcodeElimination();
             toContinue |= mergeBlocks();
         } while (toContinue);
+    }
+
+    private boolean peekHoleForBlock() {
+        boolean modified = false;
+        for (VirtualFunction func : funcs.values()) {
+            for (Block block : func.getBlocks()) {
+                for (int i = 0; i < block.size() - 1; i++) {
+                    VIR ir1 = block.get(i);
+                    VIR ir2 = block.get(i + 1);
+                    if (ir1 instanceof BinaryVIR binaryVIR && ir2 instanceof MovVIR movVIR) {
+                        if (binaryVIR.getLeft() instanceof VReg source1) {
+                            VReg source2 = movVIR.getSource();
+                            VReg target1 = binaryVIR.getResult();
+                            VReg target2 = movVIR.getTarget();
+                            if (target1 != source1 && target2 == source1 && target1 == source2) {
+                                block.set(i, new BinaryVIR(binaryVIR.getType(), target2, source1,
+                                        binaryVIR.getRight()));
+                                block.set(i + 1, new MovVIR(target1, source1));
+                                modified = true;
+                            }
+                        }
+                        continue;
+                    }
+                    if (ir1 instanceof UnaryVIR unaryVIR && ir2 instanceof MovVIR movVIR) {
+                        if (unaryVIR.getSource() instanceof VReg source1) {
+                            VReg source2 = movVIR.getSource();
+                            VReg target1 = unaryVIR.getResult();
+                            VReg target2 = movVIR.getTarget();
+                            if (target1 != source1 && target2 == source1 && target1 == source2) {
+                                block.set(i, new UnaryVIR(unaryVIR.getType(), target2, source1));
+                                block.set(i + 1, new MovVIR(target1, source1));
+                                modified = true;
+                            }
+                        }
+                        continue;
+                    }
+                    if (ir1 instanceof StoreVIR storeVIR && ir2 instanceof LoadVIR loadVIR) {
+                        if (storeVIR.getSymbol() == loadVIR.getSymbol() && storeVIR.getDimensions().equals(loadVIR.getDimensions())) {
+                            block.set(i + 1, new MovVIR(loadVIR.getTarget(), storeVIR.getSource()));
+                            modified = true;
+                        }
+                        continue;
+                    }
+                    if (ir1 instanceof BinaryVIR binaryVIR1 && ir2 instanceof BinaryVIR binaryVIR2) {
+                        if (binaryVIR1.getType() == BinaryVIR.Type.ADD && binaryVIR2.getType() == BinaryVIR.Type.SUB) {
+                            if (binaryVIR1.getRight().equals(binaryVIR2.getRight()) && binaryVIR1.getLeft() instanceof VReg source1 && binaryVIR2.getLeft() instanceof VReg source2) {
+                                VReg target1 = binaryVIR1.getResult();
+                                VReg target2 = binaryVIR2.getResult();
+                                if (target1 == source2 && target2 != source1) {
+                                    block.set(i, new MovVIR(target2, source1));
+                                    block.set(i + 1, binaryVIR1);
+                                    modified = true;
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                }
+            }
+        }
+        return modified;
     }
 
     private boolean splitLocals() {
