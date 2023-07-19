@@ -32,17 +32,12 @@ public class VIROptimizer {
             assignPass();
             deadcodeElimination();
             mergeBlocks();
-            deadcodeElimination();
-            mergeBlocks();
-            constPassForBlock();
-            constPassForFunc();
-            assignPass();
             instrCombine();
             deadcodeElimination();
             mergeBlocks();
         }
         functionInline();
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 3; i++) {
             singleLocal2Reg();
             globalToImm();
             splitGlobals();
@@ -53,11 +48,6 @@ public class VIROptimizer {
             assignPass();
             deadcodeElimination();
             mergeBlocks();
-            deadcodeElimination();
-            mergeBlocks();
-            constPassForBlock();
-            constPassForFunc();
-            assignPass();
             instrCombine();
             deadcodeElimination();
             mergeBlocks();
@@ -430,6 +420,7 @@ public class VIROptimizer {
             for (VirtualFunction func : funcs.values()) {
                 List<Block> blocks = func.getBlocks();
                 for (Block block : blocks) {
+                    Map<GlobalSymbol, VReg> globalToRegMap = new HashMap<>();
                     Map<VReg, Integer> regToValueMap = new HashMap<>();
                     for (int irId = 0; irId < block.size(); irId++) {
                         VIR ir = block.get(irId);
@@ -450,6 +441,8 @@ public class VIROptimizer {
                             }
                             block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
                             regToValueMap.remove(binaryVIR.getResult());
+                            globalToRegMap =
+                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != binaryVIR.getResult()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof CallVIR callVIR) {
@@ -461,11 +454,17 @@ public class VIROptimizer {
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
                                 }
-                            regToValueMap.remove(callVIR.getRetVal());
+                            if (callVIR.getRetVal() != null) {
+                                regToValueMap.remove(callVIR.getRetVal());
+                                globalToRegMap =
+                                        globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != callVIR.getRetVal()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            }
                             continue;
                         }
                         if (ir instanceof LIVIR liVIR) {
                             regToValueMap.put(liVIR.getTarget(), liVIR.second());
+                            globalToRegMap =
+                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != liVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof LoadVIR loadVIR) {
@@ -477,7 +476,11 @@ public class VIROptimizer {
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
                                 }
+                            if (loadVIR.getSymbol() instanceof GlobalSymbol global && globalToRegMap.containsKey(global))
+                                block.set(irId, new MovVIR(loadVIR.getTarget(), globalToRegMap.get(global)));
                             regToValueMap.remove(loadVIR.getTarget());
+                            globalToRegMap =
+                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != loadVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof MovVIR movVIR) {
@@ -486,6 +489,8 @@ public class VIROptimizer {
                                 toContinue = true;
                             }
                             regToValueMap.remove(movVIR.getTarget());
+                            globalToRegMap =
+                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != movVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                         if (ir instanceof StoreVIR storeVIR) {
@@ -497,6 +502,8 @@ public class VIROptimizer {
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
                                 }
+                            if (storeVIR.getSymbol() instanceof GlobalSymbol global && global.isSingle())
+                                globalToRegMap.put(global, storeVIR.getSource());
                             continue;
                         }
                         if (ir instanceof UnaryVIR unaryVIR) {
@@ -508,6 +515,8 @@ public class VIROptimizer {
                                 toContinue = true;
                             }
                             regToValueMap.remove(unaryVIR.getResult());
+                            globalToRegMap =
+                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != unaryVIR.getResult()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                             continue;
                         }
                     }
