@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class RrrMIR implements MIR {
     public enum Op {
-        ADD, ADDW, SUB, MUL, DIV, REM, EQ, GE, GT, LE, LT
+        ADD, ADDW, SUB, SUBW, MUL, DIV, REM, EQ, GE, GT, LE, LT, XOR
     }
 
     private final Op op;
@@ -112,7 +112,7 @@ public class RrrMIR implements MIR {
                 default -> throw new IllegalStateException("Unexpected value: " + op);
             };
             case INT -> switch (op) {
-                case ADD, ADDW, SUB, MUL, DIV -> op.toString().toLowerCase();
+                case ADD, ADDW, SUB, SUBW, MUL, DIV, XOR -> op.toString().toLowerCase();
                 case REM -> String.format("%sw", op.toString().toLowerCase());
                 case EQ, GE, GT, LE, LT -> String.format("f%s.s", op.toString().toLowerCase());
             };

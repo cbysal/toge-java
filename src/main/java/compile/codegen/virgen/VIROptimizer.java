@@ -37,6 +37,7 @@ public class VIROptimizer {
             toContinue |= instrCombine();
             toContinue |= peekHoleForBlock();
             toContinue |= deadcodeElimination();
+            toContinue |= matchPatterns();
             toContinue |= mergeBlocks();
         } while (toContinue);
         functionInline();
@@ -55,8 +56,50 @@ public class VIROptimizer {
             toContinue |= instrCombine();
             toContinue |= peekHoleForBlock();
             toContinue |= deadcodeElimination();
+            toContinue |= matchPatterns();
             toContinue |= mergeBlocks();
         } while (toContinue);
+    }
+
+    private boolean matchPatterns() {
+        boolean modified = matchAbs();
+        return modified;
+    }
+
+    private boolean matchAbs() {
+        boolean modified = false;
+        for (VirtualFunction func : funcs.values()) {
+            List<Block> blocks = func.getBlocks();
+            for (int i = 0; i < blocks.size(); i++) {
+                Block block = blocks.get(i);
+                Map<VReg, VReg> movMap = new HashMap<>();
+                for (VIR ir : block)
+                    if (ir instanceof MovVIR movVIR)
+                        movMap.put(movVIR.getTarget(), movVIR.getSource());
+                if (block.getCondBlocks().size() == 1) {
+                    Block.Cond cond = block.getCondBlocks().get(0).first();
+                    VReg passReg;
+                    if ((cond.type() == Block.Cond.Type.LE || cond.type() == Block.Cond.Type.LT) && cond.left() instanceof VReg reg && cond.right() instanceof Value value) {
+                        passReg = reg;
+                    } else if ((cond.type() == Block.Cond.Type.GE || cond.type() == Block.Cond.Type.GT) && cond.left() instanceof Value value && cond.right() instanceof VReg reg) {
+                        passReg = reg;
+                    } else
+                        continue;
+                    Block nextBlock1 = block.getCondBlocks().get(0).second();
+                    Block nextBlock2 = block.getDefaultBlock();
+                    if (nextBlock1.size() == 1 && nextBlock1.getCondBlocks().isEmpty() && nextBlock1.getDefaultBlock() == nextBlock2) {
+                        if (nextBlock1.get(0) instanceof UnaryVIR unaryVIR && unaryVIR.getType() == UnaryVIR.Type.NEG && unaryVIR.getResult() == unaryVIR.getSource() && movMap.get(unaryVIR.getResult()) == passReg) {
+                            block.add(new UnaryVIR(UnaryVIR.Type.ABS, unaryVIR.getResult(), unaryVIR.getSource()));
+                            block.getCondBlocks().clear();
+                            blocks.remove(nextBlock1);
+                            i--;
+                            modified = true;
+                        }
+                    }
+                }
+            }
+        }
+        return modified;
     }
 
     private boolean peekHoleForBlock() {
@@ -1579,6 +1622,7 @@ public class VIROptimizer {
                             }));
                         else
                             block.set(irId, new LIVIR(unaryVIR.getResult(), switch (unaryVIR.getType()) {
+                                case ABS -> Math.abs(value.getInt());
                                 case F2I -> (int) value.getFloat();
                                 case L_NOT ->
                                         (value.getType() == Type.FLOAT ? (value.getFloat() == 0.0f) :

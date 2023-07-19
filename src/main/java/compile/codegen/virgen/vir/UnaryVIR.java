@@ -6,7 +6,7 @@ import java.util.List;
 
 public class UnaryVIR implements VIR {
     public enum Type {
-        F2I, I2F, L_NOT, NEG
+        ABS, F2I, I2F, L_NOT, NEG
     }
 
     private final Type type;

@@ -32,11 +32,23 @@ public final class MIRUnaryTrans {
             irs.add(new NegMIR(target, source));
         else
             irs.add(new RrrMIR(RrrMIR.Op.SUB, target, MReg.ZERO, source));
+    }
 
+    private static void transAbsRegReg(List<MIR> irs, VReg target, VReg source) {
+        if (target.getType() == Type.FLOAT)
+            irs.add(new FabsMIR(target, source));
+        else {
+            VReg midReg1 = new VReg(Type.INT, 4);
+            VReg midReg2 = new VReg(Type.INT, 4);
+            irs.add(new RriMIR(RriMIR.Op.SRAIW, midReg1, source, 31));
+            irs.add(new RrrMIR(RrrMIR.Op.XOR, midReg2, source, midReg1));
+            irs.add(new RrrMIR(RrrMIR.Op.SUBW, target, midReg2, midReg1));
+        }
     }
 
     static void transUnaryReg(List<MIR> irs, UnaryVIR unaryVIR, VReg reg) {
         switch (unaryVIR.getType()) {
+            case ABS -> transAbsRegReg(irs, unaryVIR.getResult(), reg);
             case F2I -> transF2IRegReg(irs, unaryVIR.getResult(), reg);
             case I2F -> transI2FRegReg(irs, unaryVIR.getResult(), reg);
             case L_NOT -> transLNotRegReg(irs, unaryVIR.getResult(), reg);

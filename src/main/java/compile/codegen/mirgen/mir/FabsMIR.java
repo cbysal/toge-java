@@ -8,20 +8,12 @@ import compile.symbol.Type;
 import java.util.List;
 import java.util.Map;
 
-public class RriMIR implements MIR {
-    public enum Op {
-        ADDI, SLTI, SLTIU, SRAIW
-    }
-
-    private final Op op;
+public class FabsMIR implements MIR {
     private Reg target, source;
-    private final int imm;
 
-    public RriMIR(Op op, Reg target, Reg source, int imm) {
-        this.op = op;
+    public FabsMIR(Reg target, Reg source) {
         this.target = target;
         this.source = source;
-        this.imm = imm;
     }
 
     @Override
@@ -53,20 +45,20 @@ public class RriMIR implements MIR {
             VReg target = new VReg(reg.getType(), reg.getSize());
             VReg source = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source, offset);
-            MIR ir2 = new RriMIR(op, target, source, imm);
+            MIR ir2 = new FabsMIR(target, source);
             MIR ir3 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2, ir3);
         }
         if (target.equals(reg)) {
             VReg target = new VReg(reg.getType(), reg.getSize());
-            MIR ir1 = new RriMIR(op, target, source, imm);
+            MIR ir1 = new FabsMIR(target, source);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2);
         }
         if (source.equals(reg)) {
             VReg source = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source, offset);
-            MIR ir2 = new RriMIR(op, target, source, imm);
+            MIR ir2 = new FabsMIR(target, source);
             return List.of(ir1, ir2);
         }
         return List.of(this);
@@ -74,6 +66,6 @@ public class RriMIR implements MIR {
 
     @Override
     public String toString() {
-        return String.format("%s\t%s,%s,%d", op.toString().toLowerCase(), target, source, imm);
+        return "fabs.s\t" + target + ", " + source;
     }
 }
