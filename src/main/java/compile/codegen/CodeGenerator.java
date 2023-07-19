@@ -8,14 +8,15 @@ import compile.symbol.GlobalSymbol;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class CodeGenerator {
     private boolean isProcessed = false;
-    private final List<GlobalSymbol> globals;
+    private final Set<GlobalSymbol> globals;
     private final Map<String, MachineFunction> funcs;
     private String output = null;
 
-    public CodeGenerator(List<GlobalSymbol> globals, Map<String, MachineFunction> funcs) {
+    public CodeGenerator(Set<GlobalSymbol> globals, Map<String, MachineFunction> funcs) {
         this.globals = globals;
         this.funcs = funcs;
     }

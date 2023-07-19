@@ -14,14 +14,15 @@ import compile.symbol.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MIRGenerator {
     private boolean isProcessed = false;
-    private final List<GlobalSymbol> globals;
+    private final Set<GlobalSymbol> globals;
     private final Map<String, VirtualFunction> vFuncs;
     private final Map<String, MachineFunction> mFuncs = new HashMap<>();
 
-    public MIRGenerator(List<GlobalSymbol> globals, Map<String, VirtualFunction> vFuncs) {
+    public MIRGenerator(Set<GlobalSymbol> globals, Map<String, VirtualFunction> vFuncs) {
         this.globals = globals;
         this.vFuncs = vFuncs;
     }
@@ -48,7 +49,7 @@ public class MIRGenerator {
         return mFuncs;
     }
 
-    public List<GlobalSymbol> getGlobals() {
+    public Set<GlobalSymbol> getGlobals() {
         checkIfIsProcessed();
         return globals;
     }

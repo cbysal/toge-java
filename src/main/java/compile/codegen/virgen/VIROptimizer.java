@@ -9,10 +9,10 @@ import java.util.stream.Collectors;
 
 public class VIROptimizer {
     private boolean isProcessed = false;
-    private final List<GlobalSymbol> globals;
+    private final Set<GlobalSymbol> globals;
     private final Map<String, VirtualFunction> funcs;
 
-    public VIROptimizer(List<GlobalSymbol> globals, Map<String, VirtualFunction> funcs) {
+    public VIROptimizer(Set<GlobalSymbol> globals, Map<String, VirtualFunction> funcs) {
         this.globals = globals;
         this.funcs = funcs;
     }
@@ -21,40 +21,44 @@ public class VIROptimizer {
         if (isProcessed)
             return;
         isProcessed = true;
-        for (int i = 0; i < 1; i++) {
-            singleLocal2Reg();
-            globalToImm();
-            splitGlobals();
-            splitLocals();
-            mergeBlocks();
-            constPassForBlock();
-            constPassForFunc();
-            assignPass();
-            deadcodeElimination();
-            mergeBlocks();
-            instrCombine();
-            deadcodeElimination();
-            mergeBlocks();
-        }
+        boolean toContinue;
+        do {
+            toContinue = singleLocal2Reg();
+            toContinue |= globalToImm();
+            toContinue |= deadcodeElimination();
+            toContinue |= splitGlobals();
+            toContinue |= splitLocals();
+            toContinue |= mergeBlocks();
+            toContinue |= constPassForBlock();
+            toContinue |= constPassForFunc();
+            toContinue |= assignPass();
+            toContinue |= deadcodeElimination();
+            toContinue |= mergeBlocks();
+            toContinue |= instrCombine();
+            toContinue |= deadcodeElimination();
+            toContinue |= mergeBlocks();
+        } while (toContinue);
         functionInline();
-        for (int i = 0; i < 3; i++) {
-            singleLocal2Reg();
-            globalToImm();
-            splitGlobals();
-            splitLocals();
-            mergeBlocks();
-            constPassForBlock();
-            constPassForFunc();
-            assignPass();
-            deadcodeElimination();
-            mergeBlocks();
-            instrCombine();
-            deadcodeElimination();
-            mergeBlocks();
-        }
+        do {
+            toContinue = singleLocal2Reg();
+            toContinue |= globalToImm();
+            toContinue |= deadcodeElimination();
+            toContinue |= splitGlobals();
+            toContinue |= splitLocals();
+            toContinue |= mergeBlocks();
+            toContinue |= constPassForBlock();
+            toContinue |= constPassForFunc();
+            toContinue |= assignPass();
+            toContinue |= deadcodeElimination();
+            toContinue |= mergeBlocks();
+            toContinue |= instrCombine();
+            toContinue |= deadcodeElimination();
+            toContinue |= mergeBlocks();
+        } while (toContinue);
     }
 
-    private void splitLocals() {
+    private boolean splitLocals() {
+        boolean modified = false;
         for (VirtualFunction func : funcs.values()) {
             Set<LocalSymbol> locals =
                     func.getLocals().stream().filter(local -> !local.isSingle()).collect(Collectors.toSet());
@@ -109,10 +113,12 @@ public class VIROptimizer {
                     }
                 }
             }
+            modified |= !locals.isEmpty();
         }
+        return modified;
     }
 
-    private void splitGlobals() {
+    private boolean splitGlobals() {
         Set<GlobalSymbol> globals =
                 this.globals.stream().filter(global -> !global.isSingle()).collect(Collectors.toSet());
         for (VirtualFunction func : funcs.values()) {
@@ -185,9 +191,11 @@ public class VIROptimizer {
                 }
             }
         }
+        return !globals.isEmpty();
     }
 
-    private void instrCombine() {
+    private boolean instrCombine() {
+        boolean modified = false;
         for (VirtualFunction func : funcs.values()) {
             for (Block block : func.getBlocks()) {
                 Map<VReg, Pair<VReg, Value>> mulIRs = new HashMap<>();
@@ -200,6 +208,7 @@ public class VIROptimizer {
                                     block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.getResult(), reg1,
                                             new Value(2)));
                                     mulIRs.put(binaryVIR.getResult(), new Pair<>(reg1, new Value(2)));
+                                    modified = true;
                                     continue;
                                 }
                                 if (mulIRs.containsKey(reg1)) {
@@ -209,6 +218,7 @@ public class VIROptimizer {
                                                 regValue.first(), new Value(regValue.second().getInt() + 1)));
                                         mulIRs.put(binaryVIR.getResult(), new Pair<>(regValue.first(),
                                                 new Value(regValue.second().getInt() + 1)));
+                                        modified = true;
                                     } else {
                                         mulIRs.remove(binaryVIR.getResult());
                                     }
@@ -221,6 +231,7 @@ public class VIROptimizer {
                                                 regValue.first(), new Value(regValue.second().getInt() + 1)));
                                         mulIRs.put(binaryVIR.getResult(), new Pair<>(regValue.first(),
                                                 new Value(regValue.second().getInt() + 1)));
+                                        modified = true;
                                     } else {
                                         mulIRs.remove(binaryVIR.getResult());
                                     }
@@ -237,8 +248,10 @@ public class VIROptimizer {
                         } else if (binaryVIR.getType() == BinaryVIR.Type.DIV) {
                             if (binaryVIR.getLeft() instanceof VReg reg && binaryVIR.getRight() instanceof Value value && mulIRs.containsKey(reg)) {
                                 Pair<VReg, Value> regValue = mulIRs.get(reg);
-                                if (regValue.second().equals(value))
+                                if (regValue.second().equals(value)) {
                                     block.set(i, new MovVIR(binaryVIR.getResult(), regValue.first()));
+                                    modified = true;
+                                }
                             }
                             mulIRs.remove(binaryVIR.getResult());
                         } else {
@@ -270,16 +283,16 @@ public class VIROptimizer {
                 }
             }
         }
+        return modified;
     }
 
-    private void globalToImm() {
+    private boolean globalToImm() {
         Set<GlobalSymbol> toRemoveGlobals = globals.stream().filter(DataSymbol::isSingle).collect(Collectors.toSet());
         for (VirtualFunction func : funcs.values())
             for (Block block : func.getBlocks())
                 for (VIR ir : block)
                     if (ir instanceof StoreVIR storeVIR && storeVIR.getSymbol() instanceof GlobalSymbol global && global.isSingle())
                         toRemoveGlobals.remove(global);
-
         for (VirtualFunction func : funcs.values())
             for (Block block : func.getBlocks())
                 for (int i = 0; i < block.size(); i++) {
@@ -291,10 +304,12 @@ public class VIROptimizer {
                             block.set(i, new LIVIR(loadVIR.getTarget(), global.getFloat()));
                     }
                 }
-        toRemoveGlobals.forEach(globals::remove);
+        globals.removeAll(toRemoveGlobals);
+        return !toRemoveGlobals.isEmpty();
     }
 
-    private void assignPass() {
+    private boolean assignPass() {
+        boolean modified = false;
         boolean toContinue;
         do {
             toContinue = false;
@@ -310,10 +325,12 @@ public class VIROptimizer {
                             if (left instanceof VReg reg && regToRegMap.containsKey(reg)) {
                                 left = regToRegMap.get(reg);
                                 toContinue = true;
+                                modified = true;
                             }
                             if (right instanceof VReg reg && regToRegMap.containsKey(reg)) {
                                 right = regToRegMap.get(reg);
                                 toContinue = true;
+                                modified = true;
                             }
                             block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
                             regToRegMap.remove(binaryVIR.getResult());
@@ -327,6 +344,7 @@ public class VIROptimizer {
                                 if (params.get(j) instanceof VReg reg && regToRegMap.containsKey(reg)) {
                                     params.set(j, regToRegMap.get(reg));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             regToRegMap.remove(callVIR.getRetVal());
                             regToRegMap =
@@ -345,6 +363,7 @@ public class VIROptimizer {
                                 if (dimensions.get(j) instanceof VReg reg && regToRegMap.containsKey(reg)) {
                                     dimensions.set(j, regToRegMap.get(reg));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             regToRegMap.remove(loadVIR.getTarget());
                             regToRegMap =
@@ -356,6 +375,7 @@ public class VIROptimizer {
                                 regToRegMap.put(movVIR.getTarget(), regToRegMap.get(movVIR.getSource()));
                                 block.set(irId, new MovVIR(movVIR.getTarget(), regToRegMap.get(movVIR.getSource())));
                                 toContinue = true;
+                                modified = true;
                             } else {
                                 regToRegMap.put(movVIR.getTarget(), movVIR.getSource());
                             }
@@ -369,11 +389,13 @@ public class VIROptimizer {
                                 if (dimensions.get(j) instanceof VReg reg && regToRegMap.containsKey(reg)) {
                                     dimensions.set(j, regToRegMap.get(reg));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             if (regToRegMap.containsKey(storeVIR.getSource())) {
                                 block.set(irId, new StoreVIR(storeVIR.getSymbol(), dimensions,
                                         regToRegMap.get(storeVIR.getSource())));
                                 toContinue = true;
+                                modified = true;
                             }
                             continue;
                         }
@@ -382,6 +404,7 @@ public class VIROptimizer {
                                 block.set(irId, new UnaryVIR(unaryVIR.getType(), unaryVIR.getResult(),
                                         regToRegMap.get(reg)));
                                 toContinue = true;
+                                modified = true;
                             }
                             regToRegMap.remove(unaryVIR.getResult());
                             regToRegMap =
@@ -398,10 +421,12 @@ public class VIROptimizer {
                         if (left instanceof VReg reg && regToRegMap.containsKey(reg)) {
                             left = regToRegMap.get(reg);
                             toContinue = true;
+                            modified = true;
                         }
                         if (right instanceof VReg reg && regToRegMap.containsKey(reg)) {
                             right = regToRegMap.get(reg);
                             toContinue = true;
+                            modified = true;
                         }
                         newCondBlocks.put(new Block.Cond(cond.type(), left, right), targetBlock);
                     }
@@ -411,9 +436,11 @@ public class VIROptimizer {
             }
             standardize();
         } while (toContinue);
+        return modified;
     }
 
-    private void constPassForBlock() {
+    private boolean constPassForBlock() {
+        boolean modified = false;
         boolean toContinue;
         do {
             toContinue = false;
@@ -432,12 +459,14 @@ public class VIROptimizer {
                                         new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                         new Value(regToValueMap.get(reg));
                                 toContinue = true;
+                                modified = true;
                             }
                             if (right instanceof VReg reg && regToValueMap.containsKey(reg)) {
                                 right = reg.getType() == Type.FLOAT ?
                                         new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                         new Value(regToValueMap.get(reg));
                                 toContinue = true;
+                                modified = true;
                             }
                             block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
                             regToValueMap.remove(binaryVIR.getResult());
@@ -453,6 +482,7 @@ public class VIROptimizer {
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             if (callVIR.getRetVal() != null) {
                                 regToValueMap.remove(callVIR.getRetVal());
@@ -475,6 +505,7 @@ public class VIROptimizer {
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             if (loadVIR.getSymbol() instanceof GlobalSymbol global && globalToRegMap.containsKey(global))
                                 block.set(irId, new MovVIR(loadVIR.getTarget(), globalToRegMap.get(global)));
@@ -487,6 +518,7 @@ public class VIROptimizer {
                             if (regToValueMap.containsKey(movVIR.getSource())) {
                                 block.set(irId, new LIVIR(movVIR.getTarget(), regToValueMap.get(movVIR.getSource())));
                                 toContinue = true;
+                                modified = true;
                             }
                             regToValueMap.remove(movVIR.getTarget());
                             globalToRegMap =
@@ -501,6 +533,7 @@ public class VIROptimizer {
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             if (storeVIR.getSymbol() instanceof GlobalSymbol global && global.isSingle())
                                 globalToRegMap.put(global, storeVIR.getSource());
@@ -513,6 +546,7 @@ public class VIROptimizer {
                                                 new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                                 new Value(regToValueMap.get(reg))));
                                 toContinue = true;
+                                modified = true;
                             }
                             regToValueMap.remove(unaryVIR.getResult());
                             globalToRegMap =
@@ -531,12 +565,14 @@ public class VIROptimizer {
                                     new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                     new Value(regToValueMap.get(reg));
                             toContinue = true;
+                            modified = true;
                         }
                         if (right instanceof VReg reg && regToValueMap.containsKey(reg)) {
                             right = reg.getType() == Type.FLOAT ?
                                     new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                     new Value(regToValueMap.get(reg));
                             toContinue = true;
+                            modified = true;
                         }
                         newCondBlocks.put(new Block.Cond(cond.type(), left, right), targetBlock);
                     }
@@ -546,9 +582,11 @@ public class VIROptimizer {
             }
             standardize();
         } while (toContinue);
+        return modified;
     }
 
-    private void constPassForFunc() {
+    private boolean constPassForFunc() {
+        boolean modified = false;
         boolean toContinue;
         do {
             toContinue = false;
@@ -604,12 +642,14 @@ public class VIROptimizer {
                                         new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                         new Value(regToValueMap.get(reg));
                                 toContinue = true;
+                                modified = true;
                             }
                             if (right instanceof VReg reg && regToValueMap.containsKey(reg)) {
                                 right = reg.getType() == Type.FLOAT ?
                                         new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                         new Value(regToValueMap.get(reg));
                                 toContinue = true;
+                                modified = true;
                             }
                             block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
                             continue;
@@ -622,6 +662,7 @@ public class VIROptimizer {
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             continue;
                         }
@@ -633,6 +674,7 @@ public class VIROptimizer {
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             continue;
                         }
@@ -640,6 +682,7 @@ public class VIROptimizer {
                             if (regToValueMap.containsKey(movVIR.getSource())) {
                                 block.set(irId, new LIVIR(movVIR.getTarget(), regToValueMap.get(movVIR.getSource())));
                                 toContinue = true;
+                                modified = true;
                             }
                             continue;
                         }
@@ -651,6 +694,7 @@ public class VIROptimizer {
                                             new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                             new Value(regToValueMap.get(reg)));
                                     toContinue = true;
+                                    modified = true;
                                 }
                             continue;
                         }
@@ -661,6 +705,7 @@ public class VIROptimizer {
                                                 new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                                 new Value(regToValueMap.get(reg))));
                                 toContinue = true;
+                                modified = true;
                             }
                             continue;
                         }
@@ -676,12 +721,14 @@ public class VIROptimizer {
                                     new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                     new Value(regToValueMap.get(reg));
                             toContinue = true;
+                            modified = true;
                         }
                         if (right instanceof VReg reg && regToValueMap.containsKey(reg)) {
                             right = reg.getType() == Type.FLOAT ?
                                     new Value(Float.intBitsToFloat(regToValueMap.get(reg))) :
                                     new Value(regToValueMap.get(reg));
                             toContinue = true;
+                            modified = true;
                         }
                         newCondBlocks.put(new Block.Cond(cond.type(), left, right), targetBlock);
                     }
@@ -691,14 +738,17 @@ public class VIROptimizer {
             }
             standardize();
         } while (toContinue);
+        return modified;
     }
 
-    private void deadcodeElimination() {
-        deadcodeEliminationOnReachability();
-        deadcodeEliminationOnRoot();
+    private boolean deadcodeElimination() {
+        boolean modified = deadcodeEliminationOnReachability();
+        modified |= deadcodeEliminationOnRoot();
+        return modified;
     }
 
-    private void deadcodeEliminationOnReachability() {
+    private boolean deadcodeEliminationOnReachability() {
+        boolean modified = false;
         for (VirtualFunction func : funcs.values()) {
             List<Block> blocks = func.getBlocks();
             Queue<Block> frontier = new ArrayDeque<>();
@@ -714,11 +764,13 @@ public class VIROptimizer {
                 curBlock.getCondBlocks().stream().map(Pair::second).filter(Objects::nonNull).forEach(frontier::offer);
             }
             List<Block> newBlocks = blocks.stream().filter(reachableBlocks::contains).collect(Collectors.toList());
+            modified |= func.getBlocks().size() != newBlocks.size();
             func.setBlocks(newBlocks);
         }
+        return modified;
     }
 
-    private void deadcodeEliminationOnRoot() {
+    private boolean deadcodeEliminationOnRoot() {
         Set<VReg> regFrontier = new HashSet<>();
         Set<Symbol> symbolFrontier = new HashSet<>();
         Map<VReg, Set<VReg>> regToRegMap = new HashMap<>();
@@ -819,14 +871,21 @@ public class VIROptimizer {
             regFrontier = newRegFrontier;
             symbolFrontier = newSymbolFrontier;
         }
+        boolean modified =
+                globals.size() != usedSymbols.stream().filter(symbol -> symbol instanceof GlobalSymbol).count();
+        globals.clear();
+        globals.addAll(usedSymbols.stream().filter(symbol -> symbol instanceof GlobalSymbol).map(symbol -> (GlobalSymbol) symbol).collect(Collectors.toSet()));
         for (VirtualFunction func : funcs.values()) {
             List<Block> blocks = func.getBlocks();
+            modified |= func.getLocals().size() != usedSymbols.stream().filter(symbol -> symbol instanceof LocalSymbol local && func.getLocals().contains(local)).count();
+            func.setLocals(usedSymbols.stream().filter(symbol -> symbol instanceof LocalSymbol local && func.getLocals().contains(local)).map(symbol -> (LocalSymbol) symbol).collect(Collectors.toSet()));
             for (Block block : blocks) {
                 for (int irId = 0; irId < block.size(); irId++) {
                     VIR ir = block.get(irId);
                     if (ir instanceof BinaryVIR binaryVIR) {
                         if (!usedRegs.contains(binaryVIR.getResult())) {
                             block.remove(irId);
+                            modified = true;
                             irId--;
                         }
                         continue;
@@ -834,6 +893,7 @@ public class VIROptimizer {
                     if (ir instanceof LIVIR liVIR) {
                         if (!usedRegs.contains(liVIR.getTarget())) {
                             block.remove(irId);
+                            modified = true;
                             irId--;
                         }
                         continue;
@@ -841,6 +901,7 @@ public class VIROptimizer {
                     if (ir instanceof LoadVIR loadVIR) {
                         if (!usedRegs.contains(loadVIR.getTarget())) {
                             block.remove(irId);
+                            modified = true;
                             irId--;
                         }
                         continue;
@@ -848,6 +909,7 @@ public class VIROptimizer {
                     if (ir instanceof MovVIR movVIR) {
                         if (!usedRegs.contains(movVIR.getTarget())) {
                             block.remove(irId);
+                            modified = true;
                             irId--;
                         }
                         continue;
@@ -855,6 +917,7 @@ public class VIROptimizer {
                     if (ir instanceof StoreVIR storeVIR) {
                         if (!usedSymbols.contains(storeVIR.getSymbol())) {
                             block.remove(irId);
+                            modified = true;
                             irId--;
                         }
                         continue;
@@ -862,6 +925,7 @@ public class VIROptimizer {
                     if (ir instanceof UnaryVIR unaryVIR) {
                         if (!usedRegs.contains(unaryVIR.getResult())) {
                             block.remove(irId);
+                            modified = true;
                             irId--;
                         }
                         continue;
@@ -869,6 +933,7 @@ public class VIROptimizer {
                 }
             }
         }
+        return modified;
     }
 
     private void functionInline() {
@@ -1267,7 +1332,8 @@ public class VIROptimizer {
             funcs.remove(func.getSymbol().getName());
     }
 
-    private void mergeBlocks() {
+    private boolean mergeBlocks() {
+        boolean modified = false;
         for (VirtualFunction func : funcs.values()) {
             List<Block> blocks = func.getBlocks();
             boolean toContinue;
@@ -1298,6 +1364,7 @@ public class VIROptimizer {
                         if (block.getDefaultBlock() == firstBlock)
                             block.setDefaultBlock(nextBlock);
                     }
+                    modified = true;
                     continue;
                 }
                 Block curBlock = null, toMergeBlock = null;
@@ -1318,6 +1385,7 @@ public class VIROptimizer {
                     curBlock.setDefaultBlock(toMergeBlock.getDefaultBlock());
                     blocks.remove(toMergeBlock);
                     toContinue = true;
+                    modified = true;
                     continue;
                 }
                 for (Block block : blocks) {
@@ -1340,12 +1408,15 @@ public class VIROptimizer {
                     }
                     blocks.remove(toMergeBlock);
                     toContinue = true;
+                    modified = true;
                 }
             } while (toContinue);
         }
+        return modified;
     }
 
-    private void singleLocal2Reg() {
+    private boolean singleLocal2Reg() {
+        boolean modified = false;
         for (VirtualFunction func : funcs.values()) {
             Set<LocalSymbol> locals =
                     func.getLocals().stream().filter(DataSymbol::isSingle).collect(Collectors.toSet());
@@ -1379,7 +1450,9 @@ public class VIROptimizer {
                 }
             }
             func.getLocals().removeAll(locals);
+            modified |= !locals.isEmpty();
         }
+        return modified;
     }
 
     private void standardize() {

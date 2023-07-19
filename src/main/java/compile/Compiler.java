@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Compiler {
     private final Executor.OptionPool options;
@@ -46,7 +47,7 @@ public class Compiler {
         SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
         RootAST rootAST = syntaxParser.getRootAST();
         VIRGenerator virGenerator = new VIRGenerator(rootAST);
-        List<GlobalSymbol> globals = virGenerator.getGlobals();
+        Set<GlobalSymbol> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
         if (options.containsKey(Executor.OptionPool.PRINT_VIR_BEFORE_OPTIMIZATION))
             printVIR(vFuncs);

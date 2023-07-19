@@ -12,7 +12,7 @@ import java.util.*;
 public class VIRGenerator {
     private boolean isProcessed = false;
     private final RootAST rootAST;
-    private final List<GlobalSymbol> globals = new ArrayList<>();
+    private final Set<GlobalSymbol> globals = new HashSet<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
     private VirtualFunction curFunc;
     private Block curBlock, trueBlock, falseBlock, retBlock;
@@ -36,7 +36,7 @@ public class VIRGenerator {
         return funcs;
     }
 
-    public List<GlobalSymbol> getGlobals() {
+    public Set<GlobalSymbol> getGlobals() {
         checkIfIsProcessed();
         return globals;
     }

@@ -4,10 +4,12 @@ import common.Pair;
 import compile.codegen.virgen.vir.VIR;
 import compile.symbol.FuncSymbol;
 import compile.symbol.LocalSymbol;
+import compile.symbol.Symbol;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public class VirtualFunction {
     private final FuncSymbol symbol;
@@ -87,5 +89,10 @@ public class VirtualFunction {
                 builder.append("B       ").append(block.getDefaultBlock()).append('\n');
         }
         return builder.toString();
+    }
+
+    public void setLocals(Collection<LocalSymbol> locals) {
+        this.locals.clear();
+        this.locals.addAll(locals);
     }
 }
