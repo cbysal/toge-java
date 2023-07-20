@@ -32,6 +32,7 @@ public class VIROptimizer {
             toContinue |= constPassForBlock();
             toContinue |= constPassForFunc();
             toContinue |= assignPass();
+            toContinue |= removeMultiWriteInBlock();
             toContinue |= deadcodeElimination();
             toContinue |= mergeBlocks();
             toContinue |= instrCombine();
@@ -51,6 +52,7 @@ public class VIROptimizer {
             toContinue |= constPassForBlock();
             toContinue |= constPassForFunc();
             toContinue |= assignPass();
+            toContinue |= removeMultiWriteInBlock();
             toContinue |= deadcodeElimination();
             toContinue |= mergeBlocks();
             toContinue |= instrCombine();
@@ -59,6 +61,25 @@ public class VIROptimizer {
             toContinue |= matchPatterns();
             toContinue |= mergeBlocks();
         } while (toContinue);
+    }
+
+    private boolean removeMultiWriteInBlock() {
+        boolean modified = false;
+        for (VirtualFunction func : funcs.values()) {
+            List<Block> blocks = func.getBlocks();
+            for (Block block : blocks) {
+                Set<VReg> writeRegs = new HashSet<>();
+                for (int i = block.size() - 1; i >= 0; i--) {
+                    VIR ir = block.get(i);
+                    if (!(ir instanceof CallVIR) && ir.getWrite() != null && writeRegs.contains(ir.getWrite()))
+                        block.remove(i);
+                    if (ir.getWrite() != null)
+                        writeRegs.add(ir.getWrite());
+                    ir.getRead().forEach(writeRegs::remove);
+                }
+            }
+        }
+        return modified;
     }
 
     private boolean matchPatterns() {
