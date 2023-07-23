@@ -461,8 +461,7 @@ public class VIROptimizer {
                             }
                             block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
                             regToRegMap.remove(binaryVIR.getResult());
-                            regToRegMap =
-                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != binaryVIR.getResult()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            regToRegMap.entrySet().removeIf(entry -> entry.getValue() == binaryVIR.getResult());
                             continue;
                         }
                         if (ir instanceof CallVIR callVIR) {
@@ -474,14 +473,12 @@ public class VIROptimizer {
                                     modified = true;
                                 }
                             regToRegMap.remove(callVIR.getRetVal());
-                            regToRegMap =
-                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != callVIR.getRetVal()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            regToRegMap.entrySet().removeIf(entry -> entry.getValue() == callVIR.getRetVal());
                             continue;
                         }
                         if (ir instanceof LIVIR liVIR) {
                             regToRegMap.remove(liVIR.getTarget());
-                            regToRegMap =
-                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != liVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            regToRegMap.entrySet().removeIf(entry -> entry.getValue() == liVIR.getTarget());
                             continue;
                         }
                         if (ir instanceof LoadVIR loadVIR) {
@@ -493,8 +490,7 @@ public class VIROptimizer {
                                     modified = true;
                                 }
                             regToRegMap.remove(loadVIR.getTarget());
-                            regToRegMap =
-                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != loadVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            regToRegMap.entrySet().removeIf(entry -> entry.getValue() == loadVIR.getTarget());
                             continue;
                         }
                         if (ir instanceof MovVIR movVIR) {
@@ -506,8 +502,7 @@ public class VIROptimizer {
                             } else {
                                 regToRegMap.put(movVIR.getTarget(), movVIR.getSource());
                             }
-                            regToRegMap =
-                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != movVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            regToRegMap.entrySet().removeIf(entry -> entry.getValue() == movVIR.getTarget());
                             continue;
                         }
                         if (ir instanceof StoreVIR storeVIR) {
@@ -534,8 +529,7 @@ public class VIROptimizer {
                                 modified = true;
                             }
                             regToRegMap.remove(unaryVIR.getResult());
-                            regToRegMap =
-                                    regToRegMap.entrySet().stream().filter(entry -> entry.getValue() != unaryVIR.getResult()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            regToRegMap.entrySet().removeIf(entry -> entry.getValue() == unaryVIR.getResult());
                             continue;
                         }
                     }
@@ -597,8 +591,7 @@ public class VIROptimizer {
                             }
                             block.set(irId, new BinaryVIR(binaryVIR.getType(), binaryVIR.getResult(), left, right));
                             regToValueMap.remove(binaryVIR.getResult());
-                            globalToRegMap =
-                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != binaryVIR.getResult()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            globalToRegMap.entrySet().removeIf(entry -> entry.getValue() == binaryVIR.getResult());
                             continue;
                         }
                         if (ir instanceof CallVIR callVIR) {
@@ -613,15 +606,13 @@ public class VIROptimizer {
                                 }
                             if (callVIR.getRetVal() != null) {
                                 regToValueMap.remove(callVIR.getRetVal());
-                                globalToRegMap =
-                                        globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != callVIR.getRetVal()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                                globalToRegMap.entrySet().removeIf(entry -> entry.getValue() == callVIR.getRetVal());
                             }
                             continue;
                         }
                         if (ir instanceof LIVIR liVIR) {
                             regToValueMap.put(liVIR.getTarget(), liVIR.second());
-                            globalToRegMap =
-                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != liVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            globalToRegMap.entrySet().removeIf(entry -> entry.getValue() == liVIR.getTarget());
                             continue;
                         }
                         if (ir instanceof LoadVIR loadVIR) {
@@ -637,8 +628,7 @@ public class VIROptimizer {
                             if (loadVIR.getSymbol() instanceof GlobalSymbol global && globalToRegMap.containsKey(global))
                                 block.set(irId, new MovVIR(loadVIR.getTarget(), globalToRegMap.get(global)));
                             regToValueMap.remove(loadVIR.getTarget());
-                            globalToRegMap =
-                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != loadVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            globalToRegMap.entrySet().removeIf(entry -> entry.getValue() == loadVIR.getTarget());
                             continue;
                         }
                         if (ir instanceof MovVIR movVIR) {
@@ -648,8 +638,7 @@ public class VIROptimizer {
                                 modified = true;
                             }
                             regToValueMap.remove(movVIR.getTarget());
-                            globalToRegMap =
-                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != movVIR.getTarget()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            globalToRegMap.entrySet().removeIf(entry -> entry.getValue() == movVIR.getTarget());
                             continue;
                         }
                         if (ir instanceof StoreVIR storeVIR) {
@@ -676,8 +665,7 @@ public class VIROptimizer {
                                 modified = true;
                             }
                             regToValueMap.remove(unaryVIR.getResult());
-                            globalToRegMap =
-                                    globalToRegMap.entrySet().stream().filter(entry -> entry.getValue() != unaryVIR.getResult()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            globalToRegMap.entrySet().removeIf(entry -> entry.getValue() == unaryVIR.getResult());
                             continue;
                         }
                     }
