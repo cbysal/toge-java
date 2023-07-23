@@ -44,15 +44,15 @@ public final class Value implements VIRItem {
     }
 
     public float getFloat() {
-        if (type != Type.FLOAT)
-            throw new RuntimeException();
+        if (type == Type.INT)
+            return value;
         return Float.intBitsToFloat(value);
     }
 
     public int getInt() {
-        if (type != Type.INT)
-            throw new RuntimeException();
-        return value;
+        if (type == Type.INT)
+            return value;
+        return (int) Float.intBitsToFloat(value);
     }
 
     public boolean gt(Value v) {
