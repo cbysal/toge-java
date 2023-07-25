@@ -481,7 +481,7 @@ public class VIRGenerator {
         VReg result =
                 new VReg(varExp.dimensions().size() == varExp.symbol().getDimensionSize() && varExp.symbol().getType() == Type.FLOAT ? Type.FLOAT : Type.INT, varExp.dimensions().size() == varExp.symbol().getDimensionSize() || varExp.symbol().getType() == Type.FLOAT ? 4 : 8);
         if (varExp.isSingle()) {
-            curBlock.add(new LoadVIR(result, varExp.symbol()));
+            curBlock.add(new LoadVIR(result, varExp.symbol(), List.of()));
             return result;
         }
         List<VIRItem> dimensions = new ArrayList<>();
@@ -494,7 +494,7 @@ public class VIRGenerator {
             }
             dimensions.add(reg);
         }
-        curBlock.add(new LoadVIR(result, dimensions, varExp.symbol()));
+        curBlock.add(new LoadVIR(result, varExp.symbol(), dimensions));
         return result;
     }
 

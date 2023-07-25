@@ -84,8 +84,8 @@ public final class MIROpTrans {
     }
 
     public static void transBinary(List<MIR> irs, BinaryVIR binaryVIR) {
-        VIRItem item1 = binaryVIR.getLeft();
-        VIRItem item2 = binaryVIR.getRight();
+        VIRItem item1 = binaryVIR.left();
+        VIRItem item2 = binaryVIR.right();
         if (item1 instanceof VReg reg1 && item2 instanceof VReg reg2) {
             MIRBinaryTrans.transBinaryRegReg(irs, binaryVIR, reg1, reg2);
             return;
@@ -102,7 +102,7 @@ public final class MIROpTrans {
     }
 
     public static int transCall(List<MIR> irs, CallVIR callVIR) {
-        List<VIRItem> params = callVIR.getParams();
+        List<VIRItem> params = callVIR.params();
         List<MIR> saveCalleeIRs = new ArrayList<>();
         int iSize = 0, fSize = 0;
         for (VIRItem param : params) {
@@ -151,23 +151,26 @@ public final class MIROpTrans {
             }
         }
         irs.addAll(saveCalleeIRs);
-        irs.add(new BlMIR(callVIR.getFunc()));
-        if (callVIR.getRetVal() != null) {
-            if (callVIR.getRetVal().getType() == Type.FLOAT)
-                irs.add(new MvMIR(callVIR.getRetVal(), MReg.FA0));
+        irs.add(new BlMIR(callVIR.func()));
+        if (callVIR.target() != null) {
+            if (callVIR.target().getType() == Type.FLOAT)
+                irs.add(new MvMIR(callVIR.target(), MReg.FA0));
             else
-                irs.add(new MvMIR(callVIR.getRetVal(), MReg.A0));
+                irs.add(new MvMIR(callVIR.target(), MReg.A0));
         }
         return params.size();
     }
 
     public static void transLI(List<MIR> irs, LIVIR liVIR) {
-        MIROpHelper.loadImmToReg(irs, liVIR.getTarget(), liVIR.second());
+        if (liVIR.target().getType() == Type.INT)
+            MIROpHelper.loadImmToReg(irs, liVIR.target(), liVIR.value().intValue());
+        else
+            MIROpHelper.loadImmToReg(irs, liVIR.target(), Float.floatToIntBits(liVIR.value().floatValue()));
     }
 
     public static void transLoad(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets, Map<Symbol,
             Pair<Boolean, Integer>> paramOffsets) {
-        Symbol symbol = loadVIR.getSymbol();
+        Symbol symbol = loadVIR.symbol();
         if (symbol instanceof GlobalSymbol globalSymbol) {
             if (globalSymbol.isConst())
                 MIRLoadTrans.transLoadConst(irs, loadVIR);
@@ -181,15 +184,15 @@ public final class MIROpTrans {
     }
 
     public static void transMov(List<MIR> irs, MovVIR movVIR) {
-        if (movVIR.getTarget().getType() == Type.FLOAT)
-            irs.add(new MvMIR(movVIR.getTarget(), movVIR.getSource()));
+        if (movVIR.target().getType() == Type.FLOAT)
+            irs.add(new MvMIR(movVIR.target(), movVIR.source()));
         else
-            irs.add(new MvMIR(movVIR.getTarget(), movVIR.getSource()));
+            irs.add(new MvMIR(movVIR.target(), movVIR.source()));
     }
 
     public static void transStore(List<MIR> irs, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets, Map<Symbol,
             Pair<Boolean, Integer>> paramOffsets) {
-        DataSymbol symbol = storeVIR.getSymbol();
+        DataSymbol symbol = storeVIR.symbol();
         if (symbol instanceof GlobalSymbol) {
             MIRStoreTrans.transStoreGlobal(irs, storeVIR);
             return;
@@ -206,7 +209,7 @@ public final class MIROpTrans {
     }
 
     public static void transUnary(List<MIR> irs, UnaryVIR unaryVIR) {
-        VIRItem item = unaryVIR.getSource();
+        VIRItem item = unaryVIR.source();
         if (item instanceof VReg reg) {
             MIRUnaryTrans.transUnaryReg(irs, unaryVIR, reg);
             return;

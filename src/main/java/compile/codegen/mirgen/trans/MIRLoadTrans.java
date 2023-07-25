@@ -34,17 +34,17 @@ public final class MIRLoadTrans {
     }
 
     static void transLoadConst(List<MIR> irs, LoadVIR loadVIR) {
-        DataSymbol symbol = loadVIR.getSymbol();
-        VReg target = loadVIR.getTarget();
+        DataSymbol symbol = loadVIR.symbol();
+        VReg target = loadVIR.target();
         if (symbol.isSingle()) {
             transLoadConstSingle(irs, target, symbol);
             return;
         }
-        if (loadVIR.getDimensions().size() != symbol.getDimensionSize()) {
-            transLoadConstArray(irs, target, loadVIR.getDimensions(), symbol);
+        if (loadVIR.indexes().size() != symbol.getDimensionSize()) {
+            transLoadConstArray(irs, target, loadVIR.indexes(), symbol);
             return;
         }
-        transLoadConstElement(irs, target, loadVIR.getDimensions(), symbol);
+        transLoadConstElement(irs, target, loadVIR.indexes(), symbol);
     }
 
     private static void transLoadConstArray(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol) {
@@ -100,17 +100,17 @@ public final class MIRLoadTrans {
     }
 
     static void transLoadGlobal(List<MIR> irs, LoadVIR loadVIR) {
-        DataSymbol symbol = loadVIR.getSymbol();
-        VReg target = loadVIR.getTarget();
+        DataSymbol symbol = loadVIR.symbol();
+        VReg target = loadVIR.target();
         if (symbol.isSingle()) {
             transLoadGlobalSingle(irs, target, symbol);
             return;
         }
-        if (loadVIR.getDimensions().size() != symbol.getDimensionSize()) {
-            transLoadGlobalArray(irs, target, loadVIR.getDimensions(), symbol);
+        if (loadVIR.indexes().size() != symbol.getDimensionSize()) {
+            transLoadGlobalArray(irs, target, loadVIR.indexes(), symbol);
             return;
         }
-        transLoadGlobalElement(irs, target, loadVIR.getDimensions(), symbol);
+        transLoadGlobalElement(irs, target, loadVIR.indexes(), symbol);
     }
 
     private static void transLoadGlobalArray(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol) {
@@ -166,18 +166,18 @@ public final class MIRLoadTrans {
     }
 
     static void transLoadLocal(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets) {
-        DataSymbol symbol = loadVIR.getSymbol();
-        VReg target = loadVIR.getTarget();
+        DataSymbol symbol = loadVIR.symbol();
+        VReg target = loadVIR.target();
         int offset = localOffsets.get(symbol);
         if (symbol.isSingle()) {
             transLoadLocalSingle(irs, target, offset);
             return;
         }
-        if (loadVIR.getDimensions().size() != symbol.getDimensionSize()) {
-            transLoadLocalArray(irs, target, loadVIR.getDimensions(), symbol, offset);
+        if (loadVIR.indexes().size() != symbol.getDimensionSize()) {
+            transLoadLocalArray(irs, target, loadVIR.indexes(), symbol, offset);
             return;
         }
-        transLoadLocalElement(irs, target, loadVIR.getDimensions(), symbol, offset);
+        transLoadLocalElement(irs, target, loadVIR.indexes(), symbol, offset);
     }
 
     private static void transLoadLocalArray(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol,
@@ -217,18 +217,18 @@ public final class MIRLoadTrans {
     }
 
     static void transLoadParam(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
-        DataSymbol symbol = loadVIR.getSymbol();
-        VReg target = loadVIR.getTarget();
+        DataSymbol symbol = loadVIR.symbol();
+        VReg target = loadVIR.target();
         Pair<Boolean, Integer> rawOffset = paramOffsets.get(symbol);
         if (symbol.isSingle()) {
             transLoadParamSingle(irs, target, rawOffset.first(), rawOffset.second());
             return;
         }
-        if (loadVIR.getDimensions().size() != symbol.getDimensionSize()) {
-            transLoadParamArray(irs, target, loadVIR.getDimensions(), symbol, rawOffset.first(), rawOffset.second());
+        if (loadVIR.indexes().size() != symbol.getDimensionSize()) {
+            transLoadParamArray(irs, target, loadVIR.indexes(), symbol, rawOffset.first(), rawOffset.second());
             return;
         }
-        transLoadParamElement(irs, target, loadVIR.getDimensions(), symbol, rawOffset.first(), rawOffset.second());
+        transLoadParamElement(irs, target, loadVIR.indexes(), symbol, rawOffset.first(), rawOffset.second());
     }
 
     private static void transLoadParamArray(List<MIR> irs, VReg target, List<VIRItem> dimensions, DataSymbol symbol,

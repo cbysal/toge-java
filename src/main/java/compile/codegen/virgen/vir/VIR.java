@@ -5,7 +5,11 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 
 public interface VIR {
-    List<VReg> getRead();
+    default List<VReg> getRead() {
+        return List.of();
+    }
 
-    VReg getWrite();
+    default VReg getWrite() {
+        return null;
+    }
 }

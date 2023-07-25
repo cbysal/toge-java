@@ -24,13 +24,13 @@ public final class MIRStoreTrans {
     }
 
     static void transStoreGlobal(List<MIR> irs, StoreVIR storeVIR) {
-        DataSymbol symbol = storeVIR.getSymbol();
-        VReg source = storeVIR.getSource();
+        DataSymbol symbol = storeVIR.symbol();
+        VReg source = storeVIR.source();
         if (symbol.isSingle()) {
             transStoreGlobalSingle(irs, source, symbol);
             return;
         }
-        transStoreGlobalElement(irs, source, storeVIR.getDimensions(), symbol);
+        transStoreGlobalElement(irs, source, storeVIR.indexes(), symbol);
     }
 
     private static void transStoreGlobalElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
@@ -59,14 +59,14 @@ public final class MIRStoreTrans {
     }
 
     static void transStoreLocal(List<MIR> irs, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets) {
-        DataSymbol symbol = storeVIR.getSymbol();
-        VReg source = storeVIR.getSource();
+        DataSymbol symbol = storeVIR.symbol();
+        VReg source = storeVIR.source();
         int offset = localOffsets.get(symbol);
         if (storeVIR.isSingle()) {
             transStoreLocalSingle(irs, source, offset);
             return;
         }
-        transStoreLocalElement(irs, source, storeVIR.getDimensions(), symbol, offset);
+        transStoreLocalElement(irs, source, storeVIR.indexes(), symbol, offset);
     }
 
     private static void transStoreLocalElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
@@ -91,14 +91,14 @@ public final class MIRStoreTrans {
     }
 
     static void transStoreParam(List<MIR> irs, StoreVIR storeVIR, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
-        DataSymbol symbol = storeVIR.getSymbol();
-        VReg source = storeVIR.getSource();
+        DataSymbol symbol = storeVIR.symbol();
+        VReg source = storeVIR.source();
         Pair<Boolean, Integer> rawOffset = paramOffsets.get(symbol);
         if (symbol.isSingle()) {
             transStoreParamSingle(irs, source, rawOffset.first(), rawOffset.second());
             return;
         }
-        transStoreParamElement(irs, source, storeVIR.getDimensions(), symbol, rawOffset.first(), rawOffset.second());
+        transStoreParamElement(irs, source, storeVIR.indexes(), symbol, rawOffset.first(), rawOffset.second());
     }
 
     private static void transStoreParamElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
