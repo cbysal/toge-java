@@ -9,17 +9,7 @@ import compile.symbol.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BlMIR implements MIR {
-    private final FuncSymbol func;
-
-    public BlMIR(FuncSymbol func) {
-        this.func = func;
-    }
-
-    public FuncSymbol getFunc() {
-        return func;
-    }
-
+public record BlMIR(FuncSymbol func) implements MIR {
     @Override
     public List<Reg> getRead() {
         List<Reg> regs = new ArrayList<>();
@@ -35,14 +25,6 @@ public class BlMIR implements MIR {
                 iSize++;
             }
         }
-        return regs;
-    }
-
-    @Override
-    public List<Reg> getRegs() {
-        List<Reg> regs = new ArrayList<>();
-        regs.addAll(MReg.I_CALLER_REGS);
-        regs.addAll(MReg.F_CALLER_REGS);
         return regs;
     }
 

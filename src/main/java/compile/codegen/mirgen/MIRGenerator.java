@@ -3,7 +3,6 @@ package compile.codegen.mirgen;
 import common.Pair;
 import compile.codegen.Label;
 import compile.codegen.mirgen.mir.LabelMIR;
-import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
@@ -136,8 +135,7 @@ public class MIRGenerator {
             MIROpTrans.transBlockBranches(mFunc.getIrs(), block, retLabel);
         }
         mFunc.getIrs().add(new LabelMIR(retLabel));
-        for (MIR mir : mFunc.getIrs())
-            mir.replaceReg(replaceMap);
+        mFunc.getIrs().replaceAll(ir -> ir.replaceReg(replaceMap));
         return mFunc;
     }
 }

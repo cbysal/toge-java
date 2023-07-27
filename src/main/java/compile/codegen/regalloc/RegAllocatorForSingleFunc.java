@@ -105,7 +105,7 @@ public class RegAllocatorForSingleFunc {
         isProcessed = true;
         solveSpill();
         Map<VReg, MReg> vRegToMReg = calcVRegToMReg();
-        func.getIrs().forEach(ir -> ir.replaceReg(vRegToMReg));
+        func.getIrs().replaceAll(ir -> ir.replaceReg(vRegToMReg));
         makeFrameInfo();
         pushFrame();
         popFrame();
@@ -117,7 +117,7 @@ public class RegAllocatorForSingleFunc {
         Map<Label, Integer> labelIdMap = new HashMap<>();
         for (int i = 0; i < irs.size(); i++)
             if (irs.get(i) instanceof LabelMIR labelMIR)
-                labelIdMap.put(labelMIR.getLabel(), i);
+                labelIdMap.put(labelMIR.label(), i);
         Set<Integer> begins = new HashSet<>();
         begins.add(0);
         Map<Integer, Integer> jumpIdMap = new HashMap<>();
@@ -125,7 +125,7 @@ public class RegAllocatorForSingleFunc {
         for (int i = 0; i < irs.size(); i++) {
             if (irs.get(i) instanceof BMIR bMIR) {
                 begins.add(i + 1);
-                jumpIdMap.put(i, labelIdMap.get(bMIR.getLabel()));
+                jumpIdMap.put(i, labelIdMap.get(bMIR.label()));
                 isBranchMap.put(i, bMIR.hasCond());
                 continue;
             }
@@ -236,7 +236,7 @@ public class RegAllocatorForSingleFunc {
                 MIR ir = irs.get(i);
                 if (ir instanceof BlMIR blMIR) {
                     int iSize = 0, fSize = 0;
-                    for (ParamSymbol param : blMIR.getFunc().getParams()) {
+                    for (ParamSymbol param : blMIR.func().getParams()) {
                         if (param.isSingle() && param.getType() == Type.FLOAT && fSize < MReg.F_CALLER_REGS.size()) {
                             if (!block.containsInDef(MReg.F_CALLER_REGS.get(fSize)))
                                 block.addUse(MReg.F_CALLER_REGS.get(fSize));
@@ -344,7 +344,6 @@ public class RegAllocatorForSingleFunc {
             func.addIR(new LoadMIR(MReg.RA, MReg.SP, 0, 8));
             func.addIR(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, 8));
         }
-        func.addIR(new RetMIR());
     }
 
     private void pushFrame() {
@@ -389,69 +388,67 @@ public class RegAllocatorForSingleFunc {
         for (int i = 0; i < irs.size(); i++) {
             MIR ir = irs.get(i);
             if (ir instanceof AddRegLocalMIR addRegLocalMIR) {
-                int totalSize = funcParamSize + alignSize + spillSize + addRegLocalMIR.getImm();
+                int totalSize = funcParamSize + alignSize + spillSize + addRegLocalMIR.imm();
                 if (totalSize < 2048)
-                    irs.set(i, new RriMIR(RriMIR.Op.ADDI, addRegLocalMIR.getTarget(), MReg.SP, totalSize));
+                    irs.set(i, new RriMIR(RriMIR.Op.ADDI, addRegLocalMIR.dest(), MReg.SP, totalSize));
                 else {
                     irs.set(i, new LiMIR(MReg.T0, totalSize));
-                    irs.add(i + 1, new RrrMIR(RrrMIR.Op.ADD, addRegLocalMIR.getTarget(), MReg.SP, MReg.T0));
+                    irs.add(i + 1, new RrrMIR(RrrMIR.Op.ADD, addRegLocalMIR.dest(), MReg.SP, MReg.T0));
                     i++;
                 }
                 continue;
             }
             if (ir instanceof LoadItemMIR loadItemMIR) {
-                int totalSize = switch (loadItemMIR.getItem()) {
-                    case SPILL -> funcParamSize + alignSize + loadItemMIR.getImm();
-                    case LOCAL -> funcParamSize + alignSize + spillSize + loadItemMIR.getImm();
+                int totalSize = switch (loadItemMIR.item()) {
+                    case SPILL -> funcParamSize + alignSize + loadItemMIR.imm();
+                    case LOCAL -> funcParamSize + alignSize + spillSize + loadItemMIR.imm();
                     case PARAM_INNER ->
-                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + loadItemMIR.getImm();
+                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + loadItemMIR.imm();
                     case PARAM_OUTER ->
-                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + loadItemMIR.getImm();
+                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + loadItemMIR.imm();
                 };
-                int size = switch (loadItemMIR.getItem()) {
+                int size = switch (loadItemMIR.item()) {
                     case LOCAL -> 4;
-                    case SPILL, PARAM_INNER, PARAM_OUTER -> switch (loadItemMIR.getDest().getType()) {
+                    case SPILL, PARAM_INNER, PARAM_OUTER -> switch (loadItemMIR.dest().getType()) {
                         case FLOAT -> 4;
                         case INT -> 8;
-                        default ->
-                                throw new IllegalStateException("Unexpected value: " + loadItemMIR.getDest().getType());
+                        default -> throw new IllegalStateException("Unexpected value: " + loadItemMIR.dest().getType());
                     };
                 };
                 if (totalSize < 2048) {
-                    irs.set(i, new LoadMIR(loadItemMIR.getDest(), MReg.SP, totalSize, size));
+                    irs.set(i, new LoadMIR(loadItemMIR.dest(), MReg.SP, totalSize, size));
                 } else {
                     irs.set(i, new LiMIR(MReg.T0, totalSize));
                     irs.add(i + 1, new RrrMIR(RrrMIR.Op.ADD, MReg.T0, MReg.SP, MReg.T0));
-                    irs.add(i + 2, new LoadMIR(loadItemMIR.getDest(), MReg.T0, 0, size));
+                    irs.add(i + 2, new LoadMIR(loadItemMIR.dest(), MReg.T0, 0, size));
                     i += 2;
                 }
                 continue;
             }
             if (ir instanceof StoreItemMIR storeItemMIR) {
-                int totalSize = switch (storeItemMIR.getItem()) {
-                    case PARAM_CALL -> storeItemMIR.getImm();
-                    case SPILL -> funcParamSize + alignSize + storeItemMIR.getImm();
-                    case LOCAL -> funcParamSize + alignSize + spillSize + storeItemMIR.getImm();
+                int totalSize = switch (storeItemMIR.item()) {
+                    case PARAM_CALL -> storeItemMIR.imm();
+                    case SPILL -> funcParamSize + alignSize + storeItemMIR.imm();
+                    case LOCAL -> funcParamSize + alignSize + spillSize + storeItemMIR.imm();
                     case PARAM_INNER ->
-                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + storeItemMIR.getImm();
+                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + storeItemMIR.imm();
                     case PARAM_OUTER ->
-                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + storeItemMIR.getImm();
+                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + storeItemMIR.imm();
                 };
-                int size = switch (storeItemMIR.getItem()) {
+                int size = switch (storeItemMIR.item()) {
                     case LOCAL -> 4;
-                    case PARAM_CALL, PARAM_INNER, PARAM_OUTER, SPILL -> switch (storeItemMIR.getSrc().getType()) {
+                    case PARAM_CALL, PARAM_INNER, PARAM_OUTER, SPILL -> switch (storeItemMIR.src().getType()) {
                         case FLOAT -> 4;
                         case INT -> 8;
-                        default ->
-                                throw new IllegalStateException("Unexpected value: " + storeItemMIR.getSrc().getType());
+                        default -> throw new IllegalStateException("Unexpected value: " + storeItemMIR.src().getType());
                     };
                 };
                 if (totalSize < 2048) {
-                    irs.set(i, new StoreMIR(storeItemMIR.getSrc(), MReg.SP, totalSize, size));
+                    irs.set(i, new StoreMIR(storeItemMIR.src(), MReg.SP, totalSize, size));
                 } else {
                     irs.set(i, new LiMIR(MReg.T0, totalSize));
                     irs.add(i + 1, new RrrMIR(RrrMIR.Op.ADD, MReg.T0, MReg.SP, MReg.T0));
-                    irs.add(i + 2, new StoreMIR(storeItemMIR.getSrc(), MReg.T0, 0, size));
+                    irs.add(i + 2, new StoreMIR(storeItemMIR.src(), MReg.T0, 0, size));
                     i += 2;
                 }
             }

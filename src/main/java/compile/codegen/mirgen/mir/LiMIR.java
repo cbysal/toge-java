@@ -3,43 +3,27 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
-import compile.symbol.Type;
 
 import java.util.List;
 import java.util.Map;
 
-public class LiMIR implements MIR {
-    private Reg target;
-    private final int imm;
-
-    public LiMIR(Reg target, int imm) {
-        this.target = target;
-        this.imm = imm;
-    }
-
-    @Override
-    public List<Reg> getRegs() {
-        return List.of(target);
-    }
-
-    public Reg getTarget() {
-        return target;
-    }
-
+public record LiMIR(Reg dest, int imm) implements MIR {
     @Override
     public List<Reg> getWrite() {
-        return List.of(target);
+        return List.of(dest);
     }
 
     @Override
-    public void replaceReg(Map<VReg, MReg> replaceMap) {
-        if (target instanceof VReg && replaceMap.containsKey(target))
-            target = replaceMap.get(target);
+    public MIR replaceReg(Map<VReg, MReg> replaceMap) {
+        Reg newDest = dest;
+        if (dest instanceof VReg && replaceMap.containsKey(dest))
+            newDest = replaceMap.get(dest);
+        return new LiMIR(newDest, imm);
     }
 
     @Override
     public List<MIR> spill(Reg reg, int offset) {
-        if (target.equals(reg)) {
+        if (dest.equals(reg)) {
             VReg target = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LiMIR(target, imm);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
@@ -48,12 +32,8 @@ public class LiMIR implements MIR {
         return List.of(this);
     }
 
-    public int getImm() {
-        return imm;
-    }
-
     @Override
     public String toString() {
-        return "li\t" + target + ", " + imm;
+        return "li\t" + dest + ", " + imm;
     }
 }

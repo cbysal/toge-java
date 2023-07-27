@@ -2,30 +2,15 @@ package compile.codegen.mirgen.mir;
 
 import compile.codegen.Label;
 import compile.codegen.Reg;
-import compile.codegen.virgen.VReg;
 import compile.codegen.mirgen.MReg;
+import compile.codegen.virgen.VReg;
 
 import java.util.List;
 import java.util.Map;
 
-public class BMIR implements MIR {
+public record BMIR(Op op, Reg src1, Reg src2, Label label) implements MIR {
     public enum Op {
         EQ, NE, GE, GT, LE, LT
-    }
-
-    private final Op op;
-    private Reg src1, src2;
-    private final Label label;
-
-    public BMIR(Label label) {
-        this(null, null, null, label);
-    }
-
-    public BMIR(Op op, Reg src1, Reg src2, Label label) {
-        this.op = op;
-        this.src1 = src1;
-        this.src2 = src2;
-        this.label = label;
     }
 
     @Override
@@ -36,19 +21,14 @@ public class BMIR implements MIR {
         return List.of(src1, src2);
     }
 
-    public List<Reg> getRegs() {
-        if (src1 == null) {
-            return List.of();
-        }
-        return List.of(src1, src2);
-    }
-
     @Override
-    public void replaceReg(Map<VReg, MReg> replaceMap) {
+    public MIR replaceReg(Map<VReg, MReg> replaceMap) {
+        Reg newSrc1 = src1, newSrc2 = src2;
         if (src1 instanceof VReg && replaceMap.containsKey(src1))
-            src1 = replaceMap.get(src1);
+            newSrc1 = replaceMap.get(src1);
         if (src2 instanceof VReg && replaceMap.containsKey(src2))
-            src2 = replaceMap.get(src2);
+            newSrc2 = replaceMap.get(src2);
+        return new BMIR(op, newSrc1, newSrc2, label);
     }
 
     @Override
@@ -81,10 +61,6 @@ public class BMIR implements MIR {
 
     public boolean hasCond() {
         return op != null;
-    }
-
-    public Label getLabel() {
-        return label;
     }
 
     @Override

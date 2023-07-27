@@ -4,39 +4,27 @@ import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
 import compile.symbol.Symbol;
-import compile.symbol.Type;
 
 import java.util.List;
 import java.util.Map;
 
-public class LlaMIR implements MIR {
-    private Reg target;
-    private final Symbol symbol;
-
-    public LlaMIR(Reg target, Symbol symbol) {
-        this.target = target;
-        this.symbol = symbol;
-    }
-
-    @Override
-    public List<Reg> getRegs() {
-        return List.of(target);
-    }
-
+public record LlaMIR(Reg dest, Symbol symbol) implements MIR {
     @Override
     public List<Reg> getWrite() {
-        return List.of(target);
+        return List.of(dest);
     }
 
     @Override
-    public void replaceReg(Map<VReg, MReg> replaceMap) {
-        if (target instanceof VReg && replaceMap.containsKey(target))
-            target = replaceMap.get(target);
+    public MIR replaceReg(Map<VReg, MReg> replaceMap) {
+        Reg newDest = dest;
+        if (dest instanceof VReg && replaceMap.containsKey(dest))
+            newDest = replaceMap.get(dest);
+        return new LlaMIR(newDest, symbol);
     }
 
     @Override
     public List<MIR> spill(Reg reg, int offset) {
-        if (target.equals(reg)) {
+        if (dest.equals(reg)) {
             VReg target = new VReg(reg.getType(), reg.getSize());
             MIR ir1 = new LlaMIR(target, symbol);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
@@ -47,6 +35,6 @@ public class LlaMIR implements MIR {
 
     @Override
     public String toString() {
-        return String.format("lla\t%s,%s", target, symbol.getName());
+        return String.format("lla\t%s,%s", dest, symbol.getName());
     }
 }

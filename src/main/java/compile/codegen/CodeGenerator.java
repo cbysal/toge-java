@@ -66,6 +66,7 @@ public class CodeGenerator {
                     builder.append('\t');
                 builder.append(ir.toString().replaceAll("\n", "\n\t")).append('\n');
             }
+            builder.append("\tret\n");
         }
     }
 

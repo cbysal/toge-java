@@ -80,7 +80,7 @@ public final class MIROpTrans {
             targetLabel = retLabel;
         else
             targetLabel = defaultBlock.getLabel();
-        irs.add(new BMIR(targetLabel));
+        irs.add(new BMIR(null, null, null, targetLabel));
     }
 
     public static void transBinary(List<MIR> irs, BinaryVIR binaryVIR) {
@@ -109,7 +109,7 @@ public final class MIROpTrans {
             if (param.getType() == Type.FLOAT) {
                 if (fSize < MReg.F_CALLER_REGS.size()) {
                     if (param instanceof VReg reg)
-                        saveCalleeIRs.add(new MvMIR(MReg.F_CALLER_REGS.get(fSize), reg));
+                        saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
                     else if (param instanceof Value value)
                         MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.F_CALLER_REGS.get(fSize), value.getFloat());
                     else
@@ -130,7 +130,7 @@ public final class MIROpTrans {
             } else {
                 if (iSize < MReg.I_CALLER_REGS.size()) {
                     if (param instanceof VReg reg)
-                        saveCalleeIRs.add(new MvMIR(MReg.I_CALLER_REGS.get(iSize), reg));
+                        saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), reg));
                     else if (param instanceof Value value)
                         MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.I_CALLER_REGS.get(iSize), value.getInt());
                     else
@@ -154,9 +154,9 @@ public final class MIROpTrans {
         irs.add(new BlMIR(callVIR.func()));
         if (callVIR.target() != null) {
             if (callVIR.target().getType() == Type.FLOAT)
-                irs.add(new MvMIR(callVIR.target(), MReg.FA0));
+                irs.add(new RrMIR(RrMIR.Op.MV, callVIR.target(), MReg.FA0));
             else
-                irs.add(new MvMIR(callVIR.target(), MReg.A0));
+                irs.add(new RrMIR(RrMIR.Op.MV, callVIR.target(), MReg.A0));
         }
         return params.size();
     }
@@ -185,9 +185,9 @@ public final class MIROpTrans {
 
     public static void transMov(List<MIR> irs, MovVIR movVIR) {
         if (movVIR.target().getType() == Type.FLOAT)
-            irs.add(new MvMIR(movVIR.target(), movVIR.source()));
+            irs.add(new RrMIR(RrMIR.Op.MV, movVIR.target(), movVIR.source()));
         else
-            irs.add(new MvMIR(movVIR.target(), movVIR.source()));
+            irs.add(new RrMIR(RrMIR.Op.MV, movVIR.target(), movVIR.source()));
     }
 
     public static void transStore(List<MIR> irs, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets, Map<Symbol,

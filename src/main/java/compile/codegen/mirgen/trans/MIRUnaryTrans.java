@@ -10,17 +10,17 @@ import java.util.List;
 
 public final class MIRUnaryTrans {
     private static void transF2IRegReg(List<MIR> irs, VReg target, VReg source) {
-        irs.add(new CvtMIR(target, source));
+        irs.add(new RrMIR(RrMIR.Op.CVT, target, source));
     }
 
     private static void transI2FRegReg(List<MIR> irs, VReg target, VReg source) {
-        irs.add(new CvtMIR(target, source));
+        irs.add(new RrMIR(RrMIR.Op.CVT, target, source));
     }
 
     private static void transLNotRegReg(List<MIR> irs, VReg target, VReg source) {
         if (source.getType() == Type.FLOAT) {
             VReg midReg = new VReg(Type.FLOAT, 4);
-            irs.add(new CvtMIR(midReg, MReg.ZERO));
+            irs.add(new RrMIR(RrMIR.Op.CVT, midReg, MReg.ZERO));
             irs.add(new RrrMIR(RrrMIR.Op.EQ, target, source, midReg));
         } else {
             irs.add(new RriMIR(RriMIR.Op.SLTIU, target, source, 1));
@@ -29,14 +29,14 @@ public final class MIRUnaryTrans {
 
     private static void transNegRegReg(List<MIR> irs, VReg target, VReg source) {
         if (target.getType() == Type.FLOAT)
-            irs.add(new NegMIR(target, source));
+            irs.add(new RrMIR(RrMIR.Op.FNEG, target, source));
         else
             irs.add(new RrrMIR(RrrMIR.Op.SUB, target, MReg.ZERO, source));
     }
 
     private static void transAbsRegReg(List<MIR> irs, VReg target, VReg source) {
         if (target.getType() == Type.FLOAT)
-            irs.add(new FabsMIR(target, source));
+            irs.add(new RrMIR(RrMIR.Op.FABS, target, source));
         else {
             VReg midReg1 = new VReg(Type.INT, 4);
             VReg midReg2 = new VReg(Type.INT, 4);

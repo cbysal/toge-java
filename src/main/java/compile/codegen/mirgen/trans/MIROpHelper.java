@@ -4,7 +4,7 @@ import common.Pair;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.mir.LiMIR;
 import compile.codegen.mirgen.mir.MIR;
-import compile.codegen.mirgen.mir.MvMIR;
+import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.mir.RrrMIR;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.VIRItem;
@@ -69,7 +69,7 @@ public final class MIROpHelper {
     private static void loadImmToFReg(List<MIR> irs, Reg reg, int imm) {
         VReg midReg = new VReg(Type.INT, 4);
         loadImmToIReg(irs, midReg, imm);
-        irs.add(new MvMIR(reg, midReg));
+        irs.add(new RrMIR(RrMIR.Op.MV, reg, midReg));
     }
 
     private static void loadImmToIReg(List<MIR> irs, Reg reg, int imm) {

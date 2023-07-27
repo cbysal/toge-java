@@ -4,6 +4,7 @@ import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -13,14 +14,18 @@ public interface MIR {
     }
 
     default List<Reg> getRegs() {
-        return List.of();
+        List<Reg> regs = new ArrayList<>();
+        regs.addAll(getRead());
+        regs.addAll(getWrite());
+        return regs;
     }
 
     default List<Reg> getWrite() {
         return List.of();
     }
 
-    default void replaceReg(Map<VReg, MReg> replaceMap) {
+    default MIR replaceReg(Map<VReg, MReg> replaceMap) {
+        return this;
     }
 
     default List<MIR> spill(Reg reg, int offset) {

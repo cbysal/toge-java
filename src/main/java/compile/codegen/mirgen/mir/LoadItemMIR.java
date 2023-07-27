@@ -3,33 +3,13 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
-import compile.symbol.Type;
 
 import java.util.List;
 import java.util.Map;
 
-public class LoadItemMIR implements MIR {
+public record LoadItemMIR(Item item, Reg dest, int imm) implements MIR {
     public enum Item {
         SPILL, PARAM_INNER, PARAM_OUTER, LOCAL
-    }
-
-    private final Item item;
-    private Reg dest;
-    private final int imm;
-
-    public LoadItemMIR(Item item, Reg dest, int imm) {
-        this.item = item;
-        this.dest = dest;
-        this.imm = imm;
-    }
-
-    @Override
-    public List<Reg> getRegs() {
-        return List.of(dest);
-    }
-
-    public Reg getDest() {
-        return dest;
     }
 
     @Override
@@ -38,9 +18,11 @@ public class LoadItemMIR implements MIR {
     }
 
     @Override
-    public void replaceReg(Map<VReg, MReg> replaceMap) {
+    public MIR replaceReg(Map<VReg, MReg> replaceMap) {
+        Reg newDest = dest;
         if (dest instanceof VReg && replaceMap.containsKey(dest))
-            dest = replaceMap.get(dest);
+            newDest = replaceMap.get(dest);
+        return new LoadItemMIR(item, newDest, imm);
     }
 
     @Override
@@ -52,14 +34,6 @@ public class LoadItemMIR implements MIR {
             return List.of(ir1, ir2);
         }
         return List.of(this);
-    }
-
-    public Item getItem() {
-        return item;
-    }
-
-    public int getImm() {
-        return imm;
     }
 
     @Override
