@@ -322,7 +322,11 @@ public class RegAllocatorForSingleFunc {
     }
 
     private void popFrame() {
-        int totalSize = funcParamSize + alignSize + spillSize + localSize;
+        List<MReg> toSaveRegs = new ArrayList<>();
+        if (callAddrSize != 0)
+            toSaveRegs.add(MReg.RA);
+        List.of(iCallerRegs, fCallerRegs, iCalleeRegs, fCalleeRegs).forEach(toSaveRegs::addAll);
+        int totalSize = toSaveRegs.size() * 8 + funcParamSize + alignSize + spillSize + localSize;
         if (totalSize > 0) {
             if (totalSize < 2048)
                 func.addIR(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, totalSize));
@@ -331,49 +335,26 @@ public class RegAllocatorForSingleFunc {
                 func.addIR(new RrrMIR(RrrMIR.Op.ADD, MReg.SP, MReg.SP, MReg.T0));
             }
         }
-        for (MReg fCalleeReg : fCalleeRegs) {
-            func.addIR(new LoadMIR(fCalleeReg, MReg.SP, 0, 4));
-            func.addIR(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, 8));
-        }
-        for (MReg iCalleeReg : iCalleeRegs) {
-            func.addIR(new LoadMIR(iCalleeReg, MReg.SP, 0, 8));
-            func.addIR(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, 8));
-        }
-        func.addIR(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, (iCallerRegs.size() + fCallerRegs.size()) * 8));
-        if (callAddrSize != 0) {
-            func.addIR(new LoadMIR(MReg.RA, MReg.SP, 0, 8));
-            func.addIR(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, 8));
+        for (int i = 0; i < toSaveRegs.size(); i++) {
+            MReg toSaveReg = toSaveRegs.get(i);
+            if (iCallerRegs.contains(toSaveReg) || fCallerRegs.contains(toSaveReg))
+                continue;
+            func.addIR(new LoadMIR(toSaveReg, MReg.SP, -8 * (i + 1), toSaveReg.getType() == Type.INT ? 8 : 4));
         }
     }
 
     private void pushFrame() {
         List<MIR> irs = func.getIrs();
         List<MIR> headIRs = new ArrayList<>();
-        if (callAddrSize != 0) {
-            headIRs.add(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, -8));
-            headIRs.add(new StoreMIR(MReg.RA, MReg.SP, 0, 8));
+        List<MReg> toSaveRegs = new ArrayList<>();
+        if (callAddrSize != 0)
+            toSaveRegs.add(MReg.RA);
+        List.of(iCallerRegs, fCallerRegs, iCalleeRegs, fCalleeRegs).forEach(toSaveRegs::addAll);
+        for (int i = 0; i < toSaveRegs.size(); i++) {
+            MReg toSaveReg = toSaveRegs.get(i);
+            headIRs.add(new StoreMIR(toSaveReg, MReg.SP, -8 * (i + 1), toSaveReg.getType() == Type.INT ? 8 : 4));
         }
-        ListIterator<MReg> iterator = iCallerRegs.listIterator(iCallerRegs.size());
-        while (iterator.hasPrevious()) {
-            headIRs.add(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, -8));
-            headIRs.add(new StoreMIR(iterator.previous(), MReg.SP, 0, 8));
-        }
-        iterator = fCallerRegs.listIterator(fCallerRegs.size());
-        while (iterator.hasPrevious()) {
-            headIRs.add(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, -8));
-            headIRs.add(new StoreMIR(iterator.previous(), MReg.SP, 0, 4));
-        }
-        iterator = iCalleeRegs.listIterator(iCalleeRegs.size());
-        while (iterator.hasPrevious()) {
-            headIRs.add(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, -8));
-            headIRs.add(new StoreMIR(iterator.previous(), MReg.SP, 0, 8));
-        }
-        iterator = fCalleeRegs.listIterator(fCalleeRegs.size());
-        while (iterator.hasPrevious()) {
-            headIRs.add(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, -8));
-            headIRs.add(new StoreMIR(iterator.previous(), MReg.SP, 0, 4));
-        }
-        int totalSize = funcParamSize + alignSize + spillSize + localSize;
+        int totalSize = toSaveRegs.size() * 8 + funcParamSize + alignSize + spillSize + localSize;
         if (totalSize > 0 && totalSize <= 255)
             headIRs.add(new RriMIR(RriMIR.Op.ADDI, MReg.SP, MReg.SP, -totalSize));
         else if (totalSize > 255) {

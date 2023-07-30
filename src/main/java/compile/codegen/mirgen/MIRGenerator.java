@@ -66,23 +66,27 @@ public class MIRGenerator {
 
     private Map<Symbol, Pair<Boolean, Integer>> calcParamOffsets(List<ParamSymbol> params) {
         Map<Symbol, Pair<Boolean, Integer>> paramOffsets = new HashMap<>();
-        int fCallerNum = 0;
-        for (ParamSymbol param : params)
+        int iCallerNum = 0, fCallerNum = 0;
+        for (ParamSymbol param : params) {
             if (param.isSingle() && param.getType() == Type.FLOAT)
                 fCallerNum++;
+            else
+                iCallerNum++;
+        }
+        iCallerNum = Integer.min(iCallerNum, MReg.I_CALLER_REGS.size());
         fCallerNum = Integer.min(fCallerNum, MReg.F_CALLER_REGS.size());
         int iSize = 0, fSize = 0;
         for (ParamSymbol param : params) {
             if (!param.isSingle() || param.getType() == Type.INT) {
                 if (iSize < MReg.I_CALLER_REGS.size())
-                    paramOffsets.put(param, new Pair<>(true, (iSize + fCallerNum) * 8));
+                    paramOffsets.put(param, new Pair<>(true, (iCallerNum + fCallerNum - iSize - 1) * 8));
                 else
                     paramOffsets.put(param, new Pair<>(false,
                             (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                 iSize++;
             } else {
                 if (fSize < MReg.F_CALLER_REGS.size())
-                    paramOffsets.put(param, new Pair<>(true, fSize * 8));
+                    paramOffsets.put(param, new Pair<>(true, (fCallerNum - fSize - 1) * 8));
                 else
                     paramOffsets.put(param, new Pair<>(false,
                             (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
