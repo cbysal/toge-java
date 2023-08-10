@@ -1,7 +1,10 @@
 package compile.codegen.mirgen.trans;
 
 import compile.codegen.mirgen.MReg;
-import compile.codegen.mirgen.mir.*;
+import compile.codegen.mirgen.mir.MIR;
+import compile.codegen.mirgen.mir.RrMIR;
+import compile.codegen.mirgen.mir.RriMIR;
+import compile.codegen.mirgen.mir.RrrMIR;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.UnaryVIR;
 import compile.symbol.Type;
@@ -28,10 +31,7 @@ public final class MIRUnaryTrans {
     }
 
     private static void transNegRegReg(List<MIR> irs, VReg target, VReg source) {
-        if (target.getType() == Type.FLOAT)
-            irs.add(new RrMIR(RrMIR.Op.NEG, target, source));
-        else
-            irs.add(new RrrMIR(RrrMIR.Op.SUB, target, MReg.ZERO, source));
+        irs.add(new RrMIR(RrMIR.Op.NEG, target, source));
     }
 
     private static void transAbsRegReg(List<MIR> irs, VReg target, VReg source) {
