@@ -9,7 +9,7 @@ import java.util.Map;
 
 public record RrrMIR(Op op, Reg dest, Reg src1, Reg src2) implements MIR {
     public enum Op {
-        ADD, ADDW, SUB, SUBW, MUL, DIV, REM, EQ, GE, GT, LE, LT, XOR
+        ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, REMW, EQ, GE, GT, LE, LT, XOR
     }
 
     @Override
@@ -99,8 +99,7 @@ public record RrrMIR(Op op, Reg dest, Reg src1, Reg src2) implements MIR {
                 default -> throw new IllegalStateException("Unexpected value: " + op);
             };
             case INT -> switch (op) {
-                case ADD, ADDW, SUB, SUBW, MUL, DIV, XOR -> op.toString().toLowerCase();
-                case REM -> String.format("%sw", op.toString().toLowerCase());
+                case ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, REMW, XOR -> op.toString().toLowerCase();
                 case EQ, GE, GT, LE, LT -> String.format("f%s.s", op.toString().toLowerCase());
             };
             default -> throw new IllegalStateException("Unexpected value: " + dest.getType());

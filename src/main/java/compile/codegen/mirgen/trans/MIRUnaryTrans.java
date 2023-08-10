@@ -29,7 +29,7 @@ public final class MIRUnaryTrans {
 
     private static void transNegRegReg(List<MIR> irs, VReg target, VReg source) {
         if (target.getType() == Type.FLOAT)
-            irs.add(new RrMIR(RrMIR.Op.FNEG, target, source));
+            irs.add(new RrMIR(RrMIR.Op.NEG, target, source));
         else
             irs.add(new RrrMIR(RrrMIR.Op.SUB, target, MReg.ZERO, source));
     }

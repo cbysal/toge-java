@@ -10,7 +10,7 @@ import java.util.Map;
 
 public record RrMIR(Op op, Reg dest, Reg src) implements MIR {
     public enum Op {
-        CVT, FABS, FNEG, MV
+        CVT, FABS, MV, NEG
     }
 
     @Override
@@ -75,7 +75,19 @@ public record RrMIR(Op op, Reg dest, Reg src) implements MIR {
                 default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
             };
             case FABS -> String.format("fabs.s\t%s,%s", dest, src);
-            case FNEG -> String.format("fneg.s\t%s,%s", dest, src);
+            case NEG -> switch (dest.getType()) {
+                case FLOAT -> {
+                    if (src.getType() != Type.FLOAT)
+                        throw new RuntimeException();
+                    yield String.format("fneg.s\t%s,%s", dest, src);
+                }
+                case INT -> {
+                    if (src.getType() != Type.INT)
+                        throw new RuntimeException();
+                    yield String.format("negw\t%s,%s", dest, src);
+                }
+                default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
+            };
             case MV -> String.format("%s\t%s,%s", switch (dest.getType()) {
                 case FLOAT -> switch (src.getType()) {
                     case FLOAT -> "fmv.s";

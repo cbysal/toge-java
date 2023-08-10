@@ -9,7 +9,7 @@ import java.util.Map;
 
 public record RriMIR(Op op, Reg dest, Reg src, int imm) implements MIR {
     public enum Op {
-        ADDI, SLTI, SLTIU, SRAIW
+        ADDI, SLTI, SLTIU, SLLIW, SRAI, SRAIW, SRLI, SRLIW
     }
 
     @Override

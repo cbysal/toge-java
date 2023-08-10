@@ -31,7 +31,7 @@ public final class MIROpHelper {
         VReg midReg1 = new VReg(Type.INT, 4);
         VReg midReg2 = new VReg(Type.INT, 4);
         loadImmToReg(irs, midReg1, imm);
-        irs.add(new RrrMIR(RrrMIR.Op.MUL, midReg2, source2, midReg1));
+        irs.add(new RrrMIR(RrrMIR.Op.MULW, midReg2, source2, midReg1));
         irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg2));
     }
 

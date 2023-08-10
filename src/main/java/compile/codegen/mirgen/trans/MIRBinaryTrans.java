@@ -240,9 +240,48 @@ public final class MIRBinaryTrans {
     }
 
     private static void transDivRegImmI(List<MIR> irs, VReg target, VReg source, int imm) {
-        VReg midReg = new VReg(Type.INT, 4);
-        MIROpHelper.loadImmToReg(irs, midReg, imm);
-        irs.add(new RrrMIR(RrrMIR.Op.DIV, target, source, midReg));
+        if (imm == 1) {
+            irs.add(new RrMIR(RrMIR.Op.MV, target, source));
+            return;
+        }
+        if (imm == -1) {
+            irs.add(new RrMIR(RrMIR.Op.NEG, target, source));
+            return;
+        }
+        int div = imm;
+        boolean isPos = true;
+        if (div < 0) {
+            isPos = false;
+            div = Math.abs(div);
+        }
+        int shift = 0;
+        while (1L << (shift + 32) <= (0x7fffffffL - 0x80000000L % div) * (div - (1L << (shift + 32)) % div))
+            shift++;
+        int magic = (int) ((1L << (shift + 32)) / div + 1);
+        VReg midReg1 = new VReg(Type.INT, 4);
+        VReg midReg2 = new VReg(Type.INT, 4);
+        VReg midReg3 = new VReg(Type.INT, 4);
+        VReg midReg4 = new VReg(Type.INT, 4);
+        MIROpHelper.loadImmToReg(irs, midReg1, magic);
+        if (magic >= 0) {
+            irs.add(new RrrMIR(RrrMIR.Op.MUL, midReg2, source, midReg1));
+            irs.add(new RriMIR(RriMIR.Op.SRLI, midReg2, midReg2, 32));
+        } else {
+            irs.add(new RrrMIR(RrrMIR.Op.MUL, midReg2, source, midReg1));
+            irs.add(new RriMIR(RriMIR.Op.SRLI, midReg2, midReg2, 32));
+            irs.add(new RrrMIR(RrrMIR.Op.ADD, midReg2, midReg2, source));
+        }
+        if (shift != 0)
+            irs.add(new RriMIR(RriMIR.Op.SRAIW, midReg3, midReg2, shift));
+        else
+            midReg3 = midReg2;
+        if (isPos) {
+            irs.add(new RriMIR(RriMIR.Op.SRLIW, midReg4, source, 31));
+            irs.add(new RrrMIR(RrrMIR.Op.ADDW, target, midReg3, midReg4));
+        } else {
+            irs.add(new RriMIR(RriMIR.Op.SRAIW, midReg4, source, 31));
+            irs.add(new RrrMIR(RrrMIR.Op.SUBW, target, midReg3, midReg4));
+        }
     }
 
     private static void transDivRegRegF(List<MIR> irs, VReg target, VReg source1, VReg source2) {
@@ -260,13 +299,17 @@ public final class MIRBinaryTrans {
     }
 
     private static void transModRegImm(List<MIR> irs, VReg target, VReg source, int imm) {
-        VReg midReg = new VReg(Type.INT, 4);
-        MIROpHelper.loadImmToReg(irs, midReg, imm);
-        transModRegReg(irs, target, source, midReg);
+        VReg midReg1 = new VReg(Type.INT, 4);
+        VReg midReg2 = new VReg(Type.INT, 4);
+        VReg midReg3 = new VReg(Type.INT, 4);
+        transDivRegImmI(irs, midReg1, source, imm);
+        irs.add(new LiMIR(midReg2, imm));
+        irs.add(new RrrMIR(RrrMIR.Op.MULW, midReg3, midReg1, midReg2));
+        irs.add(new RrrMIR(RrrMIR.Op.SUBW, target, source, midReg3));
     }
 
     private static void transModRegReg(List<MIR> irs, VReg target, VReg source1, VReg source2) {
-        irs.add(new RrrMIR(RrrMIR.Op.REM, target, source1, source2));
+        irs.add(new RrrMIR(RrrMIR.Op.REMW, target, source1, source2));
     }
 
     private static void transMulRegImmF(List<MIR> irs, VReg target, VReg source, float imm) {
@@ -276,6 +319,34 @@ public final class MIRBinaryTrans {
     }
 
     private static void transMulRegImmI(List<MIR> irs, VReg target, VReg source, int imm) {
+        if (imm == 0) {
+            MIROpHelper.loadImmToReg(irs, target, 0);
+            return;
+        }
+        if (imm == 1) {
+            irs.add(new RrMIR(RrMIR.Op.MV, target, source));
+            return;
+        }
+        if (imm == -1) {
+            irs.add(new RrMIR(RrMIR.Op.NEG, target, source));
+            return;
+        }
+        if (Integer.bitCount(imm) == 1) {
+            irs.add(new RriMIR(RriMIR.Op.SLLIW, target, source, Integer.numberOfTrailingZeros(imm)));
+            return;
+        }
+        if (Integer.bitCount(imm) == 2 && imm % 2 == 1) {
+            VReg midReg = new VReg(Type.INT, 4);
+            irs.add(new RriMIR(RriMIR.Op.SLLIW, midReg, source, 31 - Integer.numberOfLeadingZeros(imm)));
+            irs.add(new RrrMIR(RrrMIR.Op.ADD, target, midReg, source));
+            return;
+        }
+        if (Integer.numberOfTrailingZeros(imm) == 0 && Integer.numberOfLeadingZeros(imm) + Integer.bitCount(imm) == 32) {
+            VReg midReg = new VReg(Type.INT, 4);
+            irs.add(new RriMIR(RriMIR.Op.SLLIW, midReg, source, 32 - Integer.numberOfLeadingZeros(imm)));
+            irs.add(new RrrMIR(RrrMIR.Op.SUB, target, midReg, source));
+            return;
+        }
         VReg midReg = new VReg(Type.INT, 4);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transMulRegRegI(irs, target, source, midReg);
@@ -286,7 +357,7 @@ public final class MIRBinaryTrans {
     }
 
     private static void transMulRegRegI(List<MIR> irs, VReg target, VReg source1, VReg source2) {
-        irs.add(new RrrMIR(RrrMIR.Op.MUL, target, source1, source2));
+        irs.add(new RrrMIR(RrrMIR.Op.MULW, target, source1, source2));
     }
 
     private static void transSubImmRegF(List<MIR> irs, VReg target, float imm, VReg source) {
