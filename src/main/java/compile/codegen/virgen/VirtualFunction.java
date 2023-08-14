@@ -4,25 +4,19 @@ import common.Pair;
 import compile.codegen.virgen.vir.VIR;
 import compile.symbol.FuncSymbol;
 import compile.symbol.LocalSymbol;
-import compile.symbol.Symbol;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public class VirtualFunction {
     private final FuncSymbol symbol;
-    private final VReg retVal;
     private final List<LocalSymbol> locals = new ArrayList<>();
     private final List<Block> blocks = new ArrayList<>();
 
     public VirtualFunction(FuncSymbol symbol) {
         this.symbol = symbol;
-        this.retVal = switch (symbol.getType()) {
-            case FLOAT, INT -> new VReg(symbol.getType(), 4);
-            case VOID -> null;
-        };
     }
 
     public void addLocal(LocalSymbol local) {
@@ -54,10 +48,6 @@ public class VirtualFunction {
         return locals;
     }
 
-    public VReg getRetVal() {
-        return retVal;
-    }
-
     public FuncSymbol getSymbol() {
         return symbol;
     }
@@ -78,6 +68,8 @@ public class VirtualFunction {
         builder.append("-------- vir --------\n");
         for (Block block : blocks) {
             builder.append(block).append(":\n");
+            for (Map.Entry<VReg, Map<VReg, Block>> entry : block.getPhiMap().entrySet())
+                builder.append(entry.getKey()).append(" <- ").append(entry.getValue()).append('\n');
             for (VIR ir : block)
                 builder.append(ir).append('\n');
             for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks()) {

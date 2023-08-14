@@ -1,8 +1,8 @@
 package compile.codegen.mirgen;
 
 import common.Pair;
-import compile.codegen.Label;
 import compile.codegen.mirgen.mir.LabelMIR;
+import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
@@ -30,7 +30,26 @@ public class MIRGenerator {
         if (isProcessed)
             return;
         isProcessed = true;
+        deSSA();
         vir2Mir();
+    }
+
+    private void deSSA() {
+        for (VirtualFunction func : vFuncs.values()) {
+            List<Block> blocks = func.getBlocks();
+            for (Block block : blocks) {
+                Map<VReg, Map<VReg, Block>> phiMap = block.getPhiMap();
+                for (Map.Entry<VReg, Map<VReg, Block>> entry : phiMap.entrySet()) {
+                    VReg target = entry.getKey();
+                    Map<VReg, Block> sources = entry.getValue();
+                    for (Map.Entry<VReg, Block> sourceWithBlock : sources.entrySet()) {
+                        VReg source = sourceWithBlock.getKey();
+                        Block insertBlock = sourceWithBlock.getValue();
+                        insertBlock.add(new MovVIR(target, source));
+                    }
+                }
+            }
+        }
     }
 
     private Pair<Integer, Integer> getCallerNumbers(FuncSymbol func) {
@@ -108,14 +127,7 @@ public class MIRGenerator {
         MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.first(), callerNums.first(),
                 callerNums.second());
         Map<VReg, MReg> replaceMap = new HashMap<>();
-        if (vFunc.getRetVal() != null) {
-            if (vFunc.getRetVal().getType() == Type.FLOAT)
-                replaceMap.put(vFunc.getRetVal(), MReg.FA0);
-            else
-                replaceMap.put(vFunc.getRetVal(), MReg.A0);
-        }
         Map<Symbol, Integer> localOffsets = locals.second();
-        Label retLabel = new Label();
         for (Block block : vFunc.getBlocks()) {
             mFunc.addIR(new LabelMIR(block.getLabel()));
             for (VIR vir : block) {
@@ -125,20 +137,26 @@ public class MIRGenerator {
                     int paramNum = MIROpTrans.transCall(mFunc.getIrs(), callVIR);
                     mFunc.setMaxFuncParamNum(Integer.max(mFunc.getMaxFuncParamNum(), paramNum));
                 }
-                if (vir instanceof LIVIR liVIR)
+                if (vir instanceof LiVIR liVIR)
                     MIROpTrans.transLI(mFunc.getIrs(), liVIR);
                 if (vir instanceof LoadVIR loadVIR)
                     MIROpTrans.transLoad(mFunc.getIrs(), loadVIR, localOffsets, paramOffsets);
                 if (vir instanceof MovVIR movVIR)
                     MIROpTrans.transMov(mFunc.getIrs(), movVIR);
+                if (vir instanceof RetVIR retVIR) {
+                    if (retVIR.retVal() != null) {
+                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal().getType() == Type.INT ? MReg.A0 :
+                                MReg.FA0, retVIR.retVal()));
+                    }
+                }
                 if (vir instanceof UnaryVIR unaryVIR)
                     MIROpTrans.transUnary(mFunc.getIrs(), unaryVIR);
                 if (vir instanceof StoreVIR storeVIR)
                     MIROpTrans.transStore(mFunc.getIrs(), storeVIR, localOffsets, paramOffsets);
             }
-            MIROpTrans.transBlockBranches(mFunc.getIrs(), block, retLabel);
+            if (!(block.getDefaultBlock() == null && block.getCondBlocks().isEmpty()))
+                MIROpTrans.transBlockBranches(mFunc.getIrs(), block);
         }
-        mFunc.getIrs().add(new LabelMIR(retLabel));
         mFunc.getIrs().replaceAll(ir -> ir.replaceReg(replaceMap));
         return mFunc;
     }

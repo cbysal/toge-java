@@ -14,18 +14,14 @@ import java.util.List;
 import java.util.Map;
 
 public final class MIROpTrans {
-    public static void transBlockBranches(List<MIR> irs, Block block, Label retLabel) {
+    public static void transBlockBranches(List<MIR> irs, Block block) {
         for (Pair<Block.Cond, Block> entry : block.getCondBlocks()) {
             Block.Cond cond = entry.first();
             Block.Cond.Type type = cond.type();
             VIRItem item1 = cond.left();
             VIRItem item2 = cond.right();
             Block targetBlock = entry.second();
-            Label targetLabel;
-            if (targetBlock == null)
-                targetLabel = retLabel;
-            else
-                targetLabel = targetBlock.getLabel();
+            Label targetLabel = targetBlock.getLabel();
             VReg reg1, reg2;
             if (item1 instanceof VReg reg) {
                 reg1 = reg;
@@ -75,11 +71,7 @@ public final class MIROpTrans {
             }
         }
         Block defaultBlock = block.getDefaultBlock();
-        Label targetLabel;
-        if (defaultBlock == null)
-            targetLabel = retLabel;
-        else
-            targetLabel = defaultBlock.getLabel();
+        Label targetLabel = defaultBlock.getLabel();
         irs.add(new BMIR(null, null, null, targetLabel));
     }
 
@@ -161,7 +153,7 @@ public final class MIROpTrans {
         return params.size();
     }
 
-    public static void transLI(List<MIR> irs, LIVIR liVIR) {
+    public static void transLI(List<MIR> irs, LiVIR liVIR) {
         if (liVIR.target().getType() == Type.INT)
             MIROpHelper.loadImmToReg(irs, liVIR.target(), liVIR.value().intValue());
         else

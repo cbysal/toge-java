@@ -1,19 +1,20 @@
 package compile;
 
-import execute.Executor;
 import compile.codegen.CodeGenerator;
 import compile.codegen.mirgen.MIRGenerator;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.regalloc.RegAllocator;
 import compile.codegen.virgen.VIRGenerator;
-import compile.codegen.virgen.VIROptimizer;
+import compile.codegen.virgen.VIRPassManager;
 import compile.codegen.virgen.VirtualFunction;
 import compile.lexical.LexicalParser;
 import compile.lexical.token.TokenList;
 import compile.symbol.GlobalSymbol;
 import compile.symbol.SymbolTable;
+import compile.syntax.SyntaxPassManager;
 import compile.syntax.SyntaxParser;
 import compile.syntax.ast.RootAST;
+import execute.Executor;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -21,7 +22,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -46,6 +46,9 @@ public class Compiler {
         SymbolTable symbolTable = new SymbolTable();
         SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
         RootAST rootAST = syntaxParser.getRootAST();
+        SyntaxPassManager syntaxPassManager = new SyntaxPassManager(rootAST);
+        syntaxPassManager.run();
+        rootAST = syntaxPassManager.getRootAST();
         VIRGenerator virGenerator = new VIRGenerator(rootAST);
         Set<GlobalSymbol> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
@@ -53,8 +56,8 @@ public class Compiler {
             printVIR(vFuncs);
         if (options.containsKey(Executor.OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION))
             emitVIR(options.get(Executor.OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION), vFuncs);
-        VIROptimizer virOptimizer = new VIROptimizer(globals, vFuncs);
-        virOptimizer.optimize();
+        VIRPassManager virPassManager = new VIRPassManager(globals, vFuncs);
+        virPassManager.run();
         if (options.containsKey(Executor.OptionPool.PRINT_VIR_AFTER_OPTIMIZATION))
             printVIR(vFuncs);
         if (options.containsKey(Executor.OptionPool.EMIT_VIR_AFTER_OPTIMIZATION))

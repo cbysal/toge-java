@@ -16,6 +16,7 @@ public class VIRGenerator {
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
     private VirtualFunction curFunc;
     private Block curBlock, trueBlock, falseBlock, retBlock;
+    private VReg retVal;
     private final Deque<Block> continueStack = new ArrayDeque<>();
     private final Deque<Block> breakStack = new ArrayDeque<>();
 
@@ -48,17 +49,6 @@ public class VIRGenerator {
                 Block block = blocks.get(i);
                 if (block.getDefaultBlock() == null)
                     block.setDefaultBlock(blocks.get(i + 1));
-            }
-            Block retBlock = blocks.remove(blocks.size() - 1);
-            for (Block block : blocks) {
-                List<Pair<Block.Cond, Block>> condBlocks = block.getCondBlocks();
-                for (int i = 0; i < condBlocks.size(); i++) {
-                    Pair<Block.Cond, Block> condBlock = condBlocks.get(i);
-                    if (condBlock.second() == retBlock)
-                        condBlocks.set(i, new Pair<>(condBlock.first(), null));
-                }
-                if (block.getDefaultBlock() == retBlock)
-                    block.setDefaultBlock(null);
             }
         }
     }
@@ -228,7 +218,7 @@ public class VIRGenerator {
 
     private VReg parseFloatLitExp(FloatLitExpAST root) {
         VReg reg = new VReg(Type.FLOAT, 4);
-        curBlock.add(new LIVIR(reg, root.value()));
+        curBlock.add(new LiVIR(reg, root.value()));
         return reg;
     }
 
@@ -254,6 +244,11 @@ public class VIRGenerator {
     private void parseFuncDef(FuncDefAST funcDef) {
         curFunc = new VirtualFunction(funcDef.decl());
         retBlock = new Block();
+        retVal = switch (funcDef.decl().getType()) {
+            case FLOAT, INT -> new VReg(funcDef.decl().getType(), 4);
+            case VOID -> null;
+        };
+        retBlock.add(new RetVIR(retVal));
         curBlock = new Block();
         curFunc.addBlock(curBlock);
         parseBlockStmt(funcDef.body());
@@ -301,7 +296,7 @@ public class VIRGenerator {
 
     private VReg parseIntLitExp(IntLitExpAST root) {
         VReg reg = new VReg(Type.INT, 4);
-        curBlock.add(new LIVIR(reg, root.value()));
+        curBlock.add(new LiVIR(reg, root.value()));
         return reg;
     }
 
@@ -356,15 +351,13 @@ public class VIRGenerator {
         if (retStmt.value() == null) {
             if (curBlock.getDefaultBlock() == null)
                 curBlock.setDefaultBlock(retBlock);
-            curBlock.markRet();
             return;
         }
         VReg retReg = parseExp(retStmt.value());
-        retReg = typeConversion(retReg, curFunc.getRetVal().getType());
-        curBlock.add(new MovVIR(curFunc.getRetVal(), retReg));
+        retReg = typeConversion(retReg, retVal.getType());
+        curBlock.add(new MovVIR(retVal, retReg));
         if (curBlock.getDefaultBlock() == null)
             curBlock.setDefaultBlock(retBlock);
-        curBlock.markRet();
     }
 
     private void parseRoot(RootAST root) {
@@ -446,7 +439,7 @@ public class VIRGenerator {
                     default -> throw new RuntimeException();
                 }, result, source));
                 VReg zero = new VReg(Type.INT, 4);
-                curBlock.add(new LIVIR(zero, 0));
+                curBlock.add(new LiVIR(zero, 0));
                 curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
                 if (curBlock.getDefaultBlock() == null)
                     curBlock.setDefaultBlock(falseBlock);
@@ -471,7 +464,7 @@ public class VIRGenerator {
     private void parseValueCond(ExpAST root) {
         VReg result = parseExp(root);
         VReg zero = new VReg(Type.INT, 4);
-        curBlock.add(new LIVIR(zero, 0));
+        curBlock.add(new LiVIR(zero, 0));
         curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
         if (curBlock.getDefaultBlock() == null)
             curBlock.setDefaultBlock(falseBlock);

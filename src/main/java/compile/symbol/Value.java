@@ -23,24 +23,148 @@ public final class Value implements VIRItem {
         this.value = value;
     }
 
-    public boolean eq(Value v) {
+    public Value add(Value v) {
         if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return Float.intBitsToFloat(value) == Float.intBitsToFloat(v.value);
+            return new Value(Float.intBitsToFloat(value) + Float.intBitsToFloat(v.value));
         if (type == Type.FLOAT)
-            return Float.intBitsToFloat(value) == v.value;
+            return new Value(Float.intBitsToFloat(value) + v.value);
         if (v.type == Type.FLOAT)
-            return value == Float.intBitsToFloat(v.value);
-        return value == v.value;
+            return new Value(value + Float.intBitsToFloat(v.value));
+        return new Value(value + v.value);
     }
 
-    public boolean ge(Value v) {
+    public Value sub(Value v) {
         if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return Float.intBitsToFloat(value) >= Float.intBitsToFloat(v.value);
+            return new Value(Float.intBitsToFloat(value) - Float.intBitsToFloat(v.value));
         if (type == Type.FLOAT)
-            return Float.intBitsToFloat(value) >= v.value;
+            return new Value(Float.intBitsToFloat(value) - v.value);
         if (v.type == Type.FLOAT)
-            return value >= Float.intBitsToFloat(v.value);
-        return value >= v.value;
+            return new Value(value - Float.intBitsToFloat(v.value));
+        return new Value(value - v.value);
+    }
+
+    public Value mul(Value v) {
+        if (type == Type.FLOAT && v.type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) * Float.intBitsToFloat(v.value));
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) * v.value);
+        if (v.type == Type.FLOAT)
+            return new Value(value * Float.intBitsToFloat(v.value));
+        return new Value(value * v.value);
+    }
+
+    public Value div(Value v) {
+        if (type == Type.FLOAT && v.type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) / Float.intBitsToFloat(v.value));
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) / v.value);
+        if (v.type == Type.FLOAT)
+            return new Value(value / Float.intBitsToFloat(v.value));
+        return new Value(value / v.value);
+    }
+
+    public Value mod(Value v) {
+        return new Value(value % v.value);
+    }
+
+    public Value eq(Value v) {
+        if (type == Type.FLOAT && v.type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) == Float.intBitsToFloat(v.value));
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) == v.value);
+        if (v.type == Type.FLOAT)
+            return new Value(value == Float.intBitsToFloat(v.value));
+        return new Value(value == v.value);
+    }
+
+    public Value ne(Value v) {
+        if (type == Type.FLOAT && v.type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) != Float.intBitsToFloat(v.value));
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) != v.value);
+        if (v.type == Type.FLOAT)
+            return new Value(value != Float.intBitsToFloat(v.value));
+        return new Value(value != v.value);
+    }
+
+    public Value ge(Value v) {
+        if (type == Type.FLOAT && v.type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) >= Float.intBitsToFloat(v.value));
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) >= v.value);
+        if (v.type == Type.FLOAT)
+            return new Value(value >= Float.intBitsToFloat(v.value));
+        return new Value(value >= v.value);
+    }
+
+    public Value gt(Value v) {
+        if (type == Type.FLOAT && v.type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) > Float.intBitsToFloat(v.value));
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) > v.value);
+        if (v.type == Type.FLOAT)
+            return new Value(value > Float.intBitsToFloat(v.value));
+        return new Value(value > v.value);
+    }
+
+    public Value toInt() {
+        if (type == Type.INT)
+            throw new RuntimeException();
+        return new Value((int) Float.intBitsToFloat(value));
+    }
+
+    public Value toFloat() {
+        if (type == Type.FLOAT)
+            throw new RuntimeException();
+        return new Value((float) value);
+    }
+
+    public Value neg() {
+        if (type == Type.FLOAT)
+            return new Value(-Float.intBitsToFloat(value));
+        return new Value(-value);
+    }
+
+    public Value lNot() {
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) == 0.0f);
+        return new Value(value == 0);
+    }
+
+    public boolean isZero() {
+        if (type == Type.FLOAT)
+            return Float.intBitsToFloat(value) == 0.0f;
+        return value == 0;
+    }
+
+    public Value abs() {
+        if (type == Type.FLOAT)
+            return new Value(Math.abs(Float.intBitsToFloat(value)));
+        return new Value(Math.abs(value));
+    }
+
+    public Value le(Value v) {
+        if (type == Type.FLOAT && v.type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) <= Float.intBitsToFloat(v.value));
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) <= v.value);
+        if (v.type == Type.FLOAT)
+            return new Value(value <= Float.intBitsToFloat(v.value));
+        return new Value(value <= v.value);
+    }
+
+    public Value lt(Value v) {
+        if (type == Type.FLOAT && v.type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) < Float.intBitsToFloat(v.value));
+        if (type == Type.FLOAT)
+            return new Value(Float.intBitsToFloat(value) < v.value);
+        if (v.type == Type.FLOAT)
+            return new Value(value < Float.intBitsToFloat(v.value));
+        return new Value(value < v.value);
+    }
+
+    public Type getType() {
+        return type;
     }
 
     public float getFloat() {
@@ -53,50 +177,6 @@ public final class Value implements VIRItem {
         if (type == Type.INT)
             return value;
         return (int) Float.intBitsToFloat(value);
-    }
-
-    public boolean gt(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return Float.intBitsToFloat(value) > Float.intBitsToFloat(v.value);
-        if (type == Type.FLOAT)
-            return Float.intBitsToFloat(value) > v.value;
-        if (v.type == Type.FLOAT)
-            return value > Float.intBitsToFloat(v.value);
-        return value > v.value;
-    }
-
-    public Type getType() {
-        return type;
-    }
-
-    public boolean le(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return Float.intBitsToFloat(value) <= Float.intBitsToFloat(v.value);
-        if (type == Type.FLOAT)
-            return Float.intBitsToFloat(value) <= v.value;
-        if (v.type == Type.FLOAT)
-            return value <= Float.intBitsToFloat(v.value);
-        return value <= v.value;
-    }
-
-    public boolean lt(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return Float.intBitsToFloat(value) < Float.intBitsToFloat(v.value);
-        if (type == Type.FLOAT)
-            return Float.intBitsToFloat(value) < v.value;
-        if (v.type == Type.FLOAT)
-            return value < Float.intBitsToFloat(v.value);
-        return value < v.value;
-    }
-
-    public boolean ne(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return Float.intBitsToFloat(value) != Float.intBitsToFloat(v.value);
-        if (type == Type.FLOAT)
-            return Float.intBitsToFloat(value) != v.value;
-        if (v.type == Type.FLOAT)
-            return value != Float.intBitsToFloat(v.value);
-        return value != v.value;
     }
 
     @Override

@@ -6,7 +6,7 @@ import java.util.List;
 
 public record BinaryVIR(Type type, VReg target, VIRItem left, VIRItem right) implements VIR {
     public enum Type {
-        ADD, DIV, EQ, GE, GT, LE, LT, MOD, MUL, NE, SUB
+        ADD, SUB, MUL, DIV, MOD, EQ, NE, GE, GT, LE, LT
     }
 
     @Override

@@ -15,21 +15,13 @@ public class Block implements Iterable<VIR> {
     }
 
     private final Label label;
-    private boolean isRet;
     private Block defaultBlock;
     private final List<Pair<Cond, Block>> condBlocks = new ArrayList<>();
+    private final Map<VReg, Map<VReg, Block>> phiMap = new HashMap<>();
     private final List<VIR> irs = new ArrayList<>();
 
     public Block() {
         this.label = new Label();
-    }
-
-    public void markRet() {
-        isRet = true;
-    }
-
-    public boolean isRet() {
-        return isRet;
     }
 
     public void setDefaultBlock(Block defaultBlock) {
@@ -56,13 +48,15 @@ public class Block implements Iterable<VIR> {
         condBlocks.clear();
     }
 
+    public Map<VReg, Map<VReg, Block>> getPhiMap() {
+        return phiMap;
+    }
+
     public Label getLabel() {
         return label;
     }
 
     public boolean add(VIR ir) {
-        if (isRet)
-            return false;
         return irs.add(ir);
     }
 
@@ -70,23 +64,27 @@ public class Block implements Iterable<VIR> {
         return irs.addAll(block.irs);
     }
 
+    public boolean addAll(int index, List<VIR> irs) {
+        return this.irs.addAll(index, irs);
+    }
+
     public VIR get(int index) {
         return irs.get(index);
     }
 
-    boolean isEmpty() {
+    public boolean isEmpty() {
         return irs.isEmpty();
     }
 
-    VIR remove(int index) {
+    public VIR remove(int index) {
         return irs.remove(index);
     }
 
-    VIR set(int index, VIR ir) {
+    public VIR set(int index, VIR ir) {
         return irs.set(index, ir);
     }
 
-    int size() {
+    public int size() {
         return irs.size();
     }
 

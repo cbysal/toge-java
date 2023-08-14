@@ -6,7 +6,7 @@ import java.util.List;
 
 public record UnaryVIR(Type type, VReg target, VIRItem source) implements VIR {
     public enum Type {
-        ABS, F2I, I2F, L_NOT, NEG
+        F2I, I2F, NEG, L_NOT, ABS
     }
 
     @Override
