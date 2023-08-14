@@ -3,7 +3,10 @@ package compile.codegen.virgen.pass;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
-import compile.codegen.virgen.vir.*;
+import compile.codegen.virgen.vir.LoadVIR;
+import compile.codegen.virgen.vir.StoreVIR;
+import compile.codegen.virgen.vir.VIR;
+import compile.codegen.virgen.vir.VIRItem;
 import compile.symbol.GlobalSymbol;
 import compile.symbol.Type;
 import compile.symbol.Value;
@@ -18,29 +21,31 @@ public class SplitGlobals extends Pass {
 
     @Override
     public boolean run() {
-        Set<GlobalSymbol> globals =
-                this.globals.stream().filter(global -> !global.isSingle()).collect(Collectors.toSet());
+        Set<GlobalSymbol> toRemoveGlobals =
+                globals.stream().filter(global -> !global.isSingle()).collect(Collectors.toSet());
         for (VirtualFunction func : funcs.values()) {
             for (Block block : func.getBlocks()) {
                 for (VIR ir : block) {
-                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof GlobalSymbol global && globals.contains(global)) {
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof GlobalSymbol global && toRemoveGlobals.contains(global)) {
                         List<VIRItem> indexes = loadVIR.indexes();
                         if (indexes.isEmpty() || indexes.get(0) instanceof VReg)
-                            globals.remove(global);
+                            toRemoveGlobals.remove(global);
                         continue;
                     }
-                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof GlobalSymbol global && globals.contains(global)) {
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof GlobalSymbol global && toRemoveGlobals.contains(global)) {
                         List<VIRItem> indexes = storeVIR.indexes();
                         if (indexes.isEmpty() || indexes.get(0) instanceof VReg)
-                            globals.remove(global);
+                            toRemoveGlobals.remove(global);
                         continue;
                     }
                 }
             }
         }
-        this.globals.removeAll(globals);
+        if (toRemoveGlobals.isEmpty())
+            return false;
+        globals.removeAll(toRemoveGlobals);
         Map<GlobalSymbol, List<GlobalSymbol>> newGlobalMap = new HashMap<>();
-        for (GlobalSymbol global : globals) {
+        for (GlobalSymbol global : toRemoveGlobals) {
             List<GlobalSymbol> newGlobals = new ArrayList<>();
             newGlobalMap.put(global, newGlobals);
             if (global.getDimensions().size() == 1) {
@@ -70,27 +75,31 @@ public class SplitGlobals extends Pass {
                 }
             }
         }
-        newGlobalMap.values().forEach(this.globals::addAll);
+        Set<GlobalSymbol> toAddGlobals = new HashSet<>();
         for (VirtualFunction func : funcs.values()) {
             for (Block block : func.getBlocks()) {
                 for (int i = 0; i < block.size(); i++) {
                     VIR ir = block.get(i);
                     if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof GlobalSymbol global && newGlobalMap.containsKey(global)) {
                         List<VIRItem> dimensions = loadVIR.indexes();
-                        block.set(i, new LoadVIR(loadVIR.target(),
-                                newGlobalMap.get(global).get(((Value) dimensions.get(0)).getInt()),
-                                dimensions.subList(1, dimensions.size())));
+                        GlobalSymbol newGlobal = newGlobalMap.get(global).get(((Value) dimensions.get(0)).getInt());
+                        block.set(i, new LoadVIR(loadVIR.target(), newGlobal, dimensions.subList(1,
+                                dimensions.size())));
+                        toAddGlobals.add(newGlobal);
                         continue;
                     }
                     if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof GlobalSymbol global && newGlobalMap.containsKey(global)) {
                         List<VIRItem> dimensions = storeVIR.indexes();
-                        block.set(i, new StoreVIR(newGlobalMap.get(global).get(((Value) dimensions.get(0)).getInt()),
-                                dimensions.subList(1, dimensions.size()), storeVIR.source()));
+                        GlobalSymbol newGlobal = newGlobalMap.get(global).get(((Value) dimensions.get(0)).getInt());
+                        block.set(i, new StoreVIR(newGlobal, dimensions.subList(1, dimensions.size()),
+                                storeVIR.source()));
+                        toAddGlobals.add(newGlobal);
                         continue;
                     }
                 }
             }
         }
-        return !globals.isEmpty();
+        globals.addAll(toAddGlobals);
+        return true;
     }
 }
