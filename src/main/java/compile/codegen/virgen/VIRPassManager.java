@@ -16,11 +16,11 @@ public class VIRPassManager {
     }
 
     public void run() {
-        new RemoveUnreachableBlocks(globals, funcs).run();
-        new MemToReg(globals, funcs).run();
-        new ConstructSSA(globals, funcs).run();
         boolean toContinue;
-        toContinue = new ParamToReg(globals, funcs).run();
+        new RemoveUnreachableBlocks(globals, funcs).run();
+        toContinue = new MemToReg(globals, funcs).run();
+        toContinue |= new ConstructSSA(globals, funcs).run();
+        toContinue |= new ParamToReg(globals, funcs).run();
         toContinue |= new ConstructSSA(globals, funcs).run();
         do {
             toContinue = new RemoveUnreachableBlocks(globals, funcs).run();

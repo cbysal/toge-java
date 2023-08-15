@@ -65,8 +65,6 @@ public class VirtualFunction {
         builder.append("-------- vir --------\n");
         for (Block block : blocks) {
             builder.append(block).append(":\n");
-            for (Map.Entry<VReg, Set<VReg>> entry : block.getPhiMap().entrySet())
-                builder.append(entry.getKey()).append(" <- ").append(entry.getValue()).append('\n');
             for (VIR ir : block)
                 builder.append(ir).append('\n');
             for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks()) {

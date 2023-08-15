@@ -8,6 +8,7 @@ import compile.codegen.virgen.vir.*;
 import compile.symbol.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class FunctionInline extends Pass {
     public FunctionInline(Set<GlobalSymbol> globals, Map<String, VirtualFunction> funcs) {
@@ -132,21 +133,6 @@ public class FunctionInline extends Pass {
                         }
                         for (Block oldBlock : oldBlocks) {
                             Block newBlock = oldToNewBlockMap.get(oldBlock);
-                            Map<VReg, Set<VReg>> oldPhiMap = oldBlock.getPhiMap();
-                            Map<VReg, Set<VReg>> newPhiMap = newBlock.getPhiMap();
-                            for (Map.Entry<VReg, Set<VReg>> entry : oldPhiMap.entrySet()) {
-                                VReg target = entry.getKey();
-                                if (!oldToNewRegMap.containsKey(target))
-                                    oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
-                                target = oldToNewRegMap.get(target);
-                                newPhiMap.put(target, new HashSet<>());
-                                for (VReg source : entry.getValue()) {
-                                    if (!oldToNewRegMap.containsKey(source))
-                                        oldToNewRegMap.put(source, new VReg(source.getType(), source.getSize()));
-                                    source = oldToNewRegMap.get(source);
-                                    newPhiMap.get(target).add(source);
-                                }
-                            }
                             for (VIR toReplaceIR : oldBlock) {
                                 if (toReplaceIR instanceof BinaryVIR binaryVIR) {
                                     VReg target = binaryVIR.target();
@@ -251,6 +237,19 @@ public class FunctionInline extends Pass {
                                     newBlock.add(new MovVIR(target, source));
                                     continue;
                                 }
+                                if (toReplaceIR instanceof PhiVIR phiVIR) {
+                                    VReg target = phiVIR.target();
+                                    if (!oldToNewRegMap.containsKey(target))
+                                        oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
+                                    target = oldToNewRegMap.get(target);
+                                    Set<VReg> sources = phiVIR.sources();
+                                    for (VReg source : sources)
+                                        if (!oldToNewRegMap.containsKey(source))
+                                            oldToNewRegMap.put(source, new VReg(source.getType(), source.getSize()));
+                                    sources = sources.stream().map(oldToNewRegMap::get).collect(Collectors.toSet());
+                                    newBlock.add(new PhiVIR(target, sources));
+                                    continue;
+                                }
                                 if (toReplaceIR instanceof RetVIR retVIR) {
                                     if (retVIR.retVal() != null) {
                                         VReg retVal = retVIR.retVal();
@@ -346,44 +345,51 @@ public class FunctionInline extends Pass {
 
     private void removePhiConflict(VirtualFunction func) {
         Map<VReg, Block> regToBlockMap = new HashMap<>();
-        for (Block block : func.getBlocks()) {
-            for (VReg target : block.getPhiMap().keySet())
-                regToBlockMap.put(target, block);
+        for (Block block : func.getBlocks())
             for (VIR ir : block)
                 if (ir.getWrite() != null)
                     regToBlockMap.put(ir.getWrite(), block);
-        }
         boolean modified;
         do {
             modified = false;
             for (Block curBlock : func.getBlocks()) {
-                for (Set<VReg> sources : curBlock.getPhiMap().values()) {
-                    Map<Block, Integer> counter = new HashMap<>();
-                    for (VReg source : sources) {
-                        Block block = regToBlockMap.get(source);
-                        counter.put(block, counter.getOrDefault(block, 0) + 1);
-                    }
-                    List<Block> toProcessBlocks =
-                            counter.keySet().stream().filter(block -> counter.get(block) > 1).toList();
-                    modified |= !toProcessBlocks.isEmpty();
-                    for (Block toProcessBlock : toProcessBlocks) {
-                        Set<VReg> conflictRegs = new HashSet<>();
-                        for (VReg source : sources)
-                            if (regToBlockMap.get(source) == toProcessBlock)
-                                conflictRegs.add(source);
-                        Set<VReg> toFillInSources = new HashSet<>();
-                        for (Map.Entry<VReg, Set<VReg>> entry : toProcessBlock.getPhiMap().entrySet())
-                            if (conflictRegs.contains(entry.getKey()))
-                                toFillInSources.addAll(entry.getValue());
-                        for (VIR ir : toProcessBlock) {
-                            if (ir.getWrite() != null && conflictRegs.contains(ir.getWrite())) {
-                                toFillInSources.clear();
-                                toFillInSources.add(ir.getWrite());
-                            }
+                for (VIR ir : curBlock) {
+                    if (ir instanceof PhiVIR phiVIR) {
+                        Set<VReg> sources = phiVIR.sources();
+                        Map<Block, Integer> counter = new HashMap<>();
+                        for (VReg source : sources) {
+                            Block block = regToBlockMap.get(source);
+                            counter.put(block, counter.getOrDefault(block, 0) + 1);
                         }
-                        conflictRegs.forEach(sources::remove);
-                        sources.addAll(toFillInSources);
+                        List<Block> toProcessBlocks =
+                                counter.keySet().stream().filter(block -> counter.get(block) > 1).toList();
+                        modified |= !toProcessBlocks.isEmpty();
+                        for (Block toProcessBlock : toProcessBlocks) {
+                            Set<VReg> conflictRegs = new HashSet<>();
+                            for (VReg source : sources)
+                                if (regToBlockMap.get(source) == toProcessBlock)
+                                    conflictRegs.add(source);
+                            Set<VReg> toFillInSources = new HashSet<>();
+                            for (VIR toProcessIR : toProcessBlock) {
+                                if (toProcessIR instanceof PhiVIR toProcessPhiVIR) {
+                                    if (conflictRegs.contains(toProcessPhiVIR.target()))
+                                        toFillInSources.addAll(toProcessPhiVIR.sources());
+                                    continue;
+                                }
+                                break;
+                            }
+                            for (VIR toProcessIR : toProcessBlock) {
+                                if (toProcessIR.getWrite() != null && conflictRegs.contains(toProcessIR.getWrite())) {
+                                    toFillInSources.clear();
+                                    toFillInSources.add(toProcessIR.getWrite());
+                                }
+                            }
+                            conflictRegs.forEach(sources::remove);
+                            sources.addAll(toFillInSources);
+                        }
+                        continue;
                     }
+                    break;
                 }
             }
         } while (modified);

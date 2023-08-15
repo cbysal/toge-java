@@ -37,23 +37,24 @@ public class MIRGenerator {
     private void deSSA() {
         for (VirtualFunction func : vFuncs.values()) {
             Map<VReg, Block> regToBlockMap = new HashMap<>();
-            for (Block block : func.getBlocks()) {
-                for (VReg target : block.getPhiMap().keySet())
-                    regToBlockMap.put(target, block);
+            for (Block block : func.getBlocks())
                 for (VIR ir : block)
                     if (ir.getWrite() != null)
                         regToBlockMap.put(ir.getWrite(), block);
-            }
             List<Block> blocks = func.getBlocks();
             for (Block block : blocks) {
-                Map<VReg, Set<VReg>> phiMap = block.getPhiMap();
-                for (Map.Entry<VReg, Set<VReg>> entry : phiMap.entrySet()) {
-                    VReg target = entry.getKey();
-                    Set<VReg> sources = entry.getValue();
-                    for (VReg source : sources) {
-                        Block insertBlock = regToBlockMap.get(source);
-                        insertBlock.add(new MovVIR(target, source));
+                for (int i = 0; i < block.size(); i++) {
+                    VIR ir = block.get(i);
+                    if (ir instanceof PhiVIR phiVIR) {
+                        VReg target = phiVIR.target();
+                        Set<VReg> sources = phiVIR.sources();
+                        for (VReg source : sources) {
+                            Block insertBlock = regToBlockMap.get(source);
+                            insertBlock.add(new MovVIR(target, source));
+                        }
+                        continue;
                     }
+                    break;
                 }
             }
         }

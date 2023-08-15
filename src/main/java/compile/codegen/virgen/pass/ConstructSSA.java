@@ -175,8 +175,21 @@ public class ConstructSSA extends Pass {
             while (!queue.isEmpty()) {
                 Block block = queue.poll();
                 for (Block frontier : domFrontierMap.get(block)) {
-                    if (!frontier.getPhiMap().containsKey(todoReg)) {
-                        frontier.getPhiMap().put(todoReg, new HashSet<>());
+                    boolean found = false;
+                    int i;
+                    for (i = 0; i < frontier.size(); i++) {
+                        VIR ir = frontier.get(i);
+                        if (ir instanceof PhiVIR phiVIR) {
+                            if (phiVIR.target() == todoReg) {
+                                found = true;
+                                break;
+                            }
+                            continue;
+                        }
+                        break;
+                    }
+                    if (!found) {
+                        frontier.add(i, new PhiVIR(todoReg, new HashSet<>()));
                         queue.offer(frontier);
                     }
                 }
@@ -201,40 +214,15 @@ public class ConstructSSA extends Pass {
         for (VReg reg : todoRegs)
             newToOldMap.put(reg, reg);
         Map<VReg, Block> regToBlockMap = new HashMap<>();
-        for (Block block : blocks) {
-            for (VReg reg : block.getPhiMap().keySet())
-                regToBlockMap.put(reg, block);
+        for (Block block : blocks)
             for (VIR ir : block)
                 if (todoRegs.contains(ir.getWrite()))
                     regToBlockMap.put(ir.getWrite(), block);
-        }
         renameVarsHelper(domTree, todoRegs, renamer, newToOldMap, regToBlockMap, func.getBlocks().get(0));
     }
 
     private void renameVarsHelper(Map<Block, Set<Block>> domTree, Set<VReg> todoRegs, Renamer renamer, Map<VReg,
             VReg> newToOldMap, Map<VReg, Block> regToBlockMap, Block block) {
-        Map<VReg, Set<VReg>> phiMap = block.getPhiMap();
-        Map<VReg, Set<VReg>> newPhiMap = new HashMap<>();
-        for (Map.Entry<VReg, Set<VReg>> entry : phiMap.entrySet()) {
-            Set<VReg> oldSources = entry.getValue();
-            Set<VReg> newSources = new HashSet<>();
-            for (VReg oldSource : oldSources) {
-                VReg newSource = oldSource;
-                if (todoRegs.contains(newSource)) {
-                    newSource = renamer.top(newSource);
-                }
-                newSources.add(newSource);
-            }
-            VReg oldTarget = entry.getKey();
-            VReg newTarget = oldTarget;
-            if (todoRegs.contains(oldTarget))
-                newTarget = renamer.newName(newTarget);
-            newToOldMap.put(newTarget, oldTarget);
-            newPhiMap.put(newTarget, newSources);
-            regToBlockMap.put(newTarget, block);
-        }
-        phiMap.clear();
-        phiMap.putAll(newPhiMap);
         for (int i = 0; i < block.size(); i++) {
             VIR ir = block.get(i);
             if (ir instanceof BinaryVIR binaryVIR) {
@@ -301,6 +289,24 @@ public class ConstructSSA extends Pass {
                 regToBlockMap.put(newTarget, block);
                 continue;
             }
+            if (ir instanceof PhiVIR phiVIR) {
+                Set<VReg> oldSources = phiVIR.sources();
+                Set<VReg> newSources = phiVIR.sources();
+                newSources = newSources.stream().map(reg -> {
+                    if (todoRegs.contains(reg))
+                        return renamer.top(reg);
+                    else
+                        return reg;
+                }).collect(Collectors.toSet());
+                VReg newTarget = phiVIR.target();
+                if (todoRegs.contains(newTarget)) {
+                    newTarget = renamer.newName(newTarget);
+                    newToOldMap.put(newTarget, phiVIR.target());
+                }
+                block.set(i, new PhiVIR(newTarget, newSources));
+                regToBlockMap.put(newTarget, block);
+                continue;
+            }
             if (ir instanceof RetVIR retVIR) {
                 VReg newRetVal = retVIR.retVal();
                 if (todoRegs.contains(newRetVal))
@@ -352,13 +358,16 @@ public class ConstructSSA extends Pass {
         if (block.getDefaultBlock() != null)
             nextBlocks.add(block.getDefaultBlock());
         for (Block nextBlock : nextBlocks) {
-            Map<VReg, Set<VReg>> nextPhiMap = nextBlock.getPhiMap();
-            for (Map.Entry<VReg, Set<VReg>> entry : nextPhiMap.entrySet()) {
-                VReg reg = entry.getKey();
-                Set<VReg> sources = entry.getValue();
-                VReg newReg = renamer.top(newToOldMap.get(reg));
-                if (newReg != null)
-                    sources.add(newReg);
+            for (VIR ir : nextBlock) {
+                if (ir instanceof PhiVIR phiVIR) {
+                    VReg target = phiVIR.target();
+                    Set<VReg> sources = phiVIR.sources();
+                    VReg newReg = renamer.top(newToOldMap.get(target));
+                    if (newReg != null)
+                        sources.add(newReg);
+                    continue;
+                }
+                break;
             }
         }
         for (Block domBlock : domTree.get(block))

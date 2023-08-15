@@ -9,7 +9,6 @@ import compile.symbol.GlobalSymbol;
 import compile.symbol.LocalSymbol;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -24,9 +23,7 @@ public class RemoveUselessIRs extends Pass {
         for (VirtualFunction func : funcs.values()) {
             boolean innerModified;
             do {
-                Set<VReg> usedRegs = analyzeUsedRegs(func);
-                innerModified = removeUnusedRegIRs(func, usedRegs);
-                innerModified |= removeUnusedPhi(func, usedRegs);
+                innerModified = removeUnusedRegIRs(func);
                 innerModified |= removeUnusedSymbolIRs(func);
                 modified |= innerModified;
             } while (innerModified);
@@ -34,8 +31,9 @@ public class RemoveUselessIRs extends Pass {
         return modified;
     }
 
-    private boolean removeUnusedRegIRs(VirtualFunction func, Set<VReg> usedRegs) {
+    private boolean removeUnusedRegIRs(VirtualFunction func) {
         boolean modified = false;
+        Set<VReg> usedRegs = analyzeUsedRegs(func);
         for (Block block : func.getBlocks()) {
             for (int i = 0; i < block.size(); i++) {
                 VIR ir = block.get(i);
@@ -45,21 +43,6 @@ public class RemoveUselessIRs extends Pass {
                         i--;
                         modified = true;
                     }
-                }
-            }
-        }
-        return modified;
-    }
-
-    private boolean removeUnusedPhi(VirtualFunction func, Set<VReg> usedRegs) {
-        boolean modified = false;
-        for (Block block : func.getBlocks()) {
-            Iterator<Map.Entry<VReg, Set<VReg>>> iterator = block.getPhiMap().entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<VReg, Set<VReg>> entry = iterator.next();
-                if (!usedRegs.contains(entry.getKey())) {
-                    iterator.remove();
-                    modified = true;
                 }
             }
         }
@@ -87,8 +70,6 @@ public class RemoveUselessIRs extends Pass {
     private Set<VReg> analyzeUsedRegs(VirtualFunction func) {
         Set<VReg> usedRegs = new HashSet<>();
         for (Block block : func.getBlocks()) {
-            for (Set<VReg> regsWithBlock : block.getPhiMap().values())
-                usedRegs.addAll(regsWithBlock);
             for (VIR ir : block)
                 usedRegs.addAll(ir.getRead());
             for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks()) {

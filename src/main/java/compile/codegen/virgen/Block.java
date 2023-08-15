@@ -5,7 +5,9 @@ import compile.codegen.Label;
 import compile.codegen.virgen.vir.VIR;
 import compile.codegen.virgen.vir.VIRItem;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class Block implements Iterable<VIR> {
     public record Cond(Type type, VIRItem left, VIRItem right) {
@@ -17,7 +19,6 @@ public class Block implements Iterable<VIR> {
     private final Label label;
     private Block defaultBlock;
     private final List<Pair<Cond, Block>> condBlocks = new ArrayList<>();
-    private final Map<VReg, Set<VReg>> phiMap = new HashMap<>();
     private final List<VIR> irs = new ArrayList<>();
 
     public Block() {
@@ -48,16 +49,16 @@ public class Block implements Iterable<VIR> {
         condBlocks.clear();
     }
 
-    public Map<VReg, Set<VReg>> getPhiMap() {
-        return phiMap;
-    }
-
     public Label getLabel() {
         return label;
     }
 
     public boolean add(VIR ir) {
         return irs.add(ir);
+    }
+
+    public void add(int index, VIR ir) {
+        irs.add(index, ir);
     }
 
     public boolean addAll(Block block) {

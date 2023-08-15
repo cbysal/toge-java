@@ -4,6 +4,7 @@ import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
+import compile.codegen.virgen.vir.PhiVIR;
 import compile.codegen.virgen.vir.VIR;
 import compile.symbol.GlobalSymbol;
 
@@ -46,20 +47,39 @@ public class BlockFusion extends Pass {
     }
 
     private boolean checkFusionability(Block block1, Block block2) {
-        Set<VReg> defRegs = new HashSet<>(block1.getPhiMap().keySet());
+        Set<VReg> defRegs = new HashSet<>();
         for (VIR ir : block1)
             if (ir.getWrite() != null)
                 defRegs.add(ir.getWrite());
-        for (Set<VReg> sources : block2.getPhiMap().values())
-            for (VReg reg : sources)
-                if (defRegs.contains(reg))
-                    return false;
+        for (VIR ir : block2) {
+            if (ir instanceof PhiVIR phiVIR) {
+                for (VReg reg : phiVIR.sources())
+                    if (defRegs.contains(reg))
+                        return false;
+                continue;
+            }
+            break;
+        }
         return true;
     }
 
     private void mergeBlocks(List<Block> blocks, Block curBlock, Block nextBlock) {
-        Map<VReg, Set<VReg>> curPhiMap = curBlock.getPhiMap();
-        Map<VReg, Set<VReg>> nextPhiMap = nextBlock.getPhiMap();
+        Map<VReg, Set<VReg>> curPhiMap = new HashMap<>();
+        for (VIR ir : curBlock) {
+            if (ir instanceof PhiVIR phiVIR) {
+                curPhiMap.put(phiVIR.target(), phiVIR.sources());
+                continue;
+            }
+            break;
+        }
+        Map<VReg, Set<VReg>> nextPhiMap = new HashMap<>();
+        for (VIR ir : nextBlock) {
+            if (ir instanceof PhiVIR phiVIR) {
+                nextPhiMap.put(phiVIR.target(), phiVIR.sources());
+                continue;
+            }
+            break;
+        }
         for (Map.Entry<VReg, Set<VReg>> entry : nextPhiMap.entrySet()) {
             VReg target = entry.getKey();
             Set<VReg> sources = entry.getValue();
@@ -68,7 +88,13 @@ public class BlockFusion extends Pass {
             else
                 curPhiMap.put(target, sources);
         }
-        curBlock.addAll(nextBlock);
+        while (!curBlock.isEmpty() && curBlock.get(0) instanceof PhiVIR)
+            curBlock.remove(0);
+        for (Map.Entry<VReg, Set<VReg>> entry : curPhiMap.entrySet())
+            curBlock.add(0, new PhiVIR(entry.getKey(), entry.getValue()));
+        for (VIR ir : nextBlock)
+            if (!(ir instanceof PhiVIR))
+                curBlock.add(ir);
         curBlock.clearCondBlocks();
         nextBlock.getCondBlocks().forEach(curBlock::setCondBlock);
         curBlock.setDefaultBlock(nextBlock.getDefaultBlock());
@@ -79,44 +105,51 @@ public class BlockFusion extends Pass {
 
     private void removePhiConflict(VirtualFunction func) {
         Map<VReg, Block> regToBlockMap = new HashMap<>();
-        for (Block block : func.getBlocks()) {
-            for (VReg target : block.getPhiMap().keySet())
-                regToBlockMap.put(target, block);
+        for (Block block : func.getBlocks())
             for (VIR ir : block)
                 if (ir.getWrite() != null)
                     regToBlockMap.put(ir.getWrite(), block);
-        }
         boolean modified;
         do {
             modified = false;
             for (Block curBlock : func.getBlocks()) {
-                for (Set<VReg> sources : curBlock.getPhiMap().values()) {
-                    Map<Block, Integer> counter = new HashMap<>();
-                    for (VReg source : sources) {
-                        Block block = regToBlockMap.get(source);
-                        counter.put(block, counter.getOrDefault(block, 0) + 1);
-                    }
-                    List<Block> toProcessBlocks =
-                            counter.keySet().stream().filter(block -> counter.get(block) > 1).toList();
-                    modified |= !toProcessBlocks.isEmpty();
-                    for (Block toProcessBlock : toProcessBlocks) {
-                        Set<VReg> conflictRegs = new HashSet<>();
-                        for (VReg source : sources)
-                            if (regToBlockMap.get(source) == toProcessBlock)
-                                conflictRegs.add(source);
-                        Set<VReg> toFillInSources = new HashSet<>();
-                        for (Map.Entry<VReg, Set<VReg>> entry : toProcessBlock.getPhiMap().entrySet())
-                            if (conflictRegs.contains(entry.getKey()))
-                                toFillInSources.addAll(entry.getValue());
-                        for (VIR ir : toProcessBlock) {
-                            if (ir.getWrite() != null && conflictRegs.contains(ir.getWrite())) {
-                                toFillInSources.clear();
-                                toFillInSources.add(ir.getWrite());
-                            }
+                for (VIR ir : curBlock) {
+                    if (ir instanceof PhiVIR phiVIR) {
+                        Set<VReg> sources = phiVIR.sources();
+                        Map<Block, Integer> counter = new HashMap<>();
+                        for (VReg source : sources) {
+                            Block block = regToBlockMap.get(source);
+                            counter.put(block, counter.getOrDefault(block, 0) + 1);
                         }
-                        conflictRegs.forEach(sources::remove);
-                        sources.addAll(toFillInSources);
+                        List<Block> toProcessBlocks =
+                                counter.keySet().stream().filter(block -> counter.get(block) > 1).toList();
+                        modified |= !toProcessBlocks.isEmpty();
+                        for (Block toProcessBlock : toProcessBlocks) {
+                            Set<VReg> conflictRegs = new HashSet<>();
+                            for (VReg source : sources)
+                                if (regToBlockMap.get(source) == toProcessBlock)
+                                    conflictRegs.add(source);
+                            Set<VReg> toFillInSources = new HashSet<>();
+                            for (VIR toProcessIR : toProcessBlock) {
+                                if (toProcessIR instanceof PhiVIR toProcessPhiVIR) {
+                                    if (conflictRegs.contains(toProcessPhiVIR.target()))
+                                        toFillInSources.addAll(toProcessPhiVIR.sources());
+                                    continue;
+                                }
+                                break;
+                            }
+                            for (VIR toProcessIR : toProcessBlock) {
+                                if (toProcessIR.getWrite() != null && conflictRegs.contains(toProcessIR.getWrite())) {
+                                    toFillInSources.clear();
+                                    toFillInSources.add(toProcessIR.getWrite());
+                                }
+                            }
+                            conflictRegs.forEach(sources::remove);
+                            sources.addAll(toFillInSources);
+                        }
+                        continue;
                     }
+                    break;
                 }
             }
         } while (modified);

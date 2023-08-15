@@ -29,13 +29,10 @@ public class AssignmentPropagation extends Pass {
 
     private Map<VReg, Pair<VReg, Block>> analyzeAssignment(VirtualFunction func) {
         Map<VReg, Block> regToBlockMap = new HashMap<>();
-        for (Block block : func.getBlocks()) {
-            for (VReg reg : block.getPhiMap().keySet())
-                regToBlockMap.put(reg, block);
+        for (Block block : func.getBlocks())
             for (VIR ir : block)
                 if (ir.getWrite() != null)
                     regToBlockMap.put(ir.getWrite(), block);
-        }
         Map<VReg, Pair<VReg, Block>> assignMap = new HashMap<>();
         for (Block block : func.getBlocks())
             for (VIR ir : block)

@@ -4,6 +4,7 @@ import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
+import compile.codegen.virgen.vir.PhiVIR;
 import compile.codegen.virgen.vir.VIR;
 import compile.symbol.GlobalSymbol;
 
@@ -33,19 +34,23 @@ public class RemoveUnreachableBlocks extends Pass {
     }
 
     private void repairPhi(List<Block> blocks, Set<VReg> unusedRegs) {
-        for (Block block : blocks)
-            for (Set<VReg> regsWithBlock : block.getPhiMap().values())
-                unusedRegs.forEach(regsWithBlock::remove);
+        for (Block block : blocks) {
+            for (VIR ir : block) {
+                if (ir instanceof PhiVIR phiVIR) {
+                    unusedRegs.forEach(phiVIR.sources()::remove);
+                    continue;
+                }
+                break;
+            }
+        }
     }
 
     private Set<VReg> analyzeDefRegs(Set<Block> blocks) {
         Set<VReg> defRegs = new HashSet<>();
-        for (Block block : blocks) {
-            defRegs.addAll(block.getPhiMap().keySet());
+        for (Block block : blocks)
             for (VIR ir : block)
                 if (ir.getWrite() != null)
                     defRegs.add(ir.getWrite());
-        }
         return defRegs;
     }
 
