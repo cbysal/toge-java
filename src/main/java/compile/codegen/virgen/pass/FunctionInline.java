@@ -132,20 +132,19 @@ public class FunctionInline extends Pass {
                         }
                         for (Block oldBlock : oldBlocks) {
                             Block newBlock = oldToNewBlockMap.get(oldBlock);
-                            Map<VReg, Map<VReg, Block>> oldPhiMap = oldBlock.getPhiMap();
-                            Map<VReg, Map<VReg, Block>> newPhiMap = newBlock.getPhiMap();
-                            for (Map.Entry<VReg, Map<VReg, Block>> entry : oldPhiMap.entrySet()) {
+                            Map<VReg, Set<VReg>> oldPhiMap = oldBlock.getPhiMap();
+                            Map<VReg, Set<VReg>> newPhiMap = newBlock.getPhiMap();
+                            for (Map.Entry<VReg, Set<VReg>> entry : oldPhiMap.entrySet()) {
                                 VReg target = entry.getKey();
                                 if (!oldToNewRegMap.containsKey(target))
                                     oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
                                 target = oldToNewRegMap.get(target);
-                                newPhiMap.put(target, new HashMap<>());
-                                for (Map.Entry<VReg, Block> regWithBlock : entry.getValue().entrySet()) {
-                                    VReg source = regWithBlock.getKey();
+                                newPhiMap.put(target, new HashSet<>());
+                                for (VReg source : entry.getValue()) {
                                     if (!oldToNewRegMap.containsKey(source))
                                         oldToNewRegMap.put(source, new VReg(source.getType(), source.getSize()));
                                     source = oldToNewRegMap.get(source);
-                                    newPhiMap.get(target).put(source, oldToNewBlockMap.get(regWithBlock.getValue()));
+                                    newPhiMap.get(target).add(source);
                                 }
                             }
                             for (VIR toReplaceIR : oldBlock) {
@@ -337,7 +336,6 @@ public class FunctionInline extends Pass {
                         func.addBlock(blockId + 1, preCallBlock);
                         func.addBlocks(blockId + 2, newBlocks);
                         func.addBlock(blockId + newBlocks.size() + 2, lastBlock);
-                        reassignPhiBlock(func);
                         removePhiConflict(func);
                         break;
                     }
@@ -346,50 +344,45 @@ public class FunctionInline extends Pass {
         }
     }
 
-    private void reassignPhiBlock(VirtualFunction func) {
+    private void removePhiConflict(VirtualFunction func) {
         Map<VReg, Block> regToBlockMap = new HashMap<>();
         for (Block block : func.getBlocks()) {
-            for (VReg reg : block.getPhiMap().keySet())
-                regToBlockMap.put(reg, block);
+            for (VReg target : block.getPhiMap().keySet())
+                regToBlockMap.put(target, block);
             for (VIR ir : block)
                 if (ir.getWrite() != null)
                     regToBlockMap.put(ir.getWrite(), block);
         }
-        for (Block block : func.getBlocks())
-            for (Map<VReg, Block> regsWithBlock : block.getPhiMap().values())
-                for (Map.Entry<VReg, Block> entry : regsWithBlock.entrySet())
-                    entry.setValue(regToBlockMap.get(entry.getKey()));
-    }
-
-    private void removePhiConflict(VirtualFunction func) {
         boolean modified;
         do {
             modified = false;
             for (Block curBlock : func.getBlocks()) {
-                for (Map<VReg, Block> regsWithBlock : curBlock.getPhiMap().values()) {
+                for (Set<VReg> sources : curBlock.getPhiMap().values()) {
                     Map<Block, Integer> counter = new HashMap<>();
-                    for (Block block : regsWithBlock.values())
+                    for (VReg source : sources) {
+                        Block block = regToBlockMap.get(source);
                         counter.put(block, counter.getOrDefault(block, 0) + 1);
+                    }
                     List<Block> toProcessBlocks =
                             counter.keySet().stream().filter(block -> counter.get(block) > 1).toList();
                     modified |= !toProcessBlocks.isEmpty();
                     for (Block toProcessBlock : toProcessBlocks) {
                         Set<VReg> conflictRegs = new HashSet<>();
-                        for (Map.Entry<VReg, Block> regWithBlock : regsWithBlock.entrySet())
-                            if (regWithBlock.getValue() == toProcessBlock)
-                                conflictRegs.add(regWithBlock.getKey());
-                        Map<VReg, Block> toFillInRegWithBlockMap = new HashMap<>();
-                        for (Map.Entry<VReg, Map<VReg, Block>> entry : toProcessBlock.getPhiMap().entrySet())
+                        for (VReg source : sources)
+                            if (regToBlockMap.get(source) == toProcessBlock)
+                                conflictRegs.add(source);
+                        Set<VReg> toFillInSources = new HashSet<>();
+                        for (Map.Entry<VReg, Set<VReg>> entry : toProcessBlock.getPhiMap().entrySet())
                             if (conflictRegs.contains(entry.getKey()))
-                                toFillInRegWithBlockMap.putAll(entry.getValue());
+                                toFillInSources.addAll(entry.getValue());
                         for (VIR ir : toProcessBlock) {
                             if (ir.getWrite() != null && conflictRegs.contains(ir.getWrite())) {
-                                toFillInRegWithBlockMap.clear();
-                                toFillInRegWithBlockMap.put(ir.getWrite(), toProcessBlock);
+                                toFillInSources.clear();
+                                toFillInSources.add(ir.getWrite());
                             }
                         }
-                        conflictRegs.forEach(regsWithBlock::remove);
-                        regsWithBlock.putAll(toFillInRegWithBlockMap);
+                        conflictRegs.forEach(sources::remove);
+                        sources.addAll(toFillInSources);
                     }
                 }
             }

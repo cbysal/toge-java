@@ -20,13 +20,13 @@ public class DegradePhi extends Pass {
         for (VirtualFunction func : funcs.values()) {
             for (Block block : func.getBlocks()) {
                 List<VIR> newIRs = new ArrayList<>();
-                Iterator<Map.Entry<VReg, Map<VReg, Block>>> iterator = block.getPhiMap().entrySet().iterator();
+                Iterator<Map.Entry<VReg, Set<VReg>>> iterator = block.getPhiMap().entrySet().iterator();
                 while (iterator.hasNext()) {
-                    Map.Entry<VReg, Map<VReg, Block>> entry = iterator.next();
+                    Map.Entry<VReg, Set<VReg>> entry = iterator.next();
                     VReg target = entry.getKey();
-                    Map<VReg, Block> regsWithBlock = entry.getValue();
-                    if (regsWithBlock.size() == 1) {
-                        VReg source = regsWithBlock.keySet().iterator().next();
+                    Set<VReg> sources = entry.getValue();
+                    if (sources.size() == 1) {
+                        VReg source = sources.iterator().next();
                         newIRs.add(new MovVIR(target, source));
                         iterator.remove();
                         modified = true;

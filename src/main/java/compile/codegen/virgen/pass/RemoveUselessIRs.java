@@ -54,9 +54,9 @@ public class RemoveUselessIRs extends Pass {
     private boolean removeUnusedPhi(VirtualFunction func, Set<VReg> usedRegs) {
         boolean modified = false;
         for (Block block : func.getBlocks()) {
-            Iterator<Map.Entry<VReg, Map<VReg, Block>>> iterator = block.getPhiMap().entrySet().iterator();
+            Iterator<Map.Entry<VReg, Set<VReg>>> iterator = block.getPhiMap().entrySet().iterator();
             while (iterator.hasNext()) {
-                Map.Entry<VReg, Map<VReg, Block>> entry = iterator.next();
+                Map.Entry<VReg, Set<VReg>> entry = iterator.next();
                 if (!usedRegs.contains(entry.getKey())) {
                     iterator.remove();
                     modified = true;
@@ -87,8 +87,8 @@ public class RemoveUselessIRs extends Pass {
     private Set<VReg> analyzeUsedRegs(VirtualFunction func) {
         Set<VReg> usedRegs = new HashSet<>();
         for (Block block : func.getBlocks()) {
-            for (Map<VReg, Block> regsWithBlock : block.getPhiMap().values())
-                usedRegs.addAll(regsWithBlock.keySet());
+            for (Set<VReg> regsWithBlock : block.getPhiMap().values())
+                usedRegs.addAll(regsWithBlock);
             for (VIR ir : block)
                 usedRegs.addAll(ir.getRead());
             for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks()) {

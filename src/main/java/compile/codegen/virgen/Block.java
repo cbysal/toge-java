@@ -17,7 +17,7 @@ public class Block implements Iterable<VIR> {
     private final Label label;
     private Block defaultBlock;
     private final List<Pair<Cond, Block>> condBlocks = new ArrayList<>();
-    private final Map<VReg, Map<VReg, Block>> phiMap = new HashMap<>();
+    private final Map<VReg, Set<VReg>> phiMap = new HashMap<>();
     private final List<VIR> irs = new ArrayList<>();
 
     public Block() {
@@ -48,7 +48,7 @@ public class Block implements Iterable<VIR> {
         condBlocks.clear();
     }
 
-    public Map<VReg, Map<VReg, Block>> getPhiMap() {
+    public Map<VReg, Set<VReg>> getPhiMap() {
         return phiMap;
     }
 

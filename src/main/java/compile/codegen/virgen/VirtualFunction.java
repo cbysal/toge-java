@@ -5,10 +5,7 @@ import compile.codegen.virgen.vir.VIR;
 import compile.symbol.FuncSymbol;
 import compile.symbol.LocalSymbol;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class VirtualFunction {
     private final FuncSymbol symbol;
@@ -68,7 +65,7 @@ public class VirtualFunction {
         builder.append("-------- vir --------\n");
         for (Block block : blocks) {
             builder.append(block).append(":\n");
-            for (Map.Entry<VReg, Map<VReg, Block>> entry : block.getPhiMap().entrySet())
+            for (Map.Entry<VReg, Set<VReg>> entry : block.getPhiMap().entrySet())
                 builder.append(entry.getKey()).append(" <- ").append(entry.getValue()).append('\n');
             for (VIR ir : block)
                 builder.append(ir).append('\n');

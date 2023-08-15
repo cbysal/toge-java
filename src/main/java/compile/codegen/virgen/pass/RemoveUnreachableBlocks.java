@@ -34,7 +34,7 @@ public class RemoveUnreachableBlocks extends Pass {
 
     private void repairPhi(List<Block> blocks, Set<VReg> unusedRegs) {
         for (Block block : blocks)
-            for (Map<VReg, Block> regsWithBlock : block.getPhiMap().values())
+            for (Set<VReg> regsWithBlock : block.getPhiMap().values())
                 unusedRegs.forEach(regsWithBlock::remove);
     }
 

@@ -176,7 +176,7 @@ public class ConstructSSA extends Pass {
                 Block block = queue.poll();
                 for (Block frontier : domFrontierMap.get(block)) {
                     if (!frontier.getPhiMap().containsKey(todoReg)) {
-                        frontier.getPhiMap().put(todoReg, new HashMap<>());
+                        frontier.getPhiMap().put(todoReg, new HashSet<>());
                         queue.offer(frontier);
                     }
                 }
@@ -213,19 +213,17 @@ public class ConstructSSA extends Pass {
 
     private void renameVarsHelper(Map<Block, Set<Block>> domTree, Set<VReg> todoRegs, Renamer renamer, Map<VReg,
             VReg> newToOldMap, Map<VReg, Block> regToBlockMap, Block block) {
-        Map<VReg, Map<VReg, Block>> phiMap = block.getPhiMap();
-        Map<VReg, Map<VReg, Block>> newPhiMap = new HashMap<>();
-        for (Map.Entry<VReg, Map<VReg, Block>> entry : phiMap.entrySet()) {
-            Map<VReg, Block> oldSources = entry.getValue();
-            Map<VReg, Block> newSources = new HashMap<>();
-            for (Map.Entry<VReg, Block> oldSource : oldSources.entrySet()) {
-                VReg newSource = oldSource.getKey();
+        Map<VReg, Set<VReg>> phiMap = block.getPhiMap();
+        Map<VReg, Set<VReg>> newPhiMap = new HashMap<>();
+        for (Map.Entry<VReg, Set<VReg>> entry : phiMap.entrySet()) {
+            Set<VReg> oldSources = entry.getValue();
+            Set<VReg> newSources = new HashSet<>();
+            for (VReg oldSource : oldSources) {
+                VReg newSource = oldSource;
                 if (todoRegs.contains(newSource)) {
                     newSource = renamer.top(newSource);
-                    newSources.put(newSource, regToBlockMap.get(newSource));
-                } else {
-                    newSources.put(oldSource.getKey(), oldSource.getValue());
                 }
+                newSources.add(newSource);
             }
             VReg oldTarget = entry.getKey();
             VReg newTarget = oldTarget;
@@ -354,13 +352,13 @@ public class ConstructSSA extends Pass {
         if (block.getDefaultBlock() != null)
             nextBlocks.add(block.getDefaultBlock());
         for (Block nextBlock : nextBlocks) {
-            Map<VReg, Map<VReg, Block>> nextPhiMap = nextBlock.getPhiMap();
-            for (Map.Entry<VReg, Map<VReg, Block>> entry : nextPhiMap.entrySet()) {
+            Map<VReg, Set<VReg>> nextPhiMap = nextBlock.getPhiMap();
+            for (Map.Entry<VReg, Set<VReg>> entry : nextPhiMap.entrySet()) {
                 VReg reg = entry.getKey();
-                Map<VReg, Block> regsWithBlock = entry.getValue();
+                Set<VReg> sources = entry.getValue();
                 VReg newReg = renamer.top(newToOldMap.get(reg));
                 if (newReg != null)
-                    regsWithBlock.put(newReg, regToBlockMap.get(newReg));
+                    sources.add(newReg);
             }
         }
         for (Block domBlock : domTree.get(block))
