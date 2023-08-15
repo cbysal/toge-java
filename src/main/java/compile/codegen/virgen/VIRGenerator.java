@@ -90,8 +90,7 @@ public class VIRGenerator {
     }
 
     private void parseBreakStmt() {
-        if (curBlock.getDefaultBlock() == null)
-            curBlock.setDefaultBlock(breakStack.peek());
+        curBlock.setDefaultBlock(breakStack.peek());
     }
 
     private void parseCmpCond(CmpExpAST cmpCond) {
@@ -108,8 +107,7 @@ public class VIRGenerator {
             case LE -> Block.Cond.Type.LE;
             case LT -> Block.Cond.Type.LT;
         }, lReg, rReg), trueBlock);
-        if (curBlock.getDefaultBlock() == null)
-            curBlock.setDefaultBlock(falseBlock);
+        curBlock.setDefaultBlock(falseBlock);
     }
 
     private VReg parseCmpExp(CmpExpAST cmpExp) {
@@ -140,13 +138,11 @@ public class VIRGenerator {
             return;
         }
         if (root instanceof FloatLitExpAST floatLitExp) {
-            if (curBlock.getDefaultBlock() == null)
-                curBlock.setDefaultBlock(floatLitExp.value() != 0.0f ? trueBlock : falseBlock);
+            curBlock.setDefaultBlock(floatLitExp.value() != 0.0f ? trueBlock : falseBlock);
             return;
         }
         if (root instanceof IntLitExpAST intLitExp) {
-            if (curBlock.getDefaultBlock() == null)
-                curBlock.setDefaultBlock(intLitExp.value() != 0 ? trueBlock : falseBlock);
+            curBlock.setDefaultBlock(intLitExp.value() != 0 ? trueBlock : falseBlock);
             return;
         }
         if (root instanceof LAndExpAST lAndExp) {
@@ -181,8 +177,7 @@ public class VIRGenerator {
     }
 
     private void parseContinueStmt() {
-        if (curBlock.getDefaultBlock() == null)
-            curBlock.setDefaultBlock(continueStack.peek());
+        curBlock.setDefaultBlock(continueStack.peek());
     }
 
     private VReg parseExp(ExpAST root) {
@@ -349,15 +344,13 @@ public class VIRGenerator {
 
     private void parseRetStmt(RetStmtAST retStmt) {
         if (retStmt.value() == null) {
-            if (curBlock.getDefaultBlock() == null)
-                curBlock.setDefaultBlock(retBlock);
+            curBlock.setDefaultBlock(retBlock);
             return;
         }
         VReg retReg = parseExp(retStmt.value());
         retReg = typeConversion(retReg, retVal.getType());
         curBlock.add(new MovVIR(retVal, retReg));
-        if (curBlock.getDefaultBlock() == null)
-            curBlock.setDefaultBlock(retBlock);
+        curBlock.setDefaultBlock(retBlock);
     }
 
     private void parseRoot(RootAST root) {
@@ -441,8 +434,7 @@ public class VIRGenerator {
                 VReg zero = new VReg(Type.INT, 4);
                 curBlock.add(new LiVIR(zero, 0));
                 curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
-                if (curBlock.getDefaultBlock() == null)
-                    curBlock.setDefaultBlock(falseBlock);
+                curBlock.setDefaultBlock(falseBlock);
             }
             case NEG -> parseCond(unaryCond.next());
         }
@@ -466,8 +458,7 @@ public class VIRGenerator {
         VReg zero = new VReg(Type.INT, 4);
         curBlock.add(new LiVIR(zero, 0));
         curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
-        if (curBlock.getDefaultBlock() == null)
-            curBlock.setDefaultBlock(falseBlock);
+        curBlock.setDefaultBlock(falseBlock);
     }
 
     private VReg parseVarExp(VarExpAST varExp) {
