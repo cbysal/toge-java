@@ -28,16 +28,17 @@ public class DegradePhi extends Pass {
                     if (ir.getWrite() != null)
                         retToBlockMap.put(ir.getWrite(), block);
             for (Block block : func.getBlocks()) {
-                Iterator<VIR> iterator = block.iterator();
-                while (iterator.hasNext()) {
-                    VIR ir = iterator.next();
-                    if (ir instanceof PhiVIR phiVIR) {
+                for (int i = 0; i < block.size(); i++) {
+                    VIR ir = block.get(i);
+                    if (ir instanceof PhiVIR phiVIR){
                         VReg target = phiVIR.target();
                         Set<VReg> sources = phiVIR.sources();
                         if (sources.size() == 1) {
                             VReg source = sources.iterator().next();
-                            retToBlockMap.get(source).add(new MovVIR(target, source));
-                            iterator.remove();
+                            Block sourceBlock = retToBlockMap.get(source);
+                            sourceBlock.add(sourceBlock.size() - 1, new MovVIR(target, source));
+                            block.remove(i);
+                            i--;
                             modified = true;
                         }
                         continue;

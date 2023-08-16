@@ -103,36 +103,6 @@ public class FunctionInline extends Pass {
                         }
                         for (Block oldBlock : oldBlocks) {
                             Block newBlock = oldToNewBlockMap.get(oldBlock);
-                            if (oldBlock.getDefaultBlock() == null)
-                                newBlock.setDefaultBlock(lastBlock);
-                            else
-                                newBlock.setDefaultBlock(oldToNewBlockMap.get(oldBlock.getDefaultBlock()));
-                            for (Pair<Block.Cond, Block> oldCondBlockEntry : oldBlock.getCondBlocks()) {
-                                Block.Cond oldCond = oldCondBlockEntry.first();
-                                Block oldCondBlock = oldCondBlockEntry.second();
-                                VIRItem left = oldCond.left();
-                                if (left instanceof VReg reg) {
-                                    if (!oldToNewRegMap.containsKey(reg))
-                                        oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
-                                    left = oldToNewRegMap.get(reg);
-                                }
-                                VIRItem right = oldCond.right();
-                                if (right instanceof VReg reg) {
-                                    if (!oldToNewRegMap.containsKey(reg))
-                                        oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
-                                    right = oldToNewRegMap.get(reg);
-                                }
-                                Block.Cond newCond = new Block.Cond(oldCond.type(), left, right);
-                                Block newCondBlock;
-                                if (oldCondBlock == null)
-                                    newCondBlock = lastBlock;
-                                else
-                                    newCondBlock = oldToNewBlockMap.get(oldCondBlock);
-                                newBlock.setCondBlock(newCond, newCondBlock);
-                            }
-                        }
-                        for (Block oldBlock : oldBlocks) {
-                            Block newBlock = oldToNewBlockMap.get(oldBlock);
                             for (VIR toReplaceIR : oldBlock) {
                                 if (toReplaceIR instanceof BinaryVIR binaryVIR) {
                                     VReg target = binaryVIR.target();
@@ -154,6 +124,25 @@ public class FunctionInline extends Pass {
                                     newBlock.add(new BinaryVIR(binaryVIR.type(), target, left, right));
                                     continue;
                                 }
+                                if (toReplaceIR instanceof BranchVIR branchVIR) {
+                                    BranchVIR.Type type = branchVIR.type();
+                                    VIRItem left = branchVIR.left();
+                                    if (left instanceof VReg reg) {
+                                        if (!oldToNewRegMap.containsKey(reg))
+                                            oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
+                                        left = oldToNewRegMap.get(reg);
+                                    }
+                                    VIRItem right = branchVIR.right();
+                                    if (right instanceof VReg reg) {
+                                        if (!oldToNewRegMap.containsKey(reg))
+                                            oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
+                                        right = oldToNewRegMap.get(reg);
+                                    }
+                                    newBlock.add(new BranchVIR(type, left, right,
+                                            oldToNewBlockMap.get(branchVIR.trueBlock()),
+                                            oldToNewBlockMap.get(branchVIR.falseBlock())));
+                                    continue;
+                                }
                                 if (toReplaceIR instanceof CallVIR callVIR) {
                                     List<VIRItem> params = new ArrayList<>();
                                     for (VIRItem param : callVIR.params()) {
@@ -171,6 +160,10 @@ public class FunctionInline extends Pass {
                                         retVal = oldToNewRegMap.get(retVal);
                                     }
                                     newBlock.add(new CallVIR(callVIR.func(), retVal, params));
+                                    continue;
+                                }
+                                if (toReplaceIR instanceof JumpVIR jumpVIR) {
+                                    newBlock.add(new JumpVIR(oldToNewBlockMap.get(jumpVIR.target())));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof LiVIR liVIR) {
@@ -258,6 +251,7 @@ public class FunctionInline extends Pass {
                                         retVal = oldToNewRegMap.get(retVal);
                                         newBlock.add(new MovVIR(toReplaceCall.target(), retVal));
                                     }
+                                    newBlock.add(new JumpVIR(lastBlock));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof StoreVIR storeVIR) {
@@ -321,17 +315,29 @@ public class FunctionInline extends Pass {
                                 throw new RuntimeException();
                             }
                         }
-                        lastBlock.setDefaultBlock(curBlock.getDefaultBlock());
-                        curBlock.getCondBlocks().forEach(lastBlock::setCondBlock);
-                        curBlock.setDefaultBlock(preCallBlock);
-                        curBlock.clearCondBlocks();
-                        preCallBlock.setDefaultBlock(newBlocks.get(0));
                         for (int i = irId + 1; i < curBlock.size(); i++) {
                             lastBlock.add(curBlock.get(i));
                         }
                         while (curBlock.size() > irId) {
                             curBlock.remove(curBlock.size() - 1);
                         }
+//                        Set<VReg> usedRegs = new HashSet<>();
+//                        for (VIR remainedIR : curBlock)
+//                            usedRegs.addAll(remainedIR.getRead());
+//                        for (VIR preCallIR : preCallBlock)
+//                            usedRegs.addAll(preCallIR.getRead());
+//                        for (int i = 0; i < curBlock.size(); i++) {
+//                            VIR remainedIR = curBlock.get(i);
+//                            if (remainedIR instanceof PhiVIR phiVIR && !usedRegs.contains(phiVIR.target())) {
+//                                lastBlock.add(0, phiVIR);
+//                                curBlock.remove(i);
+//                                i--;
+//                                continue;
+//                            }
+//                            break;
+//                        }
+                        curBlock.add(new JumpVIR(preCallBlock));
+                        preCallBlock.add(new JumpVIR(newBlocks.get(0)));
                         func.addBlock(blockId + 1, preCallBlock);
                         func.addBlocks(blockId + 2, newBlocks);
                         func.addBlock(blockId + newBlocks.size() + 2, lastBlock);

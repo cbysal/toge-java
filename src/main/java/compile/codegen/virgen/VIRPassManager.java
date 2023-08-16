@@ -17,8 +17,8 @@ public class VIRPassManager {
 
     public void run() {
         boolean toContinue;
-        new RemoveUnreachableBlocks(globals, funcs).run();
-        toContinue = new MemToReg(globals, funcs).run();
+        toContinue = new RemoveUnreachableBlocks(globals, funcs).run();
+        toContinue |= new MemToReg(globals, funcs).run();
         toContinue |= new ConstructSSA(globals, funcs).run();
         toContinue |= new ParamToReg(globals, funcs).run();
         toContinue |= new ConstructSSA(globals, funcs).run();

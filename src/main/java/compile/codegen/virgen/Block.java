@@ -1,6 +1,5 @@
 package compile.codegen.virgen;
 
-import common.Pair;
 import compile.codegen.Label;
 import compile.codegen.virgen.vir.VIR;
 import compile.codegen.virgen.vir.VIRItem;
@@ -17,36 +16,10 @@ public class Block implements Iterable<VIR> {
     }
 
     private final Label label;
-    private Block defaultBlock;
-    private final List<Pair<Cond, Block>> condBlocks = new ArrayList<>();
     private final List<VIR> irs = new ArrayList<>();
 
     public Block() {
         this.label = new Label();
-    }
-
-    public void setDefaultBlock(Block defaultBlock) {
-        this.defaultBlock = defaultBlock;
-    }
-
-    public Block getDefaultBlock() {
-        return defaultBlock;
-    }
-
-    public void setCondBlock(Pair<Cond, Block> entry) {
-        condBlocks.add(entry);
-    }
-
-    public void setCondBlock(Cond cond, Block condBlock) {
-        condBlocks.add(new Pair<>(cond, condBlock));
-    }
-
-    public List<Pair<Cond, Block>> getCondBlocks() {
-        return condBlocks;
-    }
-
-    public void clearCondBlocks() {
-        condBlocks.clear();
     }
 
     public Label getLabel() {
@@ -71,6 +44,12 @@ public class Block implements Iterable<VIR> {
 
     public VIR get(int index) {
         return irs.get(index);
+    }
+
+    public VIR getLast() {
+        if (irs.isEmpty())
+            return null;
+        return irs.get(irs.size() - 1);
     }
 
     public boolean isEmpty() {

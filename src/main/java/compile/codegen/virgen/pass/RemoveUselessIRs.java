@@ -1,6 +1,5 @@
 package compile.codegen.virgen.pass;
 
-import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
@@ -69,16 +68,9 @@ public class RemoveUselessIRs extends Pass {
 
     private Set<VReg> analyzeUsedRegs(VirtualFunction func) {
         Set<VReg> usedRegs = new HashSet<>();
-        for (Block block : func.getBlocks()) {
+        for (Block block : func.getBlocks())
             for (VIR ir : block)
                 usedRegs.addAll(ir.getRead());
-            for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks()) {
-                if (condBlock.first().left() instanceof VReg reg)
-                    usedRegs.add(reg);
-                if (condBlock.first().right() instanceof VReg reg)
-                    usedRegs.add(reg);
-            }
-        }
         return usedRegs;
     }
 

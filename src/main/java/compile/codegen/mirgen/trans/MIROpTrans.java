@@ -1,7 +1,6 @@
 package compile.codegen.mirgen.trans;
 
 import common.Pair;
-import compile.codegen.Label;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.virgen.Block;
@@ -14,65 +13,60 @@ import java.util.List;
 import java.util.Map;
 
 public final class MIROpTrans {
-    public static void transBlockBranches(List<MIR> irs, Block block) {
-        for (Pair<Block.Cond, Block> entry : block.getCondBlocks()) {
-            Block.Cond cond = entry.first();
-            Block.Cond.Type type = cond.type();
-            VIRItem item1 = cond.left();
-            VIRItem item2 = cond.right();
-            Block targetBlock = entry.second();
-            Label targetLabel = targetBlock.getLabel();
-            VReg reg1, reg2;
-            if (item1 instanceof VReg reg) {
-                reg1 = reg;
+    public static void transBranch(List<MIR> irs, BranchVIR branchVIR) {
+        BranchVIR.Type type = branchVIR.type();
+        VIRItem lReg = branchVIR.left();
+        VIRItem rReg = branchVIR.right();
+        Block trueBlock = branchVIR.trueBlock();
+        Block falseBlock = branchVIR.falseBlock();
+        VReg reg1, reg2;
+        if (lReg instanceof VReg reg) {
+            reg1 = reg;
+        } else {
+            reg1 = new VReg(lReg.getType(), 4);
+            if (lReg.getType() == Type.FLOAT) {
+                MIROpHelper.loadImmToReg(irs, reg1, ((Value) lReg).getFloat());
             } else {
-                reg1 = new VReg(item1.getType(), 4);
-                if (item1.getType() == Type.FLOAT) {
-                    MIROpHelper.loadImmToReg(irs, reg1, ((Value) item1).getFloat());
-                } else {
-                    MIROpHelper.loadImmToReg(irs, reg1, ((Value) item1).getInt());
-                }
-            }
-            if (item2 instanceof VReg reg) {
-                reg2 = reg;
-            } else {
-                reg2 = new VReg(item2.getType(), 4);
-                if (item2.getType() == Type.FLOAT) {
-                    MIROpHelper.loadImmToReg(irs, reg2, ((Value) item2).getFloat());
-                } else {
-                    MIROpHelper.loadImmToReg(irs, reg2, ((Value) item2).getInt());
-                }
-            }
-            if (item1.getType() == Type.FLOAT || item2.getType() == Type.FLOAT) {
-                VReg midReg = new VReg(Type.INT, 4);
-                if (type == Block.Cond.Type.NE) {
-                    irs.add(new RrrMIR(RrrMIR.Op.EQ, midReg, reg1, reg2));
-                    irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, targetLabel));
-                } else {
-                    irs.add(new RrrMIR(switch (type) {
-                        case EQ -> RrrMIR.Op.EQ;
-                        case GE -> RrrMIR.Op.GE;
-                        case GT -> RrrMIR.Op.GT;
-                        case LE -> RrrMIR.Op.LE;
-                        case LT -> RrrMIR.Op.LT;
-                        default -> throw new IllegalStateException("Unexpected value: " + type);
-                    }, midReg, reg1, reg2));
-                    irs.add(new BMIR(BMIR.Op.NE, midReg, MReg.ZERO, targetLabel));
-                }
-            } else {
-                irs.add(new BMIR(switch (type) {
-                    case EQ -> BMIR.Op.EQ;
-                    case GE -> BMIR.Op.GE;
-                    case GT -> BMIR.Op.GT;
-                    case LE -> BMIR.Op.LE;
-                    case LT -> BMIR.Op.LT;
-                    case NE -> BMIR.Op.NE;
-                }, reg1, reg2, targetLabel));
+                MIROpHelper.loadImmToReg(irs, reg1, ((Value) lReg).getInt());
             }
         }
-        Block defaultBlock = block.getDefaultBlock();
-        Label targetLabel = defaultBlock.getLabel();
-        irs.add(new BMIR(null, null, null, targetLabel));
+        if (rReg instanceof VReg reg) {
+            reg2 = reg;
+        } else {
+            reg2 = new VReg(rReg.getType(), 4);
+            if (rReg.getType() == Type.FLOAT) {
+                MIROpHelper.loadImmToReg(irs, reg2, ((Value) rReg).getFloat());
+            } else {
+                MIROpHelper.loadImmToReg(irs, reg2, ((Value) rReg).getInt());
+            }
+        }
+        if (lReg.getType() == Type.FLOAT || rReg.getType() == Type.FLOAT) {
+            VReg midReg = new VReg(Type.INT, 4);
+            if (type == BranchVIR.Type.NE) {
+                irs.add(new RrrMIR(RrrMIR.Op.EQ, midReg, reg1, reg2));
+                irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, trueBlock.getLabel()));
+            } else {
+                irs.add(new RrrMIR(switch (type) {
+                    case EQ -> RrrMIR.Op.EQ;
+                    case GE -> RrrMIR.Op.GE;
+                    case GT -> RrrMIR.Op.GT;
+                    case LE -> RrrMIR.Op.LE;
+                    case LT -> RrrMIR.Op.LT;
+                    default -> throw new IllegalStateException("Unexpected value: " + type);
+                }, midReg, reg1, reg2));
+                irs.add(new BMIR(BMIR.Op.NE, midReg, MReg.ZERO, trueBlock.getLabel()));
+            }
+        } else {
+            irs.add(new BMIR(switch (type) {
+                case EQ -> BMIR.Op.EQ;
+                case GE -> BMIR.Op.GE;
+                case GT -> BMIR.Op.GT;
+                case LE -> BMIR.Op.LE;
+                case LT -> BMIR.Op.LT;
+                case NE -> BMIR.Op.NE;
+            }, reg1, reg2, trueBlock.getLabel()));
+        }
+        irs.add(new BMIR(null, null, null, falseBlock.getLabel()));
     }
 
     public static void transBinary(List<MIR> irs, BinaryVIR binaryVIR) {

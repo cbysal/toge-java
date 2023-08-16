@@ -1,6 +1,7 @@
 package compile.codegen.mirgen;
 
 import common.Pair;
+import compile.codegen.mirgen.mir.BMIR;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
@@ -50,7 +51,7 @@ public class MIRGenerator {
                         Set<VReg> sources = phiVIR.sources();
                         for (VReg source : sources) {
                             Block insertBlock = regToBlockMap.get(source);
-                            insertBlock.add(new MovVIR(target, source));
+                            insertBlock.add(insertBlock.size() - 1, new MovVIR(target, source));
                         }
                         continue;
                     }
@@ -141,10 +142,14 @@ public class MIRGenerator {
             for (VIR vir : block) {
                 if (vir instanceof BinaryVIR binaryVIR)
                     MIROpTrans.transBinary(mFunc.getIrs(), binaryVIR);
+                if (vir instanceof BranchVIR branchVIR)
+                    MIROpTrans.transBranch(mFunc.getIrs(), branchVIR);
                 if (vir instanceof CallVIR callVIR) {
                     int paramNum = MIROpTrans.transCall(mFunc.getIrs(), callVIR);
                     mFunc.setMaxFuncParamNum(Integer.max(mFunc.getMaxFuncParamNum(), paramNum));
                 }
+                if (vir instanceof JumpVIR jumpVIR)
+                    mFunc.getIrs().add(new BMIR(null, null, null, jumpVIR.target().getLabel()));
                 if (vir instanceof LiVIR liVIR)
                     MIROpTrans.transLI(mFunc.getIrs(), liVIR);
                 if (vir instanceof LoadVIR loadVIR)
@@ -162,8 +167,6 @@ public class MIRGenerator {
                 if (vir instanceof StoreVIR storeVIR)
                     MIROpTrans.transStore(mFunc.getIrs(), storeVIR, localOffsets, paramOffsets);
             }
-            if (!(block.getDefaultBlock() == null && block.getCondBlocks().isEmpty()))
-                MIROpTrans.transBlockBranches(mFunc.getIrs(), block);
         }
         mFunc.getIrs().replaceAll(ir -> ir.replaceReg(replaceMap));
         return mFunc;

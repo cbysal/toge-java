@@ -3,10 +3,7 @@ package compile.codegen.virgen.pass;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
-import compile.codegen.virgen.vir.LoadVIR;
-import compile.codegen.virgen.vir.MovVIR;
-import compile.codegen.virgen.vir.StoreVIR;
-import compile.codegen.virgen.vir.VIR;
+import compile.codegen.virgen.vir.*;
 import compile.symbol.GlobalSymbol;
 import compile.symbol.ParamSymbol;
 
@@ -48,7 +45,7 @@ public class ParamToReg extends Pass {
             Block headBlock = new Block();
             for (Map.Entry<ParamSymbol, VReg> entry : paramToRegMap.entrySet())
                 headBlock.add(new LoadVIR(entry.getValue(), entry.getKey(), List.of()));
-            headBlock.setDefaultBlock(func.getBlocks().get(0));
+            headBlock.add(new JumpVIR(func.getBlocks().get(0)));
             List<Block> blocks = func.getBlocks();
             for (Block block : blocks) {
                 for (int i = 0; i < block.size(); i++) {

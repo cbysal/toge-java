@@ -67,6 +67,21 @@ public class AssignmentPropagation extends Pass {
                     block.set(i, new BinaryVIR(binaryVIR.type(), binaryVIR.target(), newLeft, newRight));
                     continue;
                 }
+                if (ir instanceof BranchVIR branchVIR) {
+                    VIRItem newLeft = branchVIR.left();
+                    if (newLeft instanceof VReg reg && assignMap.containsKey(reg)) {
+                        newLeft = assignMap.get(reg).first();
+                        modified = true;
+                    }
+                    VIRItem newRight = branchVIR.right();
+                    if (newRight instanceof VReg reg && assignMap.containsKey(reg)) {
+                        newRight = assignMap.get(reg).first();
+                        modified = true;
+                    }
+                    block.set(i, new BranchVIR(branchVIR.type(), newLeft, newRight, branchVIR.trueBlock(),
+                            branchVIR.falseBlock()));
+                    continue;
+                }
                 if (ir instanceof CallVIR callVIR) {
                     List<VIRItem> newParams = callVIR.params();
                     for (int j = 0; j < newParams.size(); j++) {
@@ -120,22 +135,6 @@ public class AssignmentPropagation extends Pass {
                     block.set(i, new UnaryVIR(unaryVIR.type(), unaryVIR.target(), newSource));
                     continue;
                 }
-            }
-            List<Pair<Block.Cond, Block>> condBlocks = block.getCondBlocks();
-            for (int i = 0; i < condBlocks.size(); i++) {
-                Pair<Block.Cond, Block> condBlock = condBlocks.get(i);
-                Block.Cond cond = condBlock.first();
-                VIRItem newLeft = cond.left();
-                if (newLeft instanceof VReg reg && assignMap.containsKey(reg)) {
-                    newLeft = assignMap.get(reg).first();
-                    modified = true;
-                }
-                VIRItem newRight = cond.right();
-                if (newRight instanceof VReg reg && assignMap.containsKey(reg)) {
-                    newRight = assignMap.get(reg).first();
-                    modified = true;
-                }
-                condBlocks.set(i, new Pair<>(new Block.Cond(cond.type(), newLeft, newRight), condBlock.second()));
             }
         }
         return modified;

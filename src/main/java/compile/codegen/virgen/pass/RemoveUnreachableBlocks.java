@@ -1,9 +1,10 @@
 package compile.codegen.virgen.pass;
 
-import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
+import compile.codegen.virgen.vir.BranchVIR;
+import compile.codegen.virgen.vir.JumpVIR;
 import compile.codegen.virgen.vir.PhiVIR;
 import compile.codegen.virgen.vir.VIR;
 import compile.symbol.GlobalSymbol;
@@ -63,9 +64,12 @@ public class RemoveUnreachableBlocks extends Pass {
             if (reachableBlocks.contains(curBlock))
                 continue;
             reachableBlocks.add(curBlock);
-            if (curBlock.getDefaultBlock() != null)
-                frontier.offer(curBlock.getDefaultBlock());
-            curBlock.getCondBlocks().stream().map(Pair::second).filter(Objects::nonNull).forEach(frontier::offer);
+            VIR lastIR = curBlock.get(curBlock.size() - 1);
+            if (lastIR instanceof BranchVIR branchVIR) {
+                frontier.offer(branchVIR.trueBlock());
+                frontier.offer(branchVIR.falseBlock());
+            } else if (lastIR instanceof JumpVIR jumpVIR)
+                frontier.offer(jumpVIR.target());
         }
         return reachableBlocks;
     }

@@ -1,9 +1,10 @@
 package compile.codegen.virgen.pass;
 
-import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
+import compile.codegen.virgen.vir.BranchVIR;
+import compile.codegen.virgen.vir.JumpVIR;
 import compile.codegen.virgen.vir.PhiVIR;
 import compile.codegen.virgen.vir.VIR;
 import compile.symbol.GlobalSymbol;
@@ -92,12 +93,10 @@ public class BlockFusion extends Pass {
             curBlock.remove(0);
         for (Map.Entry<VReg, Set<VReg>> entry : curPhiMap.entrySet())
             curBlock.add(0, new PhiVIR(entry.getKey(), entry.getValue()));
+        curBlock.remove(curBlock.size() - 1);
         for (VIR ir : nextBlock)
             if (!(ir instanceof PhiVIR))
                 curBlock.add(ir);
-        curBlock.clearCondBlocks();
-        nextBlock.getCondBlocks().forEach(curBlock::setCondBlock);
-        curBlock.setDefaultBlock(nextBlock.getDefaultBlock());
         blocks.remove(nextBlock);
         for (VirtualFunction func : funcs.values())
             removePhiConflict(func);
@@ -160,10 +159,11 @@ public class BlockFusion extends Pass {
         for (Block block : blocks)
             nextBlockMap.put(block, new HashSet<>());
         for (Block block : blocks) {
-            for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks())
-                nextBlockMap.get(block).add(condBlock.second());
-            if (block.getDefaultBlock() != null)
-                nextBlockMap.get(block).add(block.getDefaultBlock());
+            if (block.getLast() instanceof BranchVIR branchVIR) {
+                nextBlockMap.get(block).add(branchVIR.trueBlock());
+                nextBlockMap.get(block).add(branchVIR.falseBlock());
+            } else if (block.getLast() instanceof JumpVIR jumpVIR)
+                nextBlockMap.get(block).add(jumpVIR.target());
         }
         return nextBlockMap;
     }
@@ -173,10 +173,11 @@ public class BlockFusion extends Pass {
         for (Block block : blocks)
             prevBlockMap.put(block, new HashSet<>());
         for (Block block : blocks) {
-            for (Pair<Block.Cond, Block> condBlock : block.getCondBlocks())
-                prevBlockMap.get(condBlock.second()).add(block);
-            if (block.getDefaultBlock() != null)
-                prevBlockMap.get(block.getDefaultBlock()).add(block);
+            if (block.getLast() instanceof BranchVIR branchVIR) {
+                prevBlockMap.get(branchVIR.trueBlock()).add(block);
+                prevBlockMap.get(branchVIR.falseBlock()).add(block);
+            } else if (block.getLast() instanceof JumpVIR jumpVIR)
+                prevBlockMap.get(jumpVIR.target()).add(block);
         }
         return prevBlockMap;
     }

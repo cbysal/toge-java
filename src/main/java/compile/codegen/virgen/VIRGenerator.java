@@ -47,8 +47,9 @@ public class VIRGenerator {
             List<Block> blocks = func.getBlocks();
             for (int i = 0; i + 1 < blocks.size(); i++) {
                 Block block = blocks.get(i);
-                if (block.getDefaultBlock() == null)
-                    block.setDefaultBlock(blocks.get(i + 1));
+                VIR lastIR = block.getLast();
+                if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
+                    block.add(new JumpVIR(blocks.get(i + 1)));
             }
         }
     }
@@ -90,7 +91,7 @@ public class VIRGenerator {
     }
 
     private void parseBreakStmt() {
-        curBlock.setDefaultBlock(breakStack.peek());
+        curBlock.add(new JumpVIR(breakStack.peek()));
     }
 
     private void parseCmpCond(CmpExpAST cmpCond) {
@@ -99,15 +100,14 @@ public class VIRGenerator {
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
-        curBlock.setCondBlock(new Block.Cond(switch (cmpCond.op()) {
-            case EQ -> Block.Cond.Type.EQ;
-            case NE -> Block.Cond.Type.NE;
-            case GE -> Block.Cond.Type.GE;
-            case GT -> Block.Cond.Type.GT;
-            case LE -> Block.Cond.Type.LE;
-            case LT -> Block.Cond.Type.LT;
-        }, lReg, rReg), trueBlock);
-        curBlock.setDefaultBlock(falseBlock);
+        curBlock.add(new BranchVIR(switch (cmpCond.op()) {
+            case EQ -> BranchVIR.Type.EQ;
+            case GE -> BranchVIR.Type.GE;
+            case GT -> BranchVIR.Type.GT;
+            case LE -> BranchVIR.Type.LE;
+            case LT -> BranchVIR.Type.LT;
+            case NE -> BranchVIR.Type.NE;
+        }, lReg, rReg, trueBlock, falseBlock));
     }
 
     private VReg parseCmpExp(CmpExpAST cmpExp) {
@@ -138,11 +138,11 @@ public class VIRGenerator {
             return;
         }
         if (root instanceof FloatLitExpAST floatLitExp) {
-            curBlock.setDefaultBlock(floatLitExp.value() != 0.0f ? trueBlock : falseBlock);
+            curBlock.add(new JumpVIR(floatLitExp.value() != 0.0f ? trueBlock : falseBlock));
             return;
         }
         if (root instanceof IntLitExpAST intLitExp) {
-            curBlock.setDefaultBlock(intLitExp.value() != 0 ? trueBlock : falseBlock);
+            curBlock.add(new JumpVIR(intLitExp.value() != 0 ? trueBlock : falseBlock));
             return;
         }
         if (root instanceof LAndExpAST lAndExp) {
@@ -177,7 +177,7 @@ public class VIRGenerator {
     }
 
     private void parseContinueStmt() {
-        curBlock.setDefaultBlock(continueStack.peek());
+        curBlock.add(new JumpVIR(continueStack.peek()));
     }
 
     private VReg parseExp(ExpAST root) {
@@ -268,12 +268,14 @@ public class VIRGenerator {
             parseCond(ifStmt.cond());
             curBlock = trueBlock;
             parseStmt(ifStmt.stmt1());
-            if (curBlock.getDefaultBlock() == null)
-                curBlock.setDefaultBlock(ifEndBlock);
+            VIR lastIR = curBlock.getLast();
+            if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
+                curBlock.add(new JumpVIR(ifEndBlock));
             curBlock = falseBlock;
             parseStmt(ifStmt.stmt2());
-            if (curBlock.getDefaultBlock() == null)
-                curBlock.setDefaultBlock(ifEndBlock);
+            lastIR = curBlock.getLast();
+            if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
+                curBlock.add(new JumpVIR(ifEndBlock));
             curBlock = ifEndBlock;
         } else {
             curFunc.insertBlockAfter(curBlock, trueBlock);
@@ -283,8 +285,9 @@ public class VIRGenerator {
             parseCond(ifStmt.cond());
             curBlock = trueBlock;
             parseStmt(ifStmt.stmt1());
-            if (curBlock.getDefaultBlock() == null)
-                curBlock.setDefaultBlock(falseBlock);
+            VIR lastIR = curBlock.getLast();
+            if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
+                curBlock.add(new JumpVIR(falseBlock));
             curBlock = falseBlock;
         }
     }
@@ -344,13 +347,13 @@ public class VIRGenerator {
 
     private void parseRetStmt(RetStmtAST retStmt) {
         if (retStmt.value() == null) {
-            curBlock.setDefaultBlock(retBlock);
+            curBlock.add(new JumpVIR(retBlock));
             return;
         }
         VReg retReg = parseExp(retStmt.value());
         retReg = typeConversion(retReg, retVal.getType());
         curBlock.add(new MovVIR(retVal, retReg));
-        curBlock.setDefaultBlock(retBlock);
+        curBlock.add(new JumpVIR(retBlock));
     }
 
     private void parseRoot(RootAST root) {
@@ -433,8 +436,7 @@ public class VIRGenerator {
                 }, result, source));
                 VReg zero = new VReg(Type.INT, 4);
                 curBlock.add(new LiVIR(zero, 0));
-                curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
-                curBlock.setDefaultBlock(falseBlock);
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, result, zero, trueBlock, falseBlock));
             }
             case NEG -> parseCond(unaryCond.next());
         }
@@ -457,8 +459,7 @@ public class VIRGenerator {
         VReg result = parseExp(root);
         VReg zero = new VReg(Type.INT, 4);
         curBlock.add(new LiVIR(zero, 0));
-        curBlock.setCondBlock(new Block.Cond(Block.Cond.Type.NE, result, zero), trueBlock);
-        curBlock.setDefaultBlock(falseBlock);
+        curBlock.add(new BranchVIR(BranchVIR.Type.NE, result, zero, trueBlock, falseBlock));
     }
 
     private VReg parseVarExp(VarExpAST varExp) {
@@ -491,16 +492,18 @@ public class VIRGenerator {
         curFunc.insertBlockAfter(loopBlock, endBlock);
         continueStack.push(entryBlock);
         breakStack.push(endBlock);
-        if (curBlock.getDefaultBlock() == null)
-            curBlock.setDefaultBlock(entryBlock);
+        VIR lastIR = curBlock.getLast();
+        if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
+            curBlock.add(new JumpVIR(entryBlock));
         curBlock = entryBlock;
         trueBlock = loopBlock;
         falseBlock = endBlock;
         parseCond(whileStmt.cond());
         curBlock = loopBlock;
         parseStmt(whileStmt.body());
-        if (curBlock.getDefaultBlock() == null)
-            curBlock.setDefaultBlock(entryBlock);
+        lastIR = curBlock.getLast();
+        if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
+            curBlock.add(new JumpVIR(entryBlock));
         curBlock = endBlock;
         continueStack.pop();
         breakStack.pop();

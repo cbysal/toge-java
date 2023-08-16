@@ -1,6 +1,5 @@
 package compile.codegen.virgen.pass;
 
-import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
@@ -73,9 +72,11 @@ public class ConstructSSA extends Pass {
         Map<Block, Set<Block>> prevBlocks = new HashMap<>();
         blocks.forEach(block -> prevBlocks.put(block, new HashSet<>()));
         for (Block curBlock : blocks) {
-            curBlock.getCondBlocks().stream().map(Pair::second).forEach(nextBlock -> prevBlocks.get(nextBlock).add(curBlock));
-            if (curBlock.getDefaultBlock() != null)
-                prevBlocks.get(curBlock.getDefaultBlock()).add(curBlock);
+            if (curBlock.getLast() instanceof BranchVIR branchVIR) {
+                prevBlocks.get(branchVIR.trueBlock()).add(curBlock);
+                prevBlocks.get(branchVIR.falseBlock()).add(curBlock);
+            } else if (curBlock.getLast() instanceof JumpVIR jumpVIR)
+                prevBlocks.get(jumpVIR.target()).add(curBlock);
         }
         return prevBlocks;
     }
@@ -239,6 +240,17 @@ public class ConstructSSA extends Pass {
                 regToBlockMap.put(newTarget, block);
                 continue;
             }
+            if (ir instanceof BranchVIR branchVIR) {
+                VIRItem newLeft = branchVIR.left();
+                VIRItem newRight = branchVIR.right();
+                if (newLeft instanceof VReg reg && todoRegs.contains(newLeft))
+                    newLeft = renamer.top(reg);
+                if (newRight instanceof VReg reg && todoRegs.contains(newRight))
+                    newRight = renamer.top(reg);
+                block.set(i, new BranchVIR(branchVIR.type(), newLeft, newRight, branchVIR.trueBlock(),
+                        branchVIR.falseBlock()));
+                continue;
+            }
             if (ir instanceof CallVIR callVIR) {
                 List<VIRItem> newParams = callVIR.params();
                 for (int j = 0; j < newParams.size(); j++) {
@@ -290,7 +302,6 @@ public class ConstructSSA extends Pass {
                 continue;
             }
             if (ir instanceof PhiVIR phiVIR) {
-                Set<VReg> oldSources = phiVIR.sources();
                 Set<VReg> newSources = phiVIR.sources();
                 newSources = newSources.stream().map(reg -> {
                     if (todoRegs.contains(reg))
@@ -340,23 +351,12 @@ public class ConstructSSA extends Pass {
                 continue;
             }
         }
-        List<Pair<Block.Cond, Block>> condBlocks = block.getCondBlocks();
-        for (int i = 0; i < condBlocks.size(); i++) {
-            Pair<Block.Cond, Block> condBlock = condBlocks.get(i);
-            Block.Cond cond = condBlock.first();
-            Block targetBlock = condBlock.second();
-            VIRItem newLeft = cond.left();
-            VIRItem newRight = cond.right();
-            if (newLeft instanceof VReg reg && todoRegs.contains(reg))
-                newLeft = renamer.top(reg);
-            if (newRight instanceof VReg reg && todoRegs.contains(reg))
-                newRight = renamer.top(reg);
-            Block.Cond newCond = new Block.Cond(cond.type(), newLeft, newRight);
-            condBlocks.set(i, new Pair<>(newCond, targetBlock));
-        }
-        List<Block> nextBlocks = new ArrayList<>(block.getCondBlocks().stream().map(Pair::second).toList());
-        if (block.getDefaultBlock() != null)
-            nextBlocks.add(block.getDefaultBlock());
+        List<Block> nextBlocks = new ArrayList<>();
+        if (block.getLast() instanceof BranchVIR branchVIR) {
+            nextBlocks.add(branchVIR.trueBlock());
+            nextBlocks.add(branchVIR.falseBlock());
+        } else if (block.getLast() instanceof JumpVIR jumpVIR)
+            nextBlocks.add(jumpVIR.target());
         for (Block nextBlock : nextBlocks) {
             for (VIR ir : nextBlock) {
                 if (ir instanceof PhiVIR phiVIR) {
