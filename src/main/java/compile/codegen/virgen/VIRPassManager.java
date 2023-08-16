@@ -17,43 +17,37 @@ public class VIRPassManager {
 
     public void run() {
         boolean toContinue;
-        toContinue = new RemoveUnreachableBlocks(globals, funcs).run();
-        toContinue |= new MemToReg(globals, funcs).run();
-        toContinue |= new ConstructSSA(globals, funcs).run();
-        toContinue |= new ParamToReg(globals, funcs).run();
-        toContinue |= new ConstructSSA(globals, funcs).run();
+        new ParamToReg(globals, funcs).run();
         do {
             toContinue = new RemoveUnreachableBlocks(globals, funcs).run();
             toContinue |= new MemToReg(globals, funcs).run();
-            toContinue |= new ConstructSSA(globals, funcs).run();
             toContinue |= new SplitGlobals(globals, funcs).run();
             toContinue |= new SplitLocals(globals, funcs).run();
+            toContinue |= new SplitRegs(globals, funcs).run();
             toContinue |= new GlobalToImm(globals, funcs).run();
             toContinue |= new RemoveUselessIRs(globals, funcs).run();
             toContinue |= new ConstantPropagation(globals, funcs).run();
             toContinue |= new AssignmentPropagation(globals, funcs).run();
             toContinue |= new ConstantFolding(globals, funcs).run();
             toContinue |= new BlockFusion(globals, funcs).run();
-            toContinue |= new DegradePhi(globals, funcs).run();
             toContinue |= new CombineInstructions(globals, funcs).run();
             toContinue |= new MatchPatterns(globals, funcs).run();
             toContinue |= new PeekHole(globals, funcs).run();
         } while (toContinue);
         new FunctionInline(globals, funcs).run();
-        new ConstructSSA(globals, funcs).run();
+        new ParamToReg(globals, funcs).run();
         do {
             toContinue = new RemoveUnreachableBlocks(globals, funcs).run();
             toContinue |= new MemToReg(globals, funcs).run();
-            toContinue |= new ConstructSSA(globals, funcs).run();
             toContinue |= new SplitGlobals(globals, funcs).run();
             toContinue |= new SplitLocals(globals, funcs).run();
+            toContinue |= new SplitRegs(globals, funcs).run();
             toContinue |= new GlobalToImm(globals, funcs).run();
             toContinue |= new RemoveUselessIRs(globals, funcs).run();
             toContinue |= new ConstantPropagation(globals, funcs).run();
             toContinue |= new AssignmentPropagation(globals, funcs).run();
             toContinue |= new ConstantFolding(globals, funcs).run();
             toContinue |= new BlockFusion(globals, funcs).run();
-            toContinue |= new DegradePhi(globals, funcs).run();
             toContinue |= new CombineInstructions(globals, funcs).run();
             toContinue |= new MatchPatterns(globals, funcs).run();
             toContinue |= new PeekHole(globals, funcs).run();

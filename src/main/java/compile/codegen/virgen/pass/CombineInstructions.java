@@ -4,9 +4,7 @@ import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
-import compile.codegen.virgen.vir.BinaryVIR;
-import compile.codegen.virgen.vir.MovVIR;
-import compile.codegen.virgen.vir.VIR;
+import compile.codegen.virgen.vir.*;
 import compile.symbol.GlobalSymbol;
 import compile.symbol.Value;
 
@@ -45,6 +43,8 @@ public class CombineInstructions extends Pass {
                                         mulIRs.put(binaryVIR.target(), new Pair<>(regValue.first(),
                                                 new Value(regValue.second().getInt() + 1)));
                                         modified = true;
+                                    } else {
+                                        mulIRs.remove(binaryVIR.target());
                                     }
                                     continue;
                                 }
@@ -56,6 +56,8 @@ public class CombineInstructions extends Pass {
                                         mulIRs.put(binaryVIR.target(), new Pair<>(regValue.first(),
                                                 new Value(regValue.second().getInt() + 1)));
                                         modified = true;
+                                    } else {
+                                        mulIRs.remove(binaryVIR.target());
                                     }
                                     continue;
                                 }
@@ -75,7 +77,32 @@ public class CombineInstructions extends Pass {
                                     modified = true;
                                 }
                             }
+                            mulIRs.remove(binaryVIR.target());
+                        } else {
+                            mulIRs.remove(binaryVIR.target());
                         }
+                        continue;
+                    }
+                    if (ir instanceof CallVIR callVIR) {
+                        if (callVIR.target() != null)
+                            mulIRs.remove(callVIR.target());
+                        continue;
+                    }
+                    if (ir instanceof LiVIR liVIR) {
+                        mulIRs.remove(liVIR.target());
+                        continue;
+                    }
+                    if (ir instanceof LoadVIR loadVIR) {
+                        mulIRs.remove(loadVIR.target());
+                        continue;
+                    }
+                    if (ir instanceof MovVIR movVIR) {
+                        mulIRs.remove(movVIR.target());
+                        continue;
+                    }
+                    if (ir instanceof UnaryVIR unaryVIR) {
+                        mulIRs.remove(unaryVIR.target());
+                        continue;
                     }
                 }
             }

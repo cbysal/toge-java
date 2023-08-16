@@ -31,34 +31,7 @@ public class MIRGenerator {
         if (isProcessed)
             return;
         isProcessed = true;
-        deSSA();
         vir2Mir();
-    }
-
-    private void deSSA() {
-        for (VirtualFunction func : vFuncs.values()) {
-            Map<VReg, Block> regToBlockMap = new HashMap<>();
-            for (Block block : func.getBlocks())
-                for (VIR ir : block)
-                    if (ir.getWrite() != null)
-                        regToBlockMap.put(ir.getWrite(), block);
-            List<Block> blocks = func.getBlocks();
-            for (Block block : blocks) {
-                for (int i = 0; i < block.size(); i++) {
-                    VIR ir = block.get(i);
-                    if (ir instanceof PhiVIR phiVIR) {
-                        VReg target = phiVIR.target();
-                        Set<VReg> sources = phiVIR.sources();
-                        for (VReg source : sources) {
-                            Block insertBlock = regToBlockMap.get(source);
-                            insertBlock.add(insertBlock.size() - 1, new MovVIR(target, source));
-                        }
-                        continue;
-                    }
-                    break;
-                }
-            }
-        }
     }
 
     private Pair<Integer, Integer> getCallerNumbers(FuncSymbol func) {

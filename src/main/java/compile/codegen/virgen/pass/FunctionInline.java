@@ -8,7 +8,6 @@ import compile.codegen.virgen.vir.*;
 import compile.symbol.*;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class FunctionInline extends Pass {
     public FunctionInline(Set<GlobalSymbol> globals, Map<String, VirtualFunction> funcs) {
@@ -230,19 +229,6 @@ public class FunctionInline extends Pass {
                                     newBlock.add(new MovVIR(target, source));
                                     continue;
                                 }
-                                if (toReplaceIR instanceof PhiVIR phiVIR) {
-                                    VReg target = phiVIR.target();
-                                    if (!oldToNewRegMap.containsKey(target))
-                                        oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
-                                    target = oldToNewRegMap.get(target);
-                                    Set<VReg> sources = phiVIR.sources();
-                                    for (VReg source : sources)
-                                        if (!oldToNewRegMap.containsKey(source))
-                                            oldToNewRegMap.put(source, new VReg(source.getType(), source.getSize()));
-                                    sources = sources.stream().map(oldToNewRegMap::get).collect(Collectors.toSet());
-                                    newBlock.add(new PhiVIR(target, sources));
-                                    continue;
-                                }
                                 if (toReplaceIR instanceof RetVIR retVIR) {
                                     if (retVIR.retVal() != null) {
                                         VReg retVal = retVIR.retVal();
@@ -321,84 +307,16 @@ public class FunctionInline extends Pass {
                         while (curBlock.size() > irId) {
                             curBlock.remove(curBlock.size() - 1);
                         }
-//                        Set<VReg> usedRegs = new HashSet<>();
-//                        for (VIR remainedIR : curBlock)
-//                            usedRegs.addAll(remainedIR.getRead());
-//                        for (VIR preCallIR : preCallBlock)
-//                            usedRegs.addAll(preCallIR.getRead());
-//                        for (int i = 0; i < curBlock.size(); i++) {
-//                            VIR remainedIR = curBlock.get(i);
-//                            if (remainedIR instanceof PhiVIR phiVIR && !usedRegs.contains(phiVIR.target())) {
-//                                lastBlock.add(0, phiVIR);
-//                                curBlock.remove(i);
-//                                i--;
-//                                continue;
-//                            }
-//                            break;
-//                        }
                         curBlock.add(new JumpVIR(preCallBlock));
                         preCallBlock.add(new JumpVIR(newBlocks.get(0)));
                         func.addBlock(blockId + 1, preCallBlock);
                         func.addBlocks(blockId + 2, newBlocks);
                         func.addBlock(blockId + newBlocks.size() + 2, lastBlock);
-                        removePhiConflict(func);
                         break;
                     }
                 }
             }
         }
-    }
-
-    private void removePhiConflict(VirtualFunction func) {
-        Map<VReg, Block> regToBlockMap = new HashMap<>();
-        for (Block block : func.getBlocks())
-            for (VIR ir : block)
-                if (ir.getWrite() != null)
-                    regToBlockMap.put(ir.getWrite(), block);
-        boolean modified;
-        do {
-            modified = false;
-            for (Block curBlock : func.getBlocks()) {
-                for (VIR ir : curBlock) {
-                    if (ir instanceof PhiVIR phiVIR) {
-                        Set<VReg> sources = phiVIR.sources();
-                        Map<Block, Integer> counter = new HashMap<>();
-                        for (VReg source : sources) {
-                            Block block = regToBlockMap.get(source);
-                            counter.put(block, counter.getOrDefault(block, 0) + 1);
-                        }
-                        List<Block> toProcessBlocks =
-                                counter.keySet().stream().filter(block -> counter.get(block) > 1).toList();
-                        modified |= !toProcessBlocks.isEmpty();
-                        for (Block toProcessBlock : toProcessBlocks) {
-                            Set<VReg> conflictRegs = new HashSet<>();
-                            for (VReg source : sources)
-                                if (regToBlockMap.get(source) == toProcessBlock)
-                                    conflictRegs.add(source);
-                            Set<VReg> toFillInSources = new HashSet<>();
-                            for (VIR toProcessIR : toProcessBlock) {
-                                if (toProcessIR instanceof PhiVIR toProcessPhiVIR) {
-                                    if (conflictRegs.contains(toProcessPhiVIR.target()))
-                                        toFillInSources.addAll(toProcessPhiVIR.sources());
-                                    continue;
-                                }
-                                break;
-                            }
-                            for (VIR toProcessIR : toProcessBlock) {
-                                if (toProcessIR.getWrite() != null && conflictRegs.contains(toProcessIR.getWrite())) {
-                                    toFillInSources.clear();
-                                    toFillInSources.add(toProcessIR.getWrite());
-                                }
-                            }
-                            conflictRegs.forEach(sources::remove);
-                            sources.addAll(toFillInSources);
-                        }
-                        continue;
-                    }
-                    break;
-                }
-            }
-        } while (modified);
     }
 
     private void removeUselessFunctions(FuncSymbol mainFunc, Map<FuncSymbol, Set<FuncSymbol>> funcCallRelations) {

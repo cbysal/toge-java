@@ -30,16 +30,8 @@ public class Block implements Iterable<VIR> {
         return irs.add(ir);
     }
 
-    public void add(int index, VIR ir) {
-        irs.add(index, ir);
-    }
-
     public boolean addAll(Block block) {
         return irs.addAll(block.irs);
-    }
-
-    public boolean addAll(int index, List<VIR> irs) {
-        return this.irs.addAll(index, irs);
     }
 
     public VIR get(int index) {
