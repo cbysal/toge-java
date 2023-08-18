@@ -7,7 +7,15 @@ import compile.symbol.Value;
 
 import java.util.List;
 
-public record VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) implements ExpAST {
+public class VarExpAST implements ExpAST {
+    public final DataSymbol symbol;
+    public final List<ExpAST> dimensions;
+
+    public VarExpAST(DataSymbol symbol, List<ExpAST> dimensions) {
+        this.symbol = symbol;
+        this.dimensions = dimensions;
+    }
+
     @Override
     public Value calc() {
         if (symbol instanceof GlobalSymbol globalSymbol) {

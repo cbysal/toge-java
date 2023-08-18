@@ -2,7 +2,13 @@ package compile.codegen.mirgen.mir;
 
 import compile.codegen.Label;
 
-public record LabelMIR(Label label) implements MIR {
+public class LabelMIR extends MIR {
+    public final Label label;
+
+    public LabelMIR(Label label) {
+        this.label = label;
+    }
+
     public String getName() {
         return label.toString();
     }

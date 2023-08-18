@@ -8,7 +8,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public record AddRegLocalMIR(Reg dest, int imm) implements MIR {
+public class AddRegLocalMIR extends MIR {
+    public final Reg dest;
+    public final int imm;
+
+    public AddRegLocalMIR(Reg dest, int imm) {
+        this.dest = dest;
+        this.imm = imm;
+    }
+
     @Override
     public List<Reg> getWrite() {
         return List.of(dest);

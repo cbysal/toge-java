@@ -3,7 +3,15 @@ package compile.syntax.ast;
 import compile.symbol.Type;
 import compile.symbol.Value;
 
-public record LAndExpAST(ExpAST left, ExpAST right) implements ExpAST {
+public class LAndExpAST implements ExpAST {
+    public final ExpAST left;
+    public final ExpAST right;
+
+    public LAndExpAST(ExpAST left, ExpAST right) {
+        this.left = left;
+        this.right = right;
+    }
+
     @Override
     public Value calc() {
         Value lVal = left.calc();

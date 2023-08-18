@@ -28,27 +28,18 @@ public class LexicalParser {
     private static final Pattern HEXADECIMAL_INT_PATTERN = Pattern.compile("0[Xx][\\d|A-Fa-f]+");
     private static final Set<Character> OCTAL_INT_CHARSET = Set.of('0', '1', '2', '3', '4', '5', '6', '7');
     private static final Pattern OCTAL_INT_PATTERN = Pattern.compile("0[0-7]*");
-
-    private boolean isProcessed = false;
-    private int head = 0;
     private final String content;
     private final TokenList tokens = new TokenList();
+    private int head = 0;
 
     public LexicalParser(String content) {
         this.content = content;
     }
 
-    private void checkIfIsProcessed() {
-        if (isProcessed)
-            return;
-        isProcessed = true;
+    public TokenList getTokens() {
         Token token;
         while ((token = nextToken()) != null)
             tokens.add(token);
-    }
-
-    public TokenList getTokens() {
-        checkIfIsProcessed();
         return tokens;
     }
 

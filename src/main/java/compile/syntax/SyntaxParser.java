@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class SyntaxParser {
-    private boolean isProcessed = false;
     private final SymbolTable symbolTable;
     private final TokenList tokens;
 
@@ -56,15 +55,8 @@ public class SyntaxParser {
         }
     }
 
-    private void checkIfIsProcessed() {
-        if (isProcessed)
-            return;
-        isProcessed = true;
-        parseRoot();
-    }
-
     public RootAST getRootAST() {
-        checkIfIsProcessed();
+        parseRoot();
         return rootAST;
     }
 
@@ -101,12 +93,12 @@ public class SyntaxParser {
     }
 
     private BlockStmtAST parseBlock() {
-        List<StmtAST> stmts = new ArrayList<>();
+        BlockStmtAST blockStmt = new BlockStmtAST();
         tokens.next(TokenType.LC);
         while (!tokens.expect(TokenType.RC))
-            stmts.addAll(parseStmt());
+            blockStmt.addAll(parseStmt());
         tokens.next(TokenType.RC);
-        return new BlockStmtAST(stmts);
+        return blockStmt;
     }
 
     private BreakStmtAST parseBreakStmt() {
@@ -417,10 +409,10 @@ public class SyntaxParser {
                     ExpAST rVal = parseAddSubExp();
                     stmts.add(new AssignStmtAST(lVal, rVal));
                 } else {
-                    stmts.add(new AssignStmtAST(lVal, switch (lVal.symbol().getType()) {
+                    stmts.add(new AssignStmtAST(lVal, switch (lVal.symbol.getType()) {
                         case FLOAT -> new FloatLitExpAST(0);
                         case INT -> new IntLitExpAST(0);
-                        default -> throw new IllegalStateException("Unexpected value: " + lVal.symbol().getType());
+                        default -> throw new IllegalStateException("Unexpected value: " + lVal.symbol.getType());
                     }));
                 }
             }
@@ -471,20 +463,19 @@ public class SyntaxParser {
     }
 
     private void parseRoot() {
-        List<CompUnitAST> compUnits = new ArrayList<>();
+        rootAST = new RootAST();
         while (tokens.hasNext()) {
             switch (tokens.peek(TokenType.CONST, TokenType.FLOAT, TokenType.INT, TokenType.VOID)) {
-                case CONST -> compUnits.addAll(parseConstDef());
+                case CONST -> rootAST.addAll(parseConstDef());
                 case FLOAT, INT, VOID -> {
                     if (tokens.expect(2, TokenType.LP))
-                        compUnits.add(parseFuncDef());
+                        rootAST.add(parseFuncDef());
                     else
-                        compUnits.addAll(parseGlobalDef());
+                        rootAST.addAll(parseGlobalDef());
                 }
                 default -> throw new RuntimeException();
             }
         }
-        rootAST = new RootAST(compUnits);
     }
 
     private StmtAST parseRetStmt() {

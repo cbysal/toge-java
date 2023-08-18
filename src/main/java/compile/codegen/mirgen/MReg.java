@@ -6,7 +6,6 @@ import compile.symbol.Type;
 import java.util.List;
 
 public class MReg extends Reg {
-    private final String name;
     public static final MReg ZERO = new MReg(Type.INT, "zero");
     public static final MReg RA = new MReg(Type.INT, "ra");
     public static final MReg SP = new MReg(Type.INT, "sp");
@@ -85,6 +84,7 @@ public class MReg extends Reg {
             MReg.S6, MReg.S7, MReg.S8, MReg.S9, MReg.S10, MReg.S11);
     public static final List<MReg> F_CALLEE_REGS = List.of(MReg.FS0, MReg.FS1, MReg.FS2, MReg.FS3, MReg.FS4, MReg.FS5
             , MReg.FS6, MReg.FS7, MReg.FS8, MReg.FS9, MReg.FS10, MReg.FS11);
+    private final String name;
 
     private MReg(Type type, String name) {
         super(type, 8);

@@ -54,7 +54,7 @@ public class RemoveUselessIRs extends Pass {
         for (Block block : func.getBlocks()) {
             for (int i = 0; i < block.size(); i++) {
                 VIR ir = block.get(i);
-                if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof LocalSymbol local) {
+                if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof LocalSymbol local) {
                     if (!usedLocals.contains(local)) {
                         block.remove(i);
                         i--;
@@ -78,7 +78,7 @@ public class RemoveUselessIRs extends Pass {
         Set<LocalSymbol> usedLocals = new HashSet<>();
         for (Block block : func.getBlocks())
             for (VIR ir : block)
-                if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof LocalSymbol local)
+                if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof LocalSymbol local)
                     usedLocals.add(local);
         return usedLocals;
     }

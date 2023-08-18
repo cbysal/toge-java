@@ -11,8 +11,8 @@ import compile.lexical.LexicalParser;
 import compile.lexical.token.TokenList;
 import compile.symbol.GlobalSymbol;
 import compile.symbol.SymbolTable;
-import compile.syntax.SyntaxPassManager;
 import compile.syntax.SyntaxParser;
+import compile.syntax.SyntaxPassManager;
 import compile.syntax.ast.RootAST;
 import execute.Executor;
 
@@ -27,7 +27,6 @@ import java.util.Set;
 
 public class Compiler {
     private final Executor.OptionPool options;
-    private boolean isProcessed = false;
     private final String input;
     private final Path outputFile;
 
@@ -37,10 +36,12 @@ public class Compiler {
         this.outputFile = outputFile;
     }
 
-    private void checkIfIsProcessed() {
-        if (isProcessed)
-            return;
-        isProcessed = true;
+    private static void printVIR(Map<String, VirtualFunction> funcs) {
+        System.out.println("============ print-vir ============");
+        funcs.forEach((key, value) -> System.out.println(value));
+    }
+
+    public void compile() {
         LexicalParser lexicalParser = new LexicalParser(input);
         TokenList tokens = lexicalParser.getTokens();
         SymbolTable symbolTable = new SymbolTable();
@@ -84,10 +85,6 @@ public class Compiler {
             emitASM(new File(options.get(Executor.OptionPool.EMIT_ASM)), output);
     }
 
-    public void compile() {
-        checkIfIsProcessed();
-    }
-
     private void emitASM(File file, String output) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
             writer.write(output);
@@ -116,11 +113,6 @@ public class Compiler {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static void printVIR(Map<String, VirtualFunction> funcs) {
-        System.out.println("============ print-vir ============");
-        funcs.forEach((key, value) -> System.out.println(value));
     }
 
     private void printMIR(Map<String, MachineFunction> funcs) {

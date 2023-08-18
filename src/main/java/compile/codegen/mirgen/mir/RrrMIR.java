@@ -7,9 +7,14 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record RrrMIR(Op op, Reg dest, Reg src1, Reg src2) implements MIR {
-    public enum Op {
-        ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, REMW, EQ, GE, GT, LE, LT, AND, XOR
+public class RrrMIR extends MIR {
+    public final Op op;
+    public final Reg dest, src1, src2;
+    public RrrMIR(Op op, Reg dest, Reg src1, Reg src2) {
+        this.op = op;
+        this.dest = dest;
+        this.src1 = src1;
+        this.src2 = src2;
     }
 
     @Override
@@ -104,5 +109,9 @@ public record RrrMIR(Op op, Reg dest, Reg src1, Reg src2) implements MIR {
             };
             default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
         }, dest, src1, src2);
+    }
+
+    public enum Op {
+        ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, REMW, EQ, GE, GT, LE, LT, AND, XOR
     }
 }

@@ -22,8 +22,8 @@ public class ConstantFolding extends Pass {
                 for (int i = 0; i < block.size(); i++) {
                     VIR ir = block.get(i);
                     if (ir instanceof BinaryVIR binaryVIR) {
-                        if (binaryVIR.left() instanceof Value left && binaryVIR.right() instanceof Value right) {
-                            Value result = switch (binaryVIR.type()) {
+                        if (binaryVIR.left instanceof Value left && binaryVIR.right instanceof Value right) {
+                            Value result = switch (binaryVIR.type) {
                                 case ADD -> left.add(right);
                                 case SUB -> left.sub(right);
                                 case MUL -> left.mul(right);
@@ -37,16 +37,16 @@ public class ConstantFolding extends Pass {
                                 case LT -> left.lt(right);
                             };
                             switch (result.getType()) {
-                                case INT -> block.set(i, new LiVIR(binaryVIR.target(), result.getInt()));
-                                case FLOAT -> block.set(i, new LiVIR(binaryVIR.target(), result.getFloat()));
+                                case INT -> block.set(i, new LiVIR(binaryVIR.target, result.getInt()));
+                                case FLOAT -> block.set(i, new LiVIR(binaryVIR.target, result.getFloat()));
                             }
                             modified = true;
                         }
                         continue;
                     }
                     if (ir instanceof BranchVIR branchVIR) {
-                        if (branchVIR.left() instanceof Value left && branchVIR.right() instanceof Value right) {
-                            Value result = switch (branchVIR.type()) {
+                        if (branchVIR.left instanceof Value left && branchVIR.right instanceof Value right) {
+                            Value result = switch (branchVIR.type) {
                                 case EQ -> left.eq(right);
                                 case NE -> left.ne(right);
                                 case GE -> left.ge(right);
@@ -54,15 +54,15 @@ public class ConstantFolding extends Pass {
                                 case LE -> left.le(right);
                                 case LT -> left.lt(right);
                             };
-                            block.set(i, new JumpVIR(result.isZero() ? branchVIR.falseBlock() : branchVIR.trueBlock()));
+                            block.set(i, new JumpVIR(result.isZero() ? branchVIR.falseBlock : branchVIR.trueBlock));
                             modified = true;
                             break;
                         }
                         continue;
                     }
                     if (ir instanceof UnaryVIR unaryVIR) {
-                        if (unaryVIR.source() instanceof Value source) {
-                            Value result = switch (unaryVIR.type()) {
+                        if (unaryVIR.source instanceof Value source) {
+                            Value result = switch (unaryVIR.type) {
                                 case F2I -> source.toInt();
                                 case I2F -> source.toFloat();
                                 case L_NOT -> source.lNot();
@@ -70,8 +70,8 @@ public class ConstantFolding extends Pass {
                                 case ABS -> source.abs();
                             };
                             switch (result.getType()) {
-                                case INT -> block.set(i, new LiVIR(unaryVIR.target(), result.getInt()));
-                                case FLOAT -> block.set(i, new LiVIR(unaryVIR.target(), result.getFloat()));
+                                case INT -> block.set(i, new LiVIR(unaryVIR.target, result.getInt()));
+                                case FLOAT -> block.set(i, new LiVIR(unaryVIR.target, result.getFloat()));
                             }
                             modified = true;
                         }

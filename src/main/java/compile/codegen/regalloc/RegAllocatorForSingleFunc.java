@@ -12,82 +12,15 @@ import compile.symbol.Type;
 import java.util.*;
 
 public class RegAllocatorForSingleFunc {
-    private static class Block {
-        private final int begin, end;
-        private final Set<Reg> liveUse = new HashSet<>(), liveDef = new HashSet<>();
-        private final Set<Reg> liveIn = new HashSet<>(), liveOut = new HashSet<>();
-        private final Set<Block> nexts = new HashSet<>();
-
-        public Block(int begin, int end) {
-            this.begin = begin;
-            this.end = end;
-        }
-
-        public void addUse(Reg reg) {
-            liveUse.add(reg);
-        }
-
-        public void addDef(Reg reg) {
-            liveDef.add(reg);
-        }
-
-        public void addNext(Block block) {
-            nexts.add(block);
-        }
-
-        public void calcIn() {
-            liveIn.clear();
-            liveIn.addAll(liveOut);
-            liveIn.removeAll(liveDef);
-            liveIn.addAll(liveUse);
-        }
-
-        public void calcOut() {
-            for (Block next : nexts)
-                liveOut.addAll(next.liveIn);
-        }
-
-        public boolean containsInDef(Reg reg) {
-            return liveDef.contains(reg);
-        }
-
-        public int getBegin() {
-            return begin;
-        }
-
-        public int getEnd() {
-            return end;
-        }
-
-        public Set<Reg> getRegs() {
-            Set<Reg> regs = new HashSet<>();
-            regs.addAll(liveUse);
-            regs.addAll(liveDef);
-            regs.addAll(liveIn);
-            regs.addAll(liveOut);
-            return regs;
-        }
-
-        public Set<Reg> getOut() {
-            return liveOut;
-        }
-
-        public int sizeOfInOut() {
-            return liveIn.size() + liveOut.size();
-        }
-    }
-
-    private boolean isProcessed = false;
     private final MachineFunction func;
-    private int funcParamSize, alignSize, spillSize, localSize;
     private final int paramInnerSize;
-    private int savedRegSize;
-    private int callAddrSize;
     private final List<MReg> iCallerRegs;
     private final List<MReg> fCallerRegs;
     private final List<MReg> iCalleeRegs = new ArrayList<>();
     private final List<MReg> fCalleeRegs = new ArrayList<>();
-
+    private int funcParamSize, alignSize, spillSize, localSize;
+    private int savedRegSize;
+    private int callAddrSize;
     public RegAllocatorForSingleFunc(MachineFunction func) {
         this.func = func;
         this.iCallerRegs = MReg.I_CALLER_REGS.subList(0, func.getICallerNum());
@@ -96,13 +29,6 @@ public class RegAllocatorForSingleFunc {
     }
 
     public void allocate() {
-        checkIfIsProcessed();
-    }
-
-    private void checkIfIsProcessed() {
-        if (isProcessed)
-            return;
-        isProcessed = true;
         solveSpill();
         Map<VReg, MReg> vRegToMReg = calcVRegToMReg();
         func.getIrs().replaceAll(ir -> ir.replaceReg(vRegToMReg));
@@ -117,7 +43,7 @@ public class RegAllocatorForSingleFunc {
         Map<Label, Integer> labelIdMap = new HashMap<>();
         for (int i = 0; i < irs.size(); i++)
             if (irs.get(i) instanceof LabelMIR labelMIR)
-                labelIdMap.put(labelMIR.label(), i);
+                labelIdMap.put(labelMIR.label, i);
         Set<Integer> begins = new HashSet<>();
         begins.add(0);
         Map<Integer, Integer> jumpIdMap = new HashMap<>();
@@ -125,7 +51,7 @@ public class RegAllocatorForSingleFunc {
         for (int i = 0; i < irs.size(); i++) {
             if (irs.get(i) instanceof BMIR bMIR) {
                 begins.add(i + 1);
-                jumpIdMap.put(i, labelIdMap.get(bMIR.label()));
+                jumpIdMap.put(i, labelIdMap.get(bMIR.label));
                 isBranchMap.put(i, bMIR.hasCond());
                 continue;
             }
@@ -236,7 +162,7 @@ public class RegAllocatorForSingleFunc {
                 MIR ir = irs.get(i);
                 if (ir instanceof BlMIR blMIR) {
                     int iSize = 0, fSize = 0;
-                    for (ParamSymbol param : blMIR.func().getParams()) {
+                    for (ParamSymbol param : blMIR.func.getParams()) {
                         if (param.isSingle() && param.getType() == Type.FLOAT && fSize < MReg.F_CALLER_REGS.size()) {
                             if (!block.containsInDef(MReg.F_CALLER_REGS.get(fSize)))
                                 block.addUse(MReg.F_CALLER_REGS.get(fSize));
@@ -369,67 +295,67 @@ public class RegAllocatorForSingleFunc {
         for (int i = 0; i < irs.size(); i++) {
             MIR ir = irs.get(i);
             if (ir instanceof AddRegLocalMIR addRegLocalMIR) {
-                int totalSize = funcParamSize + alignSize + spillSize + addRegLocalMIR.imm();
+                int totalSize = funcParamSize + alignSize + spillSize + addRegLocalMIR.imm;
                 if (totalSize < 2048)
-                    irs.set(i, new RriMIR(RriMIR.Op.ADDI, addRegLocalMIR.dest(), MReg.SP, totalSize));
+                    irs.set(i, new RriMIR(RriMIR.Op.ADDI, addRegLocalMIR.dest, MReg.SP, totalSize));
                 else {
                     irs.set(i, new LiMIR(MReg.T0, totalSize));
-                    irs.add(i + 1, new RrrMIR(RrrMIR.Op.ADD, addRegLocalMIR.dest(), MReg.SP, MReg.T0));
+                    irs.add(i + 1, new RrrMIR(RrrMIR.Op.ADD, addRegLocalMIR.dest, MReg.SP, MReg.T0));
                     i++;
                 }
                 continue;
             }
             if (ir instanceof LoadItemMIR loadItemMIR) {
-                int totalSize = switch (loadItemMIR.item()) {
-                    case SPILL -> funcParamSize + alignSize + loadItemMIR.imm();
-                    case LOCAL -> funcParamSize + alignSize + spillSize + loadItemMIR.imm();
+                int totalSize = switch (loadItemMIR.item) {
+                    case SPILL -> funcParamSize + alignSize + loadItemMIR.imm;
+                    case LOCAL -> funcParamSize + alignSize + spillSize + loadItemMIR.imm;
                     case PARAM_INNER ->
-                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + loadItemMIR.imm();
+                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + loadItemMIR.imm;
                     case PARAM_OUTER ->
-                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + loadItemMIR.imm();
+                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + loadItemMIR.imm;
                 };
-                int size = switch (loadItemMIR.item()) {
+                int size = switch (loadItemMIR.item) {
                     case LOCAL -> 4;
-                    case SPILL, PARAM_INNER, PARAM_OUTER -> switch (loadItemMIR.dest().getType()) {
+                    case SPILL, PARAM_INNER, PARAM_OUTER -> switch (loadItemMIR.dest.getType()) {
                         case FLOAT -> 4;
                         case INT -> 8;
-                        default -> throw new IllegalStateException("Unexpected value: " + loadItemMIR.dest().getType());
+                        default -> throw new IllegalStateException("Unexpected value: " + loadItemMIR.dest.getType());
                     };
                 };
                 if (totalSize < 2048) {
-                    irs.set(i, new LoadMIR(loadItemMIR.dest(), MReg.SP, totalSize, size));
+                    irs.set(i, new LoadMIR(loadItemMIR.dest, MReg.SP, totalSize, size));
                 } else {
                     irs.set(i, new LiMIR(MReg.T0, totalSize));
                     irs.add(i + 1, new RrrMIR(RrrMIR.Op.ADD, MReg.T0, MReg.SP, MReg.T0));
-                    irs.add(i + 2, new LoadMIR(loadItemMIR.dest(), MReg.T0, 0, size));
+                    irs.add(i + 2, new LoadMIR(loadItemMIR.dest, MReg.T0, 0, size));
                     i += 2;
                 }
                 continue;
             }
             if (ir instanceof StoreItemMIR storeItemMIR) {
-                int totalSize = switch (storeItemMIR.item()) {
-                    case PARAM_CALL -> storeItemMIR.imm();
-                    case SPILL -> funcParamSize + alignSize + storeItemMIR.imm();
-                    case LOCAL -> funcParamSize + alignSize + spillSize + storeItemMIR.imm();
+                int totalSize = switch (storeItemMIR.item) {
+                    case PARAM_CALL -> storeItemMIR.imm;
+                    case SPILL -> funcParamSize + alignSize + storeItemMIR.imm;
+                    case LOCAL -> funcParamSize + alignSize + spillSize + storeItemMIR.imm;
                     case PARAM_INNER ->
-                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + storeItemMIR.imm();
+                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + storeItemMIR.imm;
                     case PARAM_OUTER ->
-                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + storeItemMIR.imm();
+                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + storeItemMIR.imm;
                 };
-                int size = switch (storeItemMIR.item()) {
+                int size = switch (storeItemMIR.item) {
                     case LOCAL -> 4;
-                    case PARAM_CALL, PARAM_INNER, PARAM_OUTER, SPILL -> switch (storeItemMIR.src().getType()) {
+                    case PARAM_CALL, PARAM_INNER, PARAM_OUTER, SPILL -> switch (storeItemMIR.src.getType()) {
                         case FLOAT -> 4;
                         case INT -> 8;
-                        default -> throw new IllegalStateException("Unexpected value: " + storeItemMIR.src().getType());
+                        default -> throw new IllegalStateException("Unexpected value: " + storeItemMIR.src.getType());
                     };
                 };
                 if (totalSize < 2048) {
-                    irs.set(i, new StoreMIR(storeItemMIR.src(), MReg.SP, totalSize, size));
+                    irs.set(i, new StoreMIR(storeItemMIR.src, MReg.SP, totalSize, size));
                 } else {
                     irs.set(i, new LiMIR(MReg.T0, totalSize));
                     irs.add(i + 1, new RrrMIR(RrrMIR.Op.ADD, MReg.T0, MReg.SP, MReg.T0));
-                    irs.add(i + 2, new StoreMIR(storeItemMIR.src(), MReg.T0, 0, size));
+                    irs.add(i + 2, new StoreMIR(storeItemMIR.src, MReg.T0, 0, size));
                     i += 2;
                 }
             }
@@ -510,5 +436,70 @@ public class RegAllocatorForSingleFunc {
                 func.getIrs().addAll(newIRs);
             }
         } while (toContinueOuter);
+    }
+
+    private static class Block {
+        private final int begin, end;
+        private final Set<Reg> liveUse = new HashSet<>(), liveDef = new HashSet<>();
+        private final Set<Reg> liveIn = new HashSet<>(), liveOut = new HashSet<>();
+        private final Set<Block> nexts = new HashSet<>();
+
+        public Block(int begin, int end) {
+            this.begin = begin;
+            this.end = end;
+        }
+
+        public void addUse(Reg reg) {
+            liveUse.add(reg);
+        }
+
+        public void addDef(Reg reg) {
+            liveDef.add(reg);
+        }
+
+        public void addNext(Block block) {
+            nexts.add(block);
+        }
+
+        public void calcIn() {
+            liveIn.clear();
+            liveIn.addAll(liveOut);
+            liveIn.removeAll(liveDef);
+            liveIn.addAll(liveUse);
+        }
+
+        public void calcOut() {
+            for (Block next : nexts)
+                liveOut.addAll(next.liveIn);
+        }
+
+        public boolean containsInDef(Reg reg) {
+            return liveDef.contains(reg);
+        }
+
+        public int getBegin() {
+            return begin;
+        }
+
+        public int getEnd() {
+            return end;
+        }
+
+        public Set<Reg> getRegs() {
+            Set<Reg> regs = new HashSet<>();
+            regs.addAll(liveUse);
+            regs.addAll(liveDef);
+            regs.addAll(liveIn);
+            regs.addAll(liveOut);
+            return regs;
+        }
+
+        public Set<Reg> getOut() {
+            return liveOut;
+        }
+
+        public int sizeOfInOut() {
+            return liveIn.size() + liveOut.size();
+        }
     }
 }

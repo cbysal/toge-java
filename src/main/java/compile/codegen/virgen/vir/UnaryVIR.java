@@ -5,30 +5,13 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 
 public class UnaryVIR extends VIR {
-    public enum Type {
-        F2I, I2F, NEG, L_NOT, ABS
-    }
-
-    private final Type type;
-    private final VReg target;
-    private final VIRItem source;
-
+    public final Type type;
+    public final VReg target;
+    public final VIRItem source;
     public UnaryVIR(Type type, VReg target, VIRItem source) {
         this.type = type;
         this.target = target;
         this.source = source;
-    }
-
-    public Type type() {
-        return type;
-    }
-
-    public VReg target() {
-        return target;
-    }
-
-    public VIRItem source() {
-        return source;
     }
 
     @Override
@@ -50,5 +33,9 @@ public class UnaryVIR extends VIR {
         builder.append(" ".repeat(8 - builder.length()));
         builder.append(target).append(", ").append(source);
         return builder.toString();
+    }
+
+    public enum Type {
+        F2I, I2F, NEG, L_NOT, ABS
     }
 }

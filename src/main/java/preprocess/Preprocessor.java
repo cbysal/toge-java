@@ -9,7 +9,6 @@ import java.util.regex.Pattern;
 public class Preprocessor {
     private static final Pattern ESCAPED_NEW_LINE_PATTERN = Pattern.compile("\\\\\\n");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("//.*|/\\*[\\s\\S]*?\\*/");
-    private boolean isProcessed;
     private final Path input;
     private String content;
 
@@ -18,10 +17,6 @@ public class Preprocessor {
     }
 
     public String preprocess() {
-        if (isProcessed) {
-            return content;
-        }
-        isProcessed = true;
         try {
             content = Files.readString(input);
         } catch (IOException e) {

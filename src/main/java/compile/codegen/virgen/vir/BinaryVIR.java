@@ -5,35 +5,14 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 
 public class BinaryVIR extends VIR {
-    public enum Type {
-        ADD, SUB, MUL, DIV, MOD, EQ, NE, GE, GT, LE, LT
-    }
-
-    private final Type type;
-    private final VReg target;
-    private final VIRItem left, right;
-
+    public final Type type;
+    public final VReg target;
+    public final VIRItem left, right;
     public BinaryVIR(Type type, VReg target, VIRItem left, VIRItem right) {
         this.type = type;
         this.target = target;
         this.left = left;
         this.right = right;
-    }
-
-    public Type type() {
-        return type;
-    }
-
-    public VReg target() {
-        return target;
-    }
-
-    public VIRItem left() {
-        return left;
-    }
-
-    public VIRItem right() {
-        return right;
     }
 
     @Override
@@ -59,5 +38,9 @@ public class BinaryVIR extends VIR {
         builder.append(" ".repeat(8 - builder.length()));
         builder.append(target).append(", ").append(left).append(", ").append(right);
         return builder.toString();
+    }
+
+    public enum Type {
+        ADD, SUB, MUL, DIV, MOD, EQ, NE, GE, GT, LE, LT
     }
 }

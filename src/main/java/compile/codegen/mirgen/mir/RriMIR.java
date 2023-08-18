@@ -7,9 +7,15 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record RriMIR(Op op, Reg dest, Reg src, int imm) implements MIR {
-    public enum Op {
-        ADDI, SLTI, SLTIU, ANDI, SLLIW, SRAI, SRAIW, SRLI, SRLIW
+public class RriMIR extends MIR {
+    public final Op op;
+    public final Reg dest, src;
+    public final int imm;
+    public RriMIR(Op op, Reg dest, Reg src, int imm) {
+        this.op = op;
+        this.dest = dest;
+        this.src = src;
+        this.imm = imm;
     }
 
     @Override
@@ -60,5 +66,9 @@ public record RriMIR(Op op, Reg dest, Reg src, int imm) implements MIR {
     @Override
     public String toString() {
         return String.format("%s\t%s,%s,%d", op.toString().toLowerCase(), dest, src, imm);
+    }
+
+    public enum Op {
+        ADDI, SLTI, SLTIU, ANDI, SLLIW, SRAI, SRAIW, SRLI, SRLIW
     }
 }

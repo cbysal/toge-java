@@ -27,14 +27,14 @@ public class SplitLocals extends Pass {
                     func.getLocals().stream().filter(local -> !local.isSingle()).collect(Collectors.toSet());
             for (Block block : func.getBlocks()) {
                 for (VIR ir : block) {
-                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof LocalSymbol local && locals.contains(local)) {
-                        List<VIRItem> indexes = loadVIR.indexes();
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof LocalSymbol local && locals.contains(local)) {
+                        List<VIRItem> indexes = loadVIR.indexes;
                         if (indexes.isEmpty() || indexes.get(0) instanceof VReg)
                             locals.remove(local);
                         continue;
                     }
-                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof LocalSymbol local && locals.contains(local)) {
-                        List<VIRItem> indexes = storeVIR.indexes();
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof LocalSymbol local && locals.contains(local)) {
+                        List<VIRItem> indexes = storeVIR.indexes;
                         if (indexes.isEmpty() || indexes.get(0) instanceof VReg)
                             locals.remove(local);
                         continue;
@@ -62,17 +62,17 @@ public class SplitLocals extends Pass {
             for (Block block : func.getBlocks()) {
                 for (int i = 0; i < block.size(); i++) {
                     VIR ir = block.get(i);
-                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof LocalSymbol local && newLocalMap.containsKey(local)) {
-                        List<VIRItem> indexes = loadVIR.indexes();
-                        block.set(i, new LoadVIR(loadVIR.target(),
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof LocalSymbol local && newLocalMap.containsKey(local)) {
+                        List<VIRItem> indexes = loadVIR.indexes;
+                        block.set(i, new LoadVIR(loadVIR.target,
                                 newLocalMap.get(local).get(((Value) indexes.get(0)).getInt()), indexes.subList(1,
                                 indexes.size())));
                         continue;
                     }
-                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof LocalSymbol local && newLocalMap.containsKey(local)) {
-                        List<VIRItem> indexes = storeVIR.indexes();
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof LocalSymbol local && newLocalMap.containsKey(local)) {
+                        List<VIRItem> indexes = storeVIR.indexes;
                         block.set(i, new StoreVIR(newLocalMap.get(local).get(((Value) indexes.get(0)).getInt()),
-                                indexes.subList(1, indexes.size()), storeVIR.source()));
+                                indexes.subList(1, indexes.size()), storeVIR.source));
                         continue;
                     }
                 }

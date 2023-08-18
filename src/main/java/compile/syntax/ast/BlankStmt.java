@@ -1,4 +1,4 @@
 package compile.syntax.ast;
 
-public record BlankStmt() implements StmtAST {
+public final class BlankStmt implements StmtAST {
 }

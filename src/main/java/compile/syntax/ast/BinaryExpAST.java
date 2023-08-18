@@ -3,9 +3,15 @@ package compile.syntax.ast;
 import compile.symbol.Type;
 import compile.symbol.Value;
 
-public record BinaryExpAST(Op op, ExpAST left, ExpAST right) implements ExpAST {
-    public enum Op {
-        ADD, DIV, MOD, MUL, SUB
+public class BinaryExpAST implements ExpAST {
+    public final Op op;
+    public final ExpAST left;
+    public final ExpAST right;
+
+    public BinaryExpAST(Op op, ExpAST left, ExpAST right) {
+        this.op = op;
+        this.left = left;
+        this.right = right;
     }
 
     @Override
@@ -55,5 +61,9 @@ public record BinaryExpAST(Op op, ExpAST left, ExpAST right) implements ExpAST {
                 yield new Value(lVal.getInt() - rVal.getInt());
             }
         };
+    }
+
+    public enum Op {
+        ADD, DIV, MOD, MUL, SUB
     }
 }

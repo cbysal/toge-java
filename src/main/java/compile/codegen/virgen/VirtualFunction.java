@@ -42,17 +42,22 @@ public class VirtualFunction {
         return blocks;
     }
 
+    public void setBlocks(List<Block> blocks) {
+        this.blocks.clear();
+        this.blocks.addAll(blocks);
+    }
+
     public List<LocalSymbol> getLocals() {
         return locals;
     }
 
-    public FuncSymbol getSymbol() {
-        return symbol;
+    public void setLocals(Collection<LocalSymbol> locals) {
+        this.locals.clear();
+        this.locals.addAll(locals);
     }
 
-    public void setBlocks(List<Block> blocks) {
-        this.blocks.clear();
-        this.blocks.addAll(blocks);
+    public FuncSymbol getSymbol() {
+        return symbol;
     }
 
     @Override
@@ -70,10 +75,5 @@ public class VirtualFunction {
                 builder.append(ir).append('\n');
         }
         return builder.toString();
-    }
-
-    public void setLocals(Collection<LocalSymbol> locals) {
-        this.locals.clear();
-        this.locals.addAll(locals);
     }
 }

@@ -7,7 +7,6 @@ import java.util.List;
 public abstract class VIR {
     private static int counter = 0;
     private final int id;
-    protected List<VReg> rBuf;
 
     protected VIR() {
         this.id = counter++;

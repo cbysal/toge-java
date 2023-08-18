@@ -30,8 +30,8 @@ public class FunctionInline extends Pass {
                 Set<FuncSymbol> calledFuncs = funcCallRelations.get(func.getSymbol());
                 for (Block block : func.getBlocks())
                     for (VIR ir : block)
-                        if (ir instanceof CallVIR callVIR && funcCallRelations.containsKey(callVIR.func()))
-                            calledFuncs.add(callVIR.func());
+                        if (ir instanceof CallVIR callVIR && funcCallRelations.containsKey(callVIR.func))
+                            calledFuncs.add(callVIR.func);
             }
             if (mainFunc == null)
                 throw new RuntimeException("No main function!");
@@ -54,29 +54,29 @@ public class FunctionInline extends Pass {
             Map<VReg, Pair<DataSymbol, List<VIRItem>>> arrayParamMap = new HashMap<>();
             for (Block oldBlock : blocks)
                 for (VIR ir : oldBlock)
-                    if (ir instanceof LoadVIR loadVIR && loadVIR.indexes().size() != loadVIR.symbol().getDimensionSize())
-                        arrayParamMap.put(loadVIR.target(), new Pair<>(loadVIR.symbol(), loadVIR.indexes()));
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.indexes.size() != loadVIR.symbol.getDimensionSize())
+                        arrayParamMap.put(loadVIR.target, new Pair<>(loadVIR.symbol, loadVIR.indexes));
             for (int blockId = 0; blockId < blocks.size(); blockId++) {
                 Block curBlock = blocks.get(blockId);
                 for (int irId = 0; irId < curBlock.size(); irId++) {
                     VIR ir = curBlock.get(irId);
-                    if (ir instanceof CallVIR toReplaceCall && toReplaceCall.func().equals(toInlineSymbol)) {
+                    if (ir instanceof CallVIR toReplaceCall && toReplaceCall.func.equals(toInlineSymbol)) {
                         Map<ParamSymbol, VReg> paramToRegMap = new HashMap<>();
                         Map<VReg, VReg> paramPropagationMap = new HashMap<>();
                         Map<LocalSymbol, LocalSymbol> oldToNewLocalMap = new HashMap<>();
                         Block preCallBlock = new Block();
                         Block lastBlock = new Block();
-                        for (int i = 0; i < toReplaceCall.params().size(); i++) {
-                            ParamSymbol param = toReplaceCall.func().getParams().get(i);
-                            if (toReplaceCall.params().get(i) instanceof VReg reg) {
+                        for (int i = 0; i < toReplaceCall.params.size(); i++) {
+                            ParamSymbol param = toReplaceCall.func.getParams().get(i);
+                            if (toReplaceCall.params.get(i) instanceof VReg reg) {
                                 VReg newReg = new VReg(reg.getType(), reg.getSize());
                                 paramToRegMap.put(param, newReg);
                                 preCallBlock.add(new MovVIR(newReg, reg));
                                 paramPropagationMap.put(newReg, reg);
                                 continue;
                             }
-                            if (toReplaceCall.params().get(i) instanceof Value value) {
-                                VReg reg = new VReg(toReplaceCall.func().getParams().get(i).getType(), 4);
+                            if (toReplaceCall.params.get(i) instanceof Value value) {
+                                VReg reg = new VReg(toReplaceCall.func.getParams().get(i).getType(), 4);
                                 paramToRegMap.put(param, reg);
                                 if (value.getType() == Type.FLOAT)
                                     preCallBlock.add(new LiVIR(reg, value.getFloat()));
@@ -104,47 +104,47 @@ public class FunctionInline extends Pass {
                             Block newBlock = oldToNewBlockMap.get(oldBlock);
                             for (VIR toReplaceIR : oldBlock) {
                                 if (toReplaceIR instanceof BinaryVIR binaryVIR) {
-                                    VReg target = binaryVIR.target();
+                                    VReg target = binaryVIR.target;
                                     if (!oldToNewRegMap.containsKey(target))
                                         oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
                                     target = oldToNewRegMap.get(target);
-                                    VIRItem left = binaryVIR.left();
+                                    VIRItem left = binaryVIR.left;
                                     if (left instanceof VReg reg) {
                                         if (!oldToNewRegMap.containsKey(reg))
                                             oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
                                         left = oldToNewRegMap.get(reg);
                                     }
-                                    VIRItem right = binaryVIR.right();
+                                    VIRItem right = binaryVIR.right;
                                     if (right instanceof VReg reg) {
                                         if (!oldToNewRegMap.containsKey(reg))
                                             oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
                                         right = oldToNewRegMap.get(reg);
                                     }
-                                    newBlock.add(new BinaryVIR(binaryVIR.type(), target, left, right));
+                                    newBlock.add(new BinaryVIR(binaryVIR.type, target, left, right));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof BranchVIR branchVIR) {
-                                    BranchVIR.Type type = branchVIR.type();
-                                    VIRItem left = branchVIR.left();
+                                    BranchVIR.Type type = branchVIR.type;
+                                    VIRItem left = branchVIR.left;
                                     if (left instanceof VReg reg) {
                                         if (!oldToNewRegMap.containsKey(reg))
                                             oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
                                         left = oldToNewRegMap.get(reg);
                                     }
-                                    VIRItem right = branchVIR.right();
+                                    VIRItem right = branchVIR.right;
                                     if (right instanceof VReg reg) {
                                         if (!oldToNewRegMap.containsKey(reg))
                                             oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
                                         right = oldToNewRegMap.get(reg);
                                     }
                                     newBlock.add(new BranchVIR(type, left, right,
-                                            oldToNewBlockMap.get(branchVIR.trueBlock()),
-                                            oldToNewBlockMap.get(branchVIR.falseBlock())));
+                                            oldToNewBlockMap.get(branchVIR.trueBlock),
+                                            oldToNewBlockMap.get(branchVIR.falseBlock)));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof CallVIR callVIR) {
                                     List<VIRItem> params = new ArrayList<>();
-                                    for (VIRItem param : callVIR.params()) {
+                                    for (VIRItem param : callVIR.params) {
                                         if (param instanceof VReg reg) {
                                             if (!oldToNewRegMap.containsKey(reg))
                                                 oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
@@ -152,31 +152,31 @@ public class FunctionInline extends Pass {
                                         } else
                                             params.add(param);
                                     }
-                                    VReg retVal = callVIR.target();
+                                    VReg retVal = callVIR.target;
                                     if (retVal != null) {
                                         if (!oldToNewRegMap.containsKey(retVal))
                                             oldToNewRegMap.put(retVal, new VReg(retVal.getType(), retVal.getSize()));
                                         retVal = oldToNewRegMap.get(retVal);
                                     }
-                                    newBlock.add(new CallVIR(callVIR.func(), retVal, params));
+                                    newBlock.add(new CallVIR(callVIR.func, retVal, params));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof JumpVIR jumpVIR) {
-                                    newBlock.add(new JumpVIR(oldToNewBlockMap.get(jumpVIR.target())));
+                                    newBlock.add(new JumpVIR(oldToNewBlockMap.get(jumpVIR.target)));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof LiVIR liVIR) {
-                                    VReg target = liVIR.target();
+                                    VReg target = liVIR.target;
                                     if (!oldToNewRegMap.containsKey(target))
                                         oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
                                     target = oldToNewRegMap.get(target);
-                                    newBlock.add(new LiVIR(target, liVIR.value()));
+                                    newBlock.add(new LiVIR(target, liVIR.value));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof LoadVIR loadVIR) {
-                                    if (loadVIR.symbol() instanceof ParamSymbol paramSymbol) {
+                                    if (loadVIR.symbol instanceof ParamSymbol paramSymbol) {
                                         VReg toReplaceReg = paramToRegMap.get(paramSymbol);
-                                        VReg target = loadVIR.target();
+                                        VReg target = loadVIR.target;
                                         if (!oldToNewRegMap.containsKey(target))
                                             oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
                                         target = oldToNewRegMap.get(target);
@@ -186,7 +186,7 @@ public class FunctionInline extends Pass {
                                             Pair<DataSymbol, List<VIRItem>> toReplaceSymbol =
                                                     arrayParamMap.get(paramPropagationMap.get(toReplaceReg));
                                             List<VIRItem> indexes = new ArrayList<>(toReplaceSymbol.second());
-                                            for (VIRItem index : loadVIR.indexes()) {
+                                            for (VIRItem index : loadVIR.indexes) {
                                                 if (index instanceof VReg reg) {
                                                     if (!oldToNewRegMap.containsKey(reg))
                                                         oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
@@ -198,12 +198,12 @@ public class FunctionInline extends Pass {
                                         }
                                         continue;
                                     }
-                                    VReg target = loadVIR.target();
+                                    VReg target = loadVIR.target;
                                     if (!oldToNewRegMap.containsKey(target))
                                         oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
                                     target = oldToNewRegMap.get(target);
                                     List<VIRItem> indexes = new ArrayList<>();
-                                    for (VIRItem index : loadVIR.indexes()) {
+                                    for (VIRItem index : loadVIR.indexes) {
                                         if (index instanceof VReg reg) {
                                             if (!oldToNewRegMap.containsKey(reg))
                                                 oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
@@ -211,18 +211,18 @@ public class FunctionInline extends Pass {
                                         } else
                                             indexes.add(index);
                                     }
-                                    DataSymbol symbol = loadVIR.symbol();
+                                    DataSymbol symbol = loadVIR.symbol;
                                     if (symbol instanceof LocalSymbol local)
                                         symbol = oldToNewLocalMap.get(local);
                                     newBlock.add(new LoadVIR(target, symbol, indexes));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof MovVIR movVIR) {
-                                    VReg target = movVIR.target();
+                                    VReg target = movVIR.target;
                                     if (!oldToNewRegMap.containsKey(target))
                                         oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
                                     target = oldToNewRegMap.get(target);
-                                    VReg source = movVIR.source();
+                                    VReg source = movVIR.source;
                                     if (!oldToNewRegMap.containsKey(source))
                                         oldToNewRegMap.put(source, new VReg(source.getType(), source.getSize()));
                                     source = oldToNewRegMap.get(source);
@@ -230,20 +230,20 @@ public class FunctionInline extends Pass {
                                     continue;
                                 }
                                 if (toReplaceIR instanceof RetVIR retVIR) {
-                                    if (retVIR.retVal() != null) {
-                                        VReg retVal = retVIR.retVal();
+                                    if (retVIR.retVal != null) {
+                                        VReg retVal = retVIR.retVal;
                                         if (!oldToNewRegMap.containsKey(retVal))
                                             oldToNewRegMap.put(retVal, new VReg(retVal.getType(), retVal.getSize()));
                                         retVal = oldToNewRegMap.get(retVal);
-                                        newBlock.add(new MovVIR(toReplaceCall.target(), retVal));
+                                        newBlock.add(new MovVIR(toReplaceCall.target, retVal));
                                     }
                                     newBlock.add(new JumpVIR(lastBlock));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof StoreVIR storeVIR) {
-                                    if (storeVIR.symbol() instanceof ParamSymbol paramSymbol) {
+                                    if (storeVIR.symbol instanceof ParamSymbol paramSymbol) {
                                         VReg toReplaceReg = paramToRegMap.get(paramSymbol);
-                                        VReg source = storeVIR.source();
+                                        VReg source = storeVIR.source;
                                         if (!oldToNewRegMap.containsKey(source))
                                             oldToNewRegMap.put(source, new VReg(source.getType(), source.getSize()));
                                         source = oldToNewRegMap.get(source);
@@ -253,7 +253,7 @@ public class FunctionInline extends Pass {
                                             Pair<DataSymbol, List<VIRItem>> toReplaceSymbol =
                                                     arrayParamMap.get(paramPropagationMap.get(toReplaceReg));
                                             List<VIRItem> indexes = new ArrayList<>(toReplaceSymbol.second());
-                                            for (VIRItem index : storeVIR.indexes()) {
+                                            for (VIRItem index : storeVIR.indexes) {
                                                 if (index instanceof VReg reg) {
                                                     if (!oldToNewRegMap.containsKey(reg))
                                                         oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
@@ -265,11 +265,11 @@ public class FunctionInline extends Pass {
                                         }
                                         continue;
                                     }
-                                    DataSymbol symbol = storeVIR.symbol();
+                                    DataSymbol symbol = storeVIR.symbol;
                                     if (symbol instanceof LocalSymbol local)
                                         symbol = oldToNewLocalMap.get(local);
                                     List<VIRItem> indexes = new ArrayList<>();
-                                    for (VIRItem index : storeVIR.indexes()) {
+                                    for (VIRItem index : storeVIR.indexes) {
                                         if (index instanceof VReg reg) {
                                             if (!oldToNewRegMap.containsKey(reg))
                                                 oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
@@ -277,7 +277,7 @@ public class FunctionInline extends Pass {
                                         } else
                                             indexes.add(index);
                                     }
-                                    VReg source = storeVIR.source();
+                                    VReg source = storeVIR.source;
                                     if (!oldToNewRegMap.containsKey(source))
                                         oldToNewRegMap.put(source, new VReg(source.getType(), source.getSize()));
                                     source = oldToNewRegMap.get(source);
@@ -285,17 +285,17 @@ public class FunctionInline extends Pass {
                                     continue;
                                 }
                                 if (toReplaceIR instanceof UnaryVIR unaryVIR) {
-                                    VReg target = unaryVIR.target();
+                                    VReg target = unaryVIR.target;
                                     if (!oldToNewRegMap.containsKey(target))
                                         oldToNewRegMap.put(target, new VReg(target.getType(), target.getSize()));
                                     target = oldToNewRegMap.get(target);
-                                    VIRItem source = unaryVIR.source();
+                                    VIRItem source = unaryVIR.source;
                                     if (source instanceof VReg reg) {
                                         if (!oldToNewRegMap.containsKey(reg))
                                             oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
                                         source = oldToNewRegMap.get(reg);
                                     }
-                                    newBlock.add(new UnaryVIR(unaryVIR.type(), target, source));
+                                    newBlock.add(new UnaryVIR(unaryVIR.type, target, source));
                                     continue;
                                 }
                                 throw new RuntimeException();

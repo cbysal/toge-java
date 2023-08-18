@@ -3,7 +3,13 @@ package compile.syntax.ast;
 import compile.symbol.Type;
 import compile.symbol.Value;
 
-public record LNotExpAST(ExpAST next) implements ExpAST {
+public class LNotExpAST implements ExpAST {
+    public final ExpAST next;
+
+    public LNotExpAST(ExpAST next) {
+        this.next = next;
+    }
+
     @Override
     public Value calc() {
         Value nVal = next.calc();

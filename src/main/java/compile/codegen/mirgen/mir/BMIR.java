@@ -8,9 +8,15 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record BMIR(Op op, Reg src1, Reg src2, Label label) implements MIR {
-    public enum Op {
-        EQ, NE, GE, GT, LE, LT
+public class BMIR extends MIR {
+    public final Op op;
+    public final Reg src1, src2;
+    public final Label label;
+    public BMIR(Op op, Reg src1, Reg src2, Label label) {
+        this.op = op;
+        this.src1 = src1;
+        this.src2 = src2;
+        this.label = label;
     }
 
     @Override
@@ -69,5 +75,9 @@ public record BMIR(Op op, Reg src1, Reg src2, Label label) implements MIR {
             return "j\t" + label;
         }
         return String.format("b%s\t%s,%s,%s", op.toString().toLowerCase(), src1, src2, label);
+    }
+
+    public enum Op {
+        EQ, NE, GE, GT, LE, LT
     }
 }

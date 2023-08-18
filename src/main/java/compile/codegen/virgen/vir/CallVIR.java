@@ -7,26 +7,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class CallVIR extends VIR {
-    private final FuncSymbol func;
-    private final VReg target;
-    private final List<VIRItem> params;
+    public final FuncSymbol func;
+    public final VReg target;
+    public final List<VIRItem> params;
 
     public CallVIR(FuncSymbol func, VReg target, List<VIRItem> params) {
         this.func = func;
         this.target = target;
         this.params = params;
-    }
-
-    public FuncSymbol func() {
-        return func;
-    }
-
-    public VReg target() {
-        return target;
-    }
-
-    public List<VIRItem> params() {
-        return params;
     }
 
     @Override

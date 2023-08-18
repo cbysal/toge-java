@@ -7,7 +7,17 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record LoadMIR(Reg dest, Reg src, int imm, int size) implements MIR {
+public class LoadMIR extends MIR {
+    public final Reg dest, src;
+    public final int imm, size;
+
+    public LoadMIR(Reg dest, Reg src, int imm, int size) {
+        this.dest = dest;
+        this.src = src;
+        this.imm = imm;
+        this.size = size;
+    }
+
     @Override
     public List<Reg> getRead() {
         return List.of(src);

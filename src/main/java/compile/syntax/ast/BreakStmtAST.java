@@ -1,4 +1,4 @@
 package compile.syntax.ast;
 
-public record BreakStmtAST() implements StmtAST {
+public class BreakStmtAST implements StmtAST {
 }

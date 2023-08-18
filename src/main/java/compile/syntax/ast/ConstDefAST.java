@@ -2,5 +2,10 @@ package compile.syntax.ast;
 
 import compile.symbol.GlobalSymbol;
 
-public record ConstDefAST(GlobalSymbol symbol) implements CompUnitAST, StmtAST {
+public class ConstDefAST extends CompUnitAST implements StmtAST {
+    public final GlobalSymbol symbol;
+
+    public ConstDefAST(GlobalSymbol symbol) {
+        this.symbol = symbol;
+    }
 }

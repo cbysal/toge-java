@@ -17,10 +17,10 @@ import java.util.Map;
 import java.util.Set;
 
 public class MIRGenerator {
-    private boolean isProcessed = false;
     private final Set<GlobalSymbol> globals;
     private final Map<String, VirtualFunction> vFuncs;
     private final Map<String, MachineFunction> mFuncs = new HashMap<>();
+    private boolean isProcessed = false;
 
     public MIRGenerator(Set<GlobalSymbol> globals, Map<String, VirtualFunction> vFuncs) {
         this.globals = globals;
@@ -122,7 +122,7 @@ public class MIRGenerator {
                     mFunc.setMaxFuncParamNum(Integer.max(mFunc.getMaxFuncParamNum(), paramNum));
                 }
                 if (vir instanceof JumpVIR jumpVIR)
-                    mFunc.getIrs().add(new BMIR(null, null, null, jumpVIR.target().getLabel()));
+                    mFunc.getIrs().add(new BMIR(null, null, null, jumpVIR.target.getLabel()));
                 if (vir instanceof LiVIR liVIR)
                     MIROpTrans.transLI(mFunc.getIrs(), liVIR);
                 if (vir instanceof LoadVIR loadVIR)
@@ -130,9 +130,9 @@ public class MIRGenerator {
                 if (vir instanceof MovVIR movVIR)
                     MIROpTrans.transMov(mFunc.getIrs(), movVIR);
                 if (vir instanceof RetVIR retVIR) {
-                    if (retVIR.retVal() != null) {
-                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal().getType() == Type.INT ? MReg.A0 :
-                                MReg.FA0, retVIR.retVal()));
+                    if (retVIR.retVal != null) {
+                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == Type.INT ? MReg.A0 :
+                                MReg.FA0, retVIR.retVal));
                     }
                 }
                 if (vir instanceof UnaryVIR unaryVIR)

@@ -3,9 +3,9 @@ package compile.symbol;
 import java.util.List;
 
 public abstract class DataSymbol extends Symbol {
+    protected final List<Integer> dimensions;
     private final int size;
     private final int[] sizes;
-    protected final List<Integer> dimensions;
 
     DataSymbol(Type type, String name) {
         this(type, name, List.of());

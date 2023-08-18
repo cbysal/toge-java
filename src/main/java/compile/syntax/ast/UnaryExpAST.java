@@ -3,9 +3,13 @@ package compile.syntax.ast;
 import compile.symbol.Type;
 import compile.symbol.Value;
 
-public record UnaryExpAST(Op op, ExpAST next) implements ExpAST {
-    public enum Op {
-        F2I, I2F, NEG
+public class UnaryExpAST implements ExpAST {
+    public final Op op;
+    public final ExpAST next;
+
+    public UnaryExpAST(Op op, ExpAST next) {
+        this.op = op;
+        this.next = next;
     }
 
     @Override
@@ -28,5 +32,9 @@ public record UnaryExpAST(Op op, ExpAST next) implements ExpAST {
                 yield new Value(-nVal.getInt());
             }
         };
+    }
+
+    public enum Op {
+        F2I, I2F, NEG
     }
 }

@@ -54,10 +54,10 @@ public class BlockFusion extends Pass {
             nextBlockMap.put(block, new HashSet<>());
         for (Block block : blocks) {
             if (block.getLast() instanceof BranchVIR branchVIR) {
-                nextBlockMap.get(block).add(branchVIR.trueBlock());
-                nextBlockMap.get(block).add(branchVIR.falseBlock());
+                nextBlockMap.get(block).add(branchVIR.trueBlock);
+                nextBlockMap.get(block).add(branchVIR.falseBlock);
             } else if (block.getLast() instanceof JumpVIR jumpVIR)
-                nextBlockMap.get(block).add(jumpVIR.target());
+                nextBlockMap.get(block).add(jumpVIR.target);
         }
         return nextBlockMap;
     }
@@ -68,10 +68,10 @@ public class BlockFusion extends Pass {
             prevBlockMap.put(block, new HashSet<>());
         for (Block block : blocks) {
             if (block.getLast() instanceof BranchVIR branchVIR) {
-                prevBlockMap.get(branchVIR.trueBlock()).add(block);
-                prevBlockMap.get(branchVIR.falseBlock()).add(block);
+                prevBlockMap.get(branchVIR.trueBlock).add(block);
+                prevBlockMap.get(branchVIR.falseBlock).add(block);
             } else if (block.getLast() instanceof JumpVIR jumpVIR)
-                prevBlockMap.get(jumpVIR.target()).add(block);
+                prevBlockMap.get(jumpVIR.target).add(block);
         }
         return prevBlockMap;
     }

@@ -11,10 +11,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class CodeGenerator {
-    private boolean isProcessed = false;
     private final Set<GlobalSymbol> globals;
     private final Map<String, MachineFunction> funcs;
-    private String output = null;
 
     public CodeGenerator(Set<GlobalSymbol> globals, Map<String, MachineFunction> funcs) {
         this.globals = globals;
@@ -70,18 +68,10 @@ public class CodeGenerator {
         }
     }
 
-    private void checkIfIsProcessed() {
-        if (isProcessed)
-            return;
-        isProcessed = true;
+    public String getOutput() {
         StringBuilder builder = new StringBuilder();
         buildGlobals(builder);
         buildFuncs(builder);
-        output = builder.toString();
-    }
-
-    public String getOutput() {
-        checkIfIsProcessed();
-        return output;
+        return builder.toString();
     }
 }

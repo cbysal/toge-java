@@ -3,12 +3,20 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
-import compile.symbol.Symbol;
+import compile.symbol.DataSymbol;
 
 import java.util.List;
 import java.util.Map;
 
-public record LlaMIR(Reg dest, Symbol symbol) implements MIR {
+public class LlaMIR extends MIR {
+    public final Reg dest;
+    public final DataSymbol symbol;
+
+    public LlaMIR(Reg dest, DataSymbol symbol) {
+        this.dest = dest;
+        this.symbol = symbol;
+    }
+
     @Override
     public List<Reg> getWrite() {
         return List.of(dest);

@@ -39,10 +39,10 @@ public class RemoveUnreachableBlocks extends Pass {
             reachableBlocks.add(curBlock);
             VIR lastIR = curBlock.get(curBlock.size() - 1);
             if (lastIR instanceof BranchVIR branchVIR) {
-                frontier.offer(branchVIR.trueBlock());
-                frontier.offer(branchVIR.falseBlock());
+                frontier.offer(branchVIR.trueBlock);
+                frontier.offer(branchVIR.falseBlock);
             } else if (lastIR instanceof JumpVIR jumpVIR)
-                frontier.offer(jumpVIR.target());
+                frontier.offer(jumpVIR.target);
         }
         return reachableBlocks;
     }

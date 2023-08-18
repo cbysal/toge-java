@@ -7,9 +7,14 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record StoreItemMIR(Item item, Reg src, int imm) implements MIR {
-    public enum Item {
-        LOCAL, PARAM_CALL, PARAM_INNER, PARAM_OUTER, SPILL
+public class StoreItemMIR extends MIR {
+    public final Item item;
+    public final Reg src;
+    public final int imm;
+    public StoreItemMIR(Item item, Reg src, int imm) {
+        this.item = item;
+        this.src = src;
+        this.imm = imm;
     }
 
     @Override
@@ -39,5 +44,9 @@ public record StoreItemMIR(Item item, Reg src, int imm) implements MIR {
     @Override
     public String toString() {
         return String.format("store\t%s,%d($%s)", src, imm, item.toString().toLowerCase());
+    }
+
+    public enum Item {
+        LOCAL, PARAM_CALL, PARAM_INNER, PARAM_OUTER, SPILL
     }
 }

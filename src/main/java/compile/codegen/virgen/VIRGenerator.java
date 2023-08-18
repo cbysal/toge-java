@@ -10,18 +10,22 @@ import compile.syntax.ast.*;
 import java.util.*;
 
 public class VIRGenerator {
-    private boolean isProcessed = false;
     private final RootAST rootAST;
     private final Set<GlobalSymbol> globals = new HashSet<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
+    private final Deque<Block> continueStack = new ArrayDeque<>();
+    private final Deque<Block> breakStack = new ArrayDeque<>();
+    private boolean isProcessed = false;
     private VirtualFunction curFunc;
     private Block curBlock, trueBlock, falseBlock, retBlock;
     private VReg retVal;
-    private final Deque<Block> continueStack = new ArrayDeque<>();
-    private final Deque<Block> breakStack = new ArrayDeque<>();
 
     public VIRGenerator(RootAST rootAST) {
         this.rootAST = rootAST;
+    }
+
+    private static Type automaticTypePromotion(Type type1, Type type2) {
+        return type1 == Type.FLOAT || type2 == Type.FLOAT ? Type.FLOAT : Type.INT;
     }
 
     private void checkIfIsProcessed() {
@@ -55,20 +59,20 @@ public class VIRGenerator {
     }
 
     private void parseAssignStmt(AssignStmtAST assignStmt) {
-        Pair<DataSymbol, List<VIRItem>> lValUnit = parseLVal(assignStmt.lVal());
-        VReg rReg = parseExp(assignStmt.rVal());
+        Pair<DataSymbol, List<VIRItem>> lValUnit = parseLVal(assignStmt.lVal);
+        VReg rReg = parseExp(assignStmt.rVal);
         rReg = typeConversion(rReg, lValUnit.first().getType());
         curBlock.add(new StoreVIR(lValUnit.first(), lValUnit.second(), rReg));
     }
 
     private VReg parseBinaryExp(BinaryExpAST binaryExp) {
-        VReg lReg = parseExp(binaryExp.left());
-        VReg rReg = parseExp(binaryExp.right());
+        VReg lReg = parseExp(binaryExp.left);
+        VReg rReg = parseExp(binaryExp.right);
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
         VReg result = new VReg(targetType, Integer.max(lReg.getSize(), rReg.getSize()));
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
-        BinaryVIR binaryVIR = new BinaryVIR(switch (binaryExp.op()) {
+        BinaryVIR binaryVIR = new BinaryVIR(switch (binaryExp.op) {
             case ADD -> BinaryVIR.Type.ADD;
             case SUB -> BinaryVIR.Type.SUB;
             case MUL -> BinaryVIR.Type.MUL;
@@ -83,7 +87,7 @@ public class VIRGenerator {
     }
 
     private void parseBlockStmt(BlockStmtAST blockStmt) {
-        for (StmtAST stmt : blockStmt.stmts()) {
+        for (StmtAST stmt : blockStmt) {
             parseStmt(stmt);
             if (stmt instanceof ContinueStmtAST || stmt instanceof BreakStmtAST || stmt instanceof RetStmtAST)
                 break;
@@ -95,12 +99,12 @@ public class VIRGenerator {
     }
 
     private void parseCmpCond(CmpExpAST cmpCond) {
-        VReg lReg = parseExp(cmpCond.left());
-        VReg rReg = parseExp(cmpCond.right());
+        VReg lReg = parseExp(cmpCond.left);
+        VReg rReg = parseExp(cmpCond.right);
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
-        curBlock.add(new BranchVIR(switch (cmpCond.op()) {
+        curBlock.add(new BranchVIR(switch (cmpCond.op) {
             case EQ -> BranchVIR.Type.EQ;
             case GE -> BranchVIR.Type.GE;
             case GT -> BranchVIR.Type.GT;
@@ -111,13 +115,13 @@ public class VIRGenerator {
     }
 
     private VReg parseCmpExp(CmpExpAST cmpExp) {
-        VReg lReg = parseExp(cmpExp.left());
-        VReg rReg = parseExp(cmpExp.right());
+        VReg lReg = parseExp(cmpExp.left);
+        VReg rReg = parseExp(cmpExp.right);
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
         VReg result = new VReg(Type.INT, 4);
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
-        curBlock.add(new BinaryVIR(switch (cmpExp.op()) {
+        curBlock.add(new BinaryVIR(switch (cmpExp.op) {
             case EQ -> BinaryVIR.Type.EQ;
             case GE -> BinaryVIR.Type.GE;
             case GT -> BinaryVIR.Type.GT;
@@ -138,11 +142,11 @@ public class VIRGenerator {
             return;
         }
         if (root instanceof FloatLitExpAST floatLitExp) {
-            curBlock.add(new JumpVIR(floatLitExp.value() != 0.0f ? trueBlock : falseBlock));
+            curBlock.add(new JumpVIR(floatLitExp.value != 0.0f ? trueBlock : falseBlock));
             return;
         }
         if (root instanceof IntLitExpAST intLitExp) {
-            curBlock.add(new JumpVIR(intLitExp.value() != 0 ? trueBlock : falseBlock));
+            curBlock.add(new JumpVIR(intLitExp.value != 0 ? trueBlock : falseBlock));
             return;
         }
         if (root instanceof LAndExpAST lAndExp) {
@@ -169,11 +173,11 @@ public class VIRGenerator {
         Block falseBlock = this.falseBlock;
         this.trueBlock = falseBlock;
         this.falseBlock = trueBlock;
-        parseCond(lNotCond.next());
+        parseCond(lNotCond.next);
     }
 
     private void parseConstDef(ConstDefAST root) {
-        globals.add(root.symbol());
+        globals.add(root.symbol);
     }
 
     private void parseContinueStmt() {
@@ -201,58 +205,58 @@ public class VIRGenerator {
     }
 
     private VReg parseLNotExp(LNotExpAST lNotExp) {
-        VReg nReg = parseExp(lNotExp.next());
+        VReg nReg = parseExp(lNotExp.next);
         VReg result = new VReg(Type.INT, 4);
         curBlock.add(new UnaryVIR(UnaryVIR.Type.L_NOT, result, nReg));
         return result;
     }
 
     private void parseExpStmt(ExpStmtAST root) {
-        parseExp(root.exp());
+        parseExp(root.exp);
     }
 
     private VReg parseFloatLitExp(FloatLitExpAST root) {
         VReg reg = new VReg(Type.FLOAT, 4);
-        curBlock.add(new LiVIR(reg, root.value()));
+        curBlock.add(new LiVIR(reg, root.value));
         return reg;
     }
 
     private VReg parseFuncCallExp(FuncCallExpAST funcCallExp) {
         List<VIRItem> params = new ArrayList<>();
-        for (int i = 0; i < funcCallExp.params().size(); i++) {
-            ExpAST exp = funcCallExp.params().get(i);
+        for (int i = 0; i < funcCallExp.params.size(); i++) {
+            ExpAST exp = funcCallExp.params.get(i);
             VReg param = parseExp(exp);
             Type targetType =
-                    funcCallExp.func().getParams().get(i).isSingle() && funcCallExp.func().getParams().get(i).getType() == Type.FLOAT ? Type.FLOAT : Type.INT;
+                    funcCallExp.func.getParams().get(i).isSingle() && funcCallExp.func.getParams().get(i).getType() == Type.FLOAT ? Type.FLOAT : Type.INT;
             param = typeConversion(param, targetType);
             params.add(param);
         }
-        VReg retReg = switch (funcCallExp.func().getType()) {
+        VReg retReg = switch (funcCallExp.func.getType()) {
             case FLOAT -> new VReg(Type.FLOAT, 4);
             case INT -> new VReg(Type.INT, 4);
             case VOID -> null;
         };
-        curBlock.add(new CallVIR(funcCallExp.func(), retReg, params));
+        curBlock.add(new CallVIR(funcCallExp.func, retReg, params));
         return retReg;
     }
 
     private void parseFuncDef(FuncDefAST funcDef) {
-        curFunc = new VirtualFunction(funcDef.decl());
+        curFunc = new VirtualFunction(funcDef.decl);
         retBlock = new Block();
-        retVal = switch (funcDef.decl().getType()) {
-            case FLOAT, INT -> new VReg(funcDef.decl().getType(), 4);
+        retVal = switch (funcDef.decl.getType()) {
+            case FLOAT, INT -> new VReg(funcDef.decl.getType(), 4);
             case VOID -> null;
         };
         retBlock.add(new RetVIR(retVal));
         curBlock = new Block();
         curFunc.addBlock(curBlock);
-        parseBlockStmt(funcDef.body());
+        parseBlockStmt(funcDef.body);
         curFunc.addBlock(retBlock);
-        funcs.put(funcDef.decl().getName(), curFunc);
+        funcs.put(funcDef.decl.getName(), curFunc);
     }
 
     private void parseGlobalDef(GlobalDefAST root) {
-        globals.add(root.symbol());
+        globals.add(root.symbol);
     }
 
     private void parseIfStmt(IfStmtAST ifStmt) {
@@ -265,14 +269,14 @@ public class VIRGenerator {
             curFunc.insertBlockAfter(falseBlock, ifEndBlock);
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
-            parseCond(ifStmt.cond());
+            parseCond(ifStmt.cond);
             curBlock = trueBlock;
-            parseStmt(ifStmt.stmt1());
+            parseStmt(ifStmt.stmt1);
             VIR lastIR = curBlock.getLast();
             if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
                 curBlock.add(new JumpVIR(ifEndBlock));
             curBlock = falseBlock;
-            parseStmt(ifStmt.stmt2());
+            parseStmt(ifStmt.stmt2);
             lastIR = curBlock.getLast();
             if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
                 curBlock.add(new JumpVIR(ifEndBlock));
@@ -282,9 +286,9 @@ public class VIRGenerator {
             curFunc.insertBlockAfter(trueBlock, falseBlock);
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
-            parseCond(ifStmt.cond());
+            parseCond(ifStmt.cond);
             curBlock = trueBlock;
-            parseStmt(ifStmt.stmt1());
+            parseStmt(ifStmt.stmt1);
             VIR lastIR = curBlock.getLast();
             if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
                 curBlock.add(new JumpVIR(falseBlock));
@@ -294,7 +298,7 @@ public class VIRGenerator {
 
     private VReg parseIntLitExp(IntLitExpAST root) {
         VReg reg = new VReg(Type.INT, 4);
-        curBlock.add(new LiVIR(reg, root.value()));
+        curBlock.add(new LiVIR(reg, root.value));
         return reg;
     }
 
@@ -307,15 +311,15 @@ public class VIRGenerator {
         this.curBlock = lBlock;
         this.trueBlock = rBlock;
         this.falseBlock = falseBlock;
-        parseCond(lAndCond.left());
+        parseCond(lAndCond.left);
         this.curBlock = rBlock;
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
-        parseCond(lAndCond.right());
+        parseCond(lAndCond.right);
     }
 
     private void parseLocalDef(LocalDefAST root) {
-        curFunc.addLocal(root.symbol());
+        curFunc.addLocal(root.symbol);
     }
 
     private void parseLOrCond(LOrExpAST lOrExp) {
@@ -327,37 +331,37 @@ public class VIRGenerator {
         this.curBlock = lBlock;
         this.trueBlock = trueBlock;
         this.falseBlock = rBlock;
-        parseCond(lOrExp.left());
+        parseCond(lOrExp.left);
         this.curBlock = rBlock;
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
-        parseCond(lOrExp.right());
+        parseCond(lOrExp.right);
     }
 
     private Pair<DataSymbol, List<VIRItem>> parseLVal(LValAST lVal) {
         if (lVal.isSingle())
-            return new Pair<>(lVal.symbol(), List.of());
+            return new Pair<>(lVal.symbol, List.of());
         List<VIRItem> dimensions = new ArrayList<>();
-        for (ExpAST dimension : lVal.dimensions()) {
+        for (ExpAST dimension : lVal.dimensions) {
             VReg reg = parseExp(dimension);
             dimensions.add(reg);
         }
-        return new Pair<>(lVal.symbol(), dimensions);
+        return new Pair<>(lVal.symbol, dimensions);
     }
 
     private void parseRetStmt(RetStmtAST retStmt) {
-        if (retStmt.value() == null) {
+        if (retStmt.value == null) {
             curBlock.add(new JumpVIR(retBlock));
             return;
         }
-        VReg retReg = parseExp(retStmt.value());
+        VReg retReg = parseExp(retStmt.value);
         retReg = typeConversion(retReg, retVal.getType());
         curBlock.add(new MovVIR(retVal, retReg));
         curBlock.add(new JumpVIR(retBlock));
     }
 
     private void parseRoot(RootAST root) {
-        root.compUnits().forEach(this::visitCompUnit);
+        root.forEach(this::visitCompUnit);
     }
 
     private void visitCompUnit(CompUnitAST compUnit) {
@@ -425,11 +429,11 @@ public class VIRGenerator {
     }
 
     private void parseUnaryCond(UnaryExpAST unaryCond) {
-        switch (unaryCond.op()) {
+        switch (unaryCond.op) {
             case F2I, I2F -> {
-                VReg source = parseExp(unaryCond.next());
+                VReg source = parseExp(unaryCond.next);
                 VReg result = new VReg(Type.INT, 4);
-                curBlock.add(new UnaryVIR(switch (unaryCond.op()) {
+                curBlock.add(new UnaryVIR(switch (unaryCond.op) {
                     case F2I -> UnaryVIR.Type.F2I;
                     case I2F -> UnaryVIR.Type.I2F;
                     default -> throw new RuntimeException();
@@ -438,13 +442,13 @@ public class VIRGenerator {
                 curBlock.add(new LiVIR(zero, 0));
                 curBlock.add(new BranchVIR(BranchVIR.Type.NE, result, zero, trueBlock, falseBlock));
             }
-            case NEG -> parseCond(unaryCond.next());
+            case NEG -> parseCond(unaryCond.next);
         }
     }
 
     private VReg parseUnaryExp(UnaryExpAST unaryExp) {
-        VReg nVal = parseExp(unaryExp.next());
-        return switch (unaryExp.op()) {
+        VReg nVal = parseExp(unaryExp.next);
+        return switch (unaryExp.op) {
             case F2I -> typeConversion(nVal, Type.INT);
             case I2F -> typeConversion(nVal, Type.FLOAT);
             case NEG -> {
@@ -464,13 +468,13 @@ public class VIRGenerator {
 
     private VReg parseVarExp(VarExpAST varExp) {
         VReg result =
-                new VReg(varExp.dimensions().size() == varExp.symbol().getDimensionSize() && varExp.symbol().getType() == Type.FLOAT ? Type.FLOAT : Type.INT, varExp.dimensions().size() == varExp.symbol().getDimensionSize() || varExp.symbol().getType() == Type.FLOAT ? 4 : 8);
+                new VReg(varExp.dimensions.size() == varExp.symbol.getDimensionSize() && varExp.symbol.getType() == Type.FLOAT ? Type.FLOAT : Type.INT, varExp.dimensions.size() == varExp.symbol.getDimensionSize() || varExp.symbol.getType() == Type.FLOAT ? 4 : 8);
         if (varExp.isSingle()) {
-            curBlock.add(new LoadVIR(result, varExp.symbol(), List.of()));
+            curBlock.add(new LoadVIR(result, varExp.symbol, List.of()));
             return result;
         }
         List<VIRItem> dimensions = new ArrayList<>();
-        for (ExpAST dimension : varExp.dimensions()) {
+        for (ExpAST dimension : varExp.dimensions) {
             VReg reg = parseExp(dimension);
             if (reg.getType() == Type.FLOAT) {
                 VReg newReg = new VReg(Type.INT, 4);
@@ -479,7 +483,7 @@ public class VIRGenerator {
             }
             dimensions.add(reg);
         }
-        curBlock.add(new LoadVIR(result, varExp.symbol(), dimensions));
+        curBlock.add(new LoadVIR(result, varExp.symbol, dimensions));
         return result;
     }
 
@@ -498,19 +502,15 @@ public class VIRGenerator {
         curBlock = entryBlock;
         trueBlock = loopBlock;
         falseBlock = endBlock;
-        parseCond(whileStmt.cond());
+        parseCond(whileStmt.cond);
         curBlock = loopBlock;
-        parseStmt(whileStmt.body());
+        parseStmt(whileStmt.body);
         lastIR = curBlock.getLast();
         if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
             curBlock.add(new JumpVIR(entryBlock));
         curBlock = endBlock;
         continueStack.pop();
         breakStack.pop();
-    }
-
-    private static Type automaticTypePromotion(Type type1, Type type2) {
-        return type1 == Type.FLOAT || type2 == Type.FLOAT ? Type.FLOAT : Type.INT;
     }
 
     private VReg typeConversion(VReg reg, Type targetType) {

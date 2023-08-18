@@ -2,5 +2,10 @@ package compile.syntax.ast;
 
 import compile.symbol.LocalSymbol;
 
-public record LocalDefAST(LocalSymbol symbol) implements StmtAST {
+public class LocalDefAST implements StmtAST {
+    public final LocalSymbol symbol;
+
+    public LocalDefAST(LocalSymbol symbol) {
+        this.symbol = symbol;
+    }
 }

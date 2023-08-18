@@ -8,9 +8,13 @@ import compile.symbol.Type;
 import java.util.List;
 import java.util.Map;
 
-public record RrMIR(Op op, Reg dest, Reg src) implements MIR {
-    public enum Op {
-        CVT, FABS, MV, NEG
+public class RrMIR extends MIR {
+    public final Op op;
+    public final Reg dest, src;
+    public RrMIR(Op op, Reg dest, Reg src) {
+        this.op = op;
+        this.dest = dest;
+        this.src = src;
     }
 
     @Override
@@ -102,5 +106,9 @@ public record RrMIR(Op op, Reg dest, Reg src) implements MIR {
                 default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
             }, dest, src);
         };
+    }
+
+    public enum Op {
+        CVT, FABS, MV, NEG
     }
 }

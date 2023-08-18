@@ -5,8 +5,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public class TokenList {
-    private int head;
     private final List<Token> tokens = new ArrayList<>();
+    private int head;
 
     public boolean add(Token token) {
         return tokens.add(token);

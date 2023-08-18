@@ -7,9 +7,14 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record LoadItemMIR(Item item, Reg dest, int imm) implements MIR {
-    public enum Item {
-        SPILL, PARAM_INNER, PARAM_OUTER, LOCAL
+public class LoadItemMIR extends MIR {
+    public final Item item;
+    public final Reg dest;
+    public final int imm;
+    public LoadItemMIR(Item item, Reg dest, int imm) {
+        this.item = item;
+        this.dest = dest;
+        this.imm = imm;
     }
 
     @Override
@@ -39,5 +44,9 @@ public record LoadItemMIR(Item item, Reg dest, int imm) implements MIR {
     @Override
     public String toString() {
         return String.format("load\t%s,%d($%s)", dest, imm, item);
+    }
+
+    public enum Item {
+        SPILL, PARAM_INNER, PARAM_OUTER, LOCAL
     }
 }

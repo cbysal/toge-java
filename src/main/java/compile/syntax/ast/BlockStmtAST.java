@@ -1,6 +1,6 @@
 package compile.syntax.ast;
 
-import java.util.List;
+import java.util.ArrayList;
 
-public record BlockStmtAST(List<StmtAST> stmts) implements StmtAST {
+public class BlockStmtAST extends ArrayList<StmtAST> implements StmtAST {
 }

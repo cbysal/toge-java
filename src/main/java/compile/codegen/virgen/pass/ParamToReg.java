@@ -25,11 +25,11 @@ public class ParamToReg extends Pass {
             Map<ParamSymbol, Integer> counter = new HashMap<>();
             for (Block block : func.getBlocks()) {
                 for (VIR ir : block) {
-                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof ParamSymbol param && param.isSingle()) {
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof ParamSymbol param && param.isSingle()) {
                         counter.put(param, counter.getOrDefault(param, 0) + 1);
                         continue;
                     }
-                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof ParamSymbol param && param.isSingle()) {
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof ParamSymbol param && param.isSingle()) {
                         counter.put(param, counter.getOrDefault(param, 0) + 1);
                         continue;
                     }
@@ -50,12 +50,12 @@ public class ParamToReg extends Pass {
             for (Block block : blocks) {
                 for (int i = 0; i < block.size(); i++) {
                     VIR ir = block.get(i);
-                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof ParamSymbol param && paramToRegMap.containsKey(param)) {
-                        block.set(i, new MovVIR(loadVIR.target(), paramToRegMap.get(param)));
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof ParamSymbol param && paramToRegMap.containsKey(param)) {
+                        block.set(i, new MovVIR(loadVIR.target, paramToRegMap.get(param)));
                         modified = true;
                     }
-                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof ParamSymbol param && paramToRegMap.containsKey(param)) {
-                        block.set(i, new MovVIR(paramToRegMap.get(param), storeVIR.source()));
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof ParamSymbol param && paramToRegMap.containsKey(param)) {
+                        block.set(i, new MovVIR(paramToRegMap.get(param), storeVIR.source));
                         modified = true;
                     }
                 }

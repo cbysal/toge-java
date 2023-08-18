@@ -22,7 +22,8 @@ public class GlobalSymbol extends DataSymbol {
         this.values = null;
     }
 
-    public GlobalSymbol(boolean isConst, Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
+    public GlobalSymbol(boolean isConst, Type type, String name, List<Integer> dimensions,
+                        Map<Integer, Integer> values) {
         super(type, name, dimensions);
         this.isConst = isConst;
         this.value = 0;

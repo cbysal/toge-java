@@ -25,7 +25,7 @@ public class GlobalToImm extends Pass {
         for (VirtualFunction func : funcs.values())
             for (Block block : func.getBlocks())
                 for (VIR ir : block)
-                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof GlobalSymbol global && global.isSingle())
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof GlobalSymbol global && global.isSingle())
                         toRemoveGlobals.remove(global);
         if (toRemoveGlobals.isEmpty())
             return false;
@@ -33,11 +33,11 @@ public class GlobalToImm extends Pass {
             for (Block block : func.getBlocks())
                 for (int i = 0; i < block.size(); i++) {
                     VIR ir = block.get(i);
-                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof GlobalSymbol global && toRemoveGlobals.contains(global)) {
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof GlobalSymbol global && toRemoveGlobals.contains(global)) {
                         if (global.getType() == Type.INT)
-                            block.set(i, new LiVIR(loadVIR.target(), global.getInt()));
+                            block.set(i, new LiVIR(loadVIR.target, global.getInt()));
                         else
-                            block.set(i, new LiVIR(loadVIR.target(), global.getFloat()));
+                            block.set(i, new LiVIR(loadVIR.target, global.getFloat()));
                     }
                 }
         globals.removeAll(toRemoveGlobals);

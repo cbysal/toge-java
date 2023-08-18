@@ -1,4 +1,9 @@
 package compile.syntax.ast;
 
-public record RetStmtAST(ExpAST value) implements StmtAST {
+public class RetStmtAST implements StmtAST {
+    public final ExpAST value;
+
+    public RetStmtAST(ExpAST value) {
+        this.value = value;
+    }
 }

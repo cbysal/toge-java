@@ -26,82 +26,82 @@ public class CombineInstructions extends Pass {
                 for (int i = 0; i < block.size(); i++) {
                     VIR ir = block.get(i);
                     if (ir instanceof BinaryVIR binaryVIR) {
-                        if (binaryVIR.type() == BinaryVIR.Type.ADD) {
-                            if (binaryVIR.left() instanceof VReg reg1 && binaryVIR.right() instanceof VReg reg2) {
+                        if (binaryVIR.type == BinaryVIR.Type.ADD) {
+                            if (binaryVIR.left instanceof VReg reg1 && binaryVIR.right instanceof VReg reg2) {
                                 if (reg1 == reg2) {
-                                    block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.target(), reg1,
+                                    block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.target, reg1,
                                             new Value(2)));
-                                    mulIRs.put(binaryVIR.target(), new Pair<>(reg1, new Value(2)));
+                                    mulIRs.put(binaryVIR.target, new Pair<>(reg1, new Value(2)));
                                     modified = true;
                                     continue;
                                 }
                                 if (mulIRs.containsKey(reg1)) {
                                     Pair<VReg, Value> regValue = mulIRs.get(reg1);
                                     if (regValue.first() == reg2) {
-                                        block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.target(),
+                                        block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.target,
                                                 regValue.first(), new Value(regValue.second().getInt() + 1)));
-                                        mulIRs.put(binaryVIR.target(), new Pair<>(regValue.first(),
+                                        mulIRs.put(binaryVIR.target, new Pair<>(regValue.first(),
                                                 new Value(regValue.second().getInt() + 1)));
                                         modified = true;
                                     } else {
-                                        mulIRs.remove(binaryVIR.target());
+                                        mulIRs.remove(binaryVIR.target);
                                     }
                                     continue;
                                 }
                                 if (mulIRs.containsKey(reg2)) {
                                     Pair<VReg, Value> regValue = mulIRs.get(reg2);
                                     if (regValue.first() == reg1) {
-                                        block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.target(),
+                                        block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.target,
                                                 regValue.first(), new Value(regValue.second().getInt() + 1)));
-                                        mulIRs.put(binaryVIR.target(), new Pair<>(regValue.first(),
+                                        mulIRs.put(binaryVIR.target, new Pair<>(regValue.first(),
                                                 new Value(regValue.second().getInt() + 1)));
                                         modified = true;
                                     } else {
-                                        mulIRs.remove(binaryVIR.target());
+                                        mulIRs.remove(binaryVIR.target);
                                     }
                                     continue;
                                 }
                             }
-                            mulIRs.remove(binaryVIR.target());
-                        } else if (binaryVIR.type() == BinaryVIR.Type.MUL) {
-                            if (binaryVIR.left() instanceof VReg reg && binaryVIR.right() instanceof Value value) {
-                                mulIRs.put(binaryVIR.target(), new Pair<>(reg, value));
-                            } else if (binaryVIR.left() instanceof Value value && binaryVIR.right() instanceof VReg reg) {
-                                mulIRs.put(binaryVIR.target(), new Pair<>(reg, value));
+                            mulIRs.remove(binaryVIR.target);
+                        } else if (binaryVIR.type == BinaryVIR.Type.MUL) {
+                            if (binaryVIR.left instanceof VReg reg && binaryVIR.right instanceof Value value) {
+                                mulIRs.put(binaryVIR.target, new Pair<>(reg, value));
+                            } else if (binaryVIR.left instanceof Value value && binaryVIR.right instanceof VReg reg) {
+                                mulIRs.put(binaryVIR.target, new Pair<>(reg, value));
                             }
-                        } else if (binaryVIR.type() == BinaryVIR.Type.DIV) {
-                            if (binaryVIR.left() instanceof VReg reg && binaryVIR.right() instanceof Value value && mulIRs.containsKey(reg)) {
+                        } else if (binaryVIR.type == BinaryVIR.Type.DIV) {
+                            if (binaryVIR.left instanceof VReg reg && binaryVIR.right instanceof Value value && mulIRs.containsKey(reg)) {
                                 Pair<VReg, Value> regValue = mulIRs.get(reg);
                                 if (regValue.second().equals(value)) {
-                                    block.set(i, new MovVIR(binaryVIR.target(), regValue.first()));
+                                    block.set(i, new MovVIR(binaryVIR.target, regValue.first()));
                                     modified = true;
                                 }
                             }
-                            mulIRs.remove(binaryVIR.target());
+                            mulIRs.remove(binaryVIR.target);
                         } else {
-                            mulIRs.remove(binaryVIR.target());
+                            mulIRs.remove(binaryVIR.target);
                         }
                         continue;
                     }
                     if (ir instanceof CallVIR callVIR) {
-                        if (callVIR.target() != null)
-                            mulIRs.remove(callVIR.target());
+                        if (callVIR.target != null)
+                            mulIRs.remove(callVIR.target);
                         continue;
                     }
                     if (ir instanceof LiVIR liVIR) {
-                        mulIRs.remove(liVIR.target());
+                        mulIRs.remove(liVIR.target);
                         continue;
                     }
                     if (ir instanceof LoadVIR loadVIR) {
-                        mulIRs.remove(loadVIR.target());
+                        mulIRs.remove(loadVIR.target);
                         continue;
                     }
                     if (ir instanceof MovVIR movVIR) {
-                        mulIRs.remove(movVIR.target());
+                        mulIRs.remove(movVIR.target);
                         continue;
                     }
                     if (ir instanceof UnaryVIR unaryVIR) {
-                        mulIRs.remove(unaryVIR.target());
+                        mulIRs.remove(unaryVIR.target);
                         continue;
                     }
                 }

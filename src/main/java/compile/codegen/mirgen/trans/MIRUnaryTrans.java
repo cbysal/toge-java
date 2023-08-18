@@ -47,12 +47,12 @@ public final class MIRUnaryTrans {
     }
 
     static void transUnaryReg(List<MIR> irs, UnaryVIR unaryVIR, VReg reg) {
-        switch (unaryVIR.type()) {
-            case ABS -> transAbsRegReg(irs, unaryVIR.target(), reg);
-            case F2I -> transF2IRegReg(irs, unaryVIR.target(), reg);
-            case I2F -> transI2FRegReg(irs, unaryVIR.target(), reg);
-            case L_NOT -> transLNotRegReg(irs, unaryVIR.target(), reg);
-            case NEG -> transNegRegReg(irs, unaryVIR.target(), reg);
+        switch (unaryVIR.type) {
+            case ABS -> transAbsRegReg(irs, unaryVIR.target, reg);
+            case F2I -> transF2IRegReg(irs, unaryVIR.target, reg);
+            case I2F -> transI2FRegReg(irs, unaryVIR.target, reg);
+            case L_NOT -> transLNotRegReg(irs, unaryVIR.target, reg);
+            case NEG -> transNegRegReg(irs, unaryVIR.target, reg);
             default -> throw new RuntimeException();
         }
     }

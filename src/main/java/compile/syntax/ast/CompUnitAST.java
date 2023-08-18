@@ -1,4 +1,4 @@
 package compile.syntax.ast;
 
-public interface CompUnitAST extends AST {
+public abstract class CompUnitAST extends AST {
 }

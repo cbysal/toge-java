@@ -9,8 +9,8 @@ import java.util.List;
 public class MachineFunction {
     private final Symbol symbol;
     private final List<MIR> irs = new ArrayList<>();
-    private int maxFuncParamNum = 0;
     private final int localSize, iCallerNum, fCallerNum;
+    private int maxFuncParamNum = 0;
 
     public MachineFunction(Symbol symbol, int localSize, int iCallerNum, int fCallerNum) {
         this.symbol = symbol;
@@ -43,16 +43,16 @@ public class MachineFunction {
         return maxFuncParamNum;
     }
 
+    public void setMaxFuncParamNum(int maxFuncParamNum) {
+        this.maxFuncParamNum = maxFuncParamNum;
+    }
+
     public String getName() {
         return symbol.getName();
     }
 
     public Symbol getSymbol() {
         return symbol;
-    }
-
-    public void setMaxFuncParamNum(int maxFuncParamNum) {
-        this.maxFuncParamNum = maxFuncParamNum;
     }
 
     public void print() {

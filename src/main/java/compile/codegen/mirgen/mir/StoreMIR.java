@@ -7,7 +7,17 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 import java.util.Map;
 
-public record StoreMIR(Reg src, Reg dest, int imm, int size) implements MIR {
+public class StoreMIR extends MIR {
+    public final Reg src, dest;
+    public final int imm, size;
+
+    public StoreMIR(Reg src, Reg dest, int imm, int size) {
+        this.src = src;
+        this.dest = dest;
+        this.imm = imm;
+        this.size = size;
+    }
+
     @Override
     public List<Reg> getRead() {
         return List.of(src, dest);

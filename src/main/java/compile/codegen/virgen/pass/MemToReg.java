@@ -31,7 +31,7 @@ public class MemToReg extends Pass {
             for (Block block : func.getBlocks()) {
                 for (int i = 0; i < block.size(); i++) {
                     VIR ir = block.get(i);
-                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol() instanceof LocalSymbol local && locals.contains(local)) {
+                    if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof LocalSymbol local && locals.contains(local)) {
                         VReg reg;
                         if (local2Reg.containsKey(local))
                             reg = local2Reg.get(local);
@@ -39,11 +39,11 @@ public class MemToReg extends Pass {
                             reg = new VReg(local.getType(), 4);
                             local2Reg.put(local, reg);
                         }
-                        MovVIR newIR = new MovVIR(loadVIR.target(), reg);
+                        MovVIR newIR = new MovVIR(loadVIR.target, reg);
                         block.set(i, newIR);
                         continue;
                     }
-                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol() instanceof LocalSymbol local && locals.contains(local)) {
+                    if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof LocalSymbol local && locals.contains(local)) {
                         VReg reg;
                         if (local2Reg.containsKey(local))
                             reg = local2Reg.get(local);
@@ -51,7 +51,7 @@ public class MemToReg extends Pass {
                             reg = new VReg(local.getType(), 4);
                             local2Reg.put(local, reg);
                         }
-                        MovVIR newIR = new MovVIR(reg, storeVIR.source());
+                        MovVIR newIR = new MovVIR(reg, storeVIR.source);
                         block.set(i, newIR);
                     }
                 }

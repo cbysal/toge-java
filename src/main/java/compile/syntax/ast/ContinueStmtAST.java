@@ -1,4 +1,4 @@
 package compile.syntax.ast;
 
-public record ContinueStmtAST() implements StmtAST {
+public class ContinueStmtAST implements StmtAST {
 }
