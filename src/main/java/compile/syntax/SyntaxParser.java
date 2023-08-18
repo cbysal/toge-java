@@ -408,12 +408,6 @@ public class SyntaxParser {
                     tokens.next();
                     ExpAST rVal = parseAddSubExp();
                     stmts.add(new AssignStmtAST(lVal, rVal));
-                } else {
-                    stmts.add(new AssignStmtAST(lVal, switch (lVal.symbol.getType()) {
-                        case FLOAT -> new FloatLitExpAST(0);
-                        case INT -> new IntLitExpAST(0);
-                        default -> throw new IllegalStateException("Unexpected value: " + lVal.symbol.getType());
-                    }));
                 }
             }
             if (tokens.expect(TokenType.COMMA))
