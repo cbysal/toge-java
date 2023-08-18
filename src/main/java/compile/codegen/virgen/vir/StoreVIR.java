@@ -6,7 +6,29 @@ import compile.symbol.DataSymbol;
 import java.util.ArrayList;
 import java.util.List;
 
-public record StoreVIR(DataSymbol symbol, List<VIRItem> indexes, VReg source) implements VIR {
+public class StoreVIR extends VIR {
+    private final DataSymbol symbol;
+    private final List<VIRItem> indexes;
+    private final VReg source;
+
+    public StoreVIR(DataSymbol symbol, List<VIRItem> indexes, VReg source) {
+        this.symbol = symbol;
+        this.indexes = indexes;
+        this.source = source;
+    }
+
+    public DataSymbol symbol() {
+        return symbol;
+    }
+
+    public List<VIRItem> indexes() {
+        return indexes;
+    }
+
+    public VReg source() {
+        return source;
+    }
+
     @Override
     public List<VReg> getRead() {
         List<VReg> regs = new ArrayList<>();

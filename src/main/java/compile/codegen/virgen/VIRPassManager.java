@@ -21,6 +21,7 @@ public class VIRPassManager {
         do {
             toContinue = new RemoveUnreachableBlocks(globals, funcs).run();
             toContinue |= new MemToReg(globals, funcs).run();
+            toContinue |= new RemoveUselessIRs(globals, funcs).run();
             toContinue |= new SplitGlobals(globals, funcs).run();
             toContinue |= new SplitLocals(globals, funcs).run();
             toContinue |= new SplitRegs(globals, funcs).run();
@@ -39,6 +40,7 @@ public class VIRPassManager {
         do {
             toContinue = new RemoveUnreachableBlocks(globals, funcs).run();
             toContinue |= new MemToReg(globals, funcs).run();
+            toContinue |= new RemoveUselessIRs(globals, funcs).run();
             toContinue |= new SplitGlobals(globals, funcs).run();
             toContinue |= new SplitLocals(globals, funcs).run();
             toContinue |= new SplitRegs(globals, funcs).run();

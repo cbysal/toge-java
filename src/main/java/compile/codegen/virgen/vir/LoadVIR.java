@@ -6,7 +6,29 @@ import compile.symbol.DataSymbol;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public record LoadVIR(VReg target, DataSymbol symbol, List<VIRItem> indexes) implements VIR {
+public class LoadVIR extends VIR {
+    private final VReg target;
+    private final DataSymbol symbol;
+    private final List<VIRItem> indexes;
+
+    public LoadVIR(VReg target, DataSymbol symbol, List<VIRItem> indexes) {
+        this.target = target;
+        this.symbol = symbol;
+        this.indexes = indexes;
+    }
+
+    public VReg target() {
+        return target;
+    }
+
+    public DataSymbol symbol() {
+        return symbol;
+    }
+
+    public List<VIRItem> indexes() {
+        return indexes;
+    }
+
     @Override
     public List<VReg> getRead() {
         return indexes.stream().filter(VReg.class::isInstance).map(VReg.class::cast).collect(Collectors.toList());

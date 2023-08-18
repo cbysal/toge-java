@@ -5,9 +5,41 @@ import compile.codegen.virgen.VReg;
 
 import java.util.List;
 
-public record BranchVIR(Type type, VIRItem left, VIRItem right, Block trueBlock, Block falseBlock) implements VIR {
+public class BranchVIR extends VIR {
     public enum Type {
         EQ, NE, GE, GT, LE, LT
+    }
+
+    private final Type type;
+    private final VIRItem left, right;
+    private final Block trueBlock, falseBlock;
+
+    public BranchVIR(Type type, VIRItem left, VIRItem right, Block trueBlock, Block falseBlock) {
+        this.type = type;
+        this.left = left;
+        this.right = right;
+        this.trueBlock = trueBlock;
+        this.falseBlock = falseBlock;
+    }
+
+    public Type type() {
+        return type;
+    }
+
+    public VIRItem left() {
+        return left;
+    }
+
+    public VIRItem right() {
+        return right;
+    }
+
+    public Block trueBlock() {
+        return trueBlock;
+    }
+
+    public Block falseBlock() {
+        return falseBlock;
     }
 
     @Override

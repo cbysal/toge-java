@@ -4,9 +4,31 @@ import compile.codegen.virgen.VReg;
 
 import java.util.List;
 
-public record UnaryVIR(Type type, VReg target, VIRItem source) implements VIR {
+public class UnaryVIR extends VIR {
     public enum Type {
         F2I, I2F, NEG, L_NOT, ABS
+    }
+
+    private final Type type;
+    private final VReg target;
+    private final VIRItem source;
+
+    public UnaryVIR(Type type, VReg target, VIRItem source) {
+        this.type = type;
+        this.target = target;
+        this.source = source;
+    }
+
+    public Type type() {
+        return type;
+    }
+
+    public VReg target() {
+        return target;
+    }
+
+    public VIRItem source() {
+        return source;
     }
 
     @Override

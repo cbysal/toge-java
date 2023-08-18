@@ -17,8 +17,8 @@ public class AssignmentPropagation extends Pass {
 
         public void put(K key, V value) {
             if (map.containsKey(key)) {
+                iMap.get(map.get(key)).remove(key);
                 map.remove(key);
-                iMap.get(value).remove(key);
             }
             map.put(key, value);
             if (!iMap.containsKey(value))

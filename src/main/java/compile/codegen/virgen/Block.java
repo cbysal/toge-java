@@ -2,19 +2,12 @@ package compile.codegen.virgen;
 
 import compile.codegen.Label;
 import compile.codegen.virgen.vir.VIR;
-import compile.codegen.virgen.vir.VIRItem;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 public class Block implements Iterable<VIR> {
-    public record Cond(Type type, VIRItem left, VIRItem right) {
-        public enum Type {
-            EQ, GE, GT, LE, LT, NE
-        }
-    }
-
     private final Label label;
     private final List<VIR> irs = new ArrayList<>();
 
