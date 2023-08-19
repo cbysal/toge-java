@@ -82,14 +82,14 @@ public class SplitGlobals extends Pass {
                     VIR ir = block.get(i);
                     if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof GlobalSymbol global && newGlobalMap.containsKey(global)) {
                         List<VIRItem> dimensions = loadVIR.indexes;
-                        GlobalSymbol newGlobal = newGlobalMap.get(global).get(((Value) dimensions.get(0)).getInt());
+                        GlobalSymbol newGlobal = newGlobalMap.get(global).get(((Value) dimensions.get(0)).intValue());
                         block.set(i, new LoadVIR(loadVIR.target, newGlobal, dimensions.subList(1, dimensions.size())));
                         toAddGlobals.add(newGlobal);
                         continue;
                     }
                     if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof GlobalSymbol global && newGlobalMap.containsKey(global)) {
                         List<VIRItem> dimensions = storeVIR.indexes;
-                        GlobalSymbol newGlobal = newGlobalMap.get(global).get(((Value) dimensions.get(0)).getInt());
+                        GlobalSymbol newGlobal = newGlobalMap.get(global).get(((Value) dimensions.get(0)).intValue());
                         block.set(i, new StoreVIR(newGlobal, dimensions.subList(1, dimensions.size()),
                                 storeVIR.source));
                         toAddGlobals.add(newGlobal);

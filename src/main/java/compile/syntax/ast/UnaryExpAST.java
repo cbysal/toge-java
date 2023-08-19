@@ -19,17 +19,17 @@ public class UnaryExpAST implements ExpAST {
             case F2I -> {
                 if (nVal.getType() != Type.FLOAT)
                     throw new RuntimeException();
-                yield new Value((int) nVal.getFloat());
+                yield new Value((int) nVal.floatValue());
             }
             case I2F -> {
                 if (nVal.getType() != Type.INT)
                     throw new RuntimeException();
-                yield new Value((float) nVal.getInt());
+                yield new Value((float) nVal.intValue());
             }
             case NEG -> {
                 if (nVal.getType() == Type.FLOAT)
-                    yield new Value(-nVal.getFloat());
-                yield new Value(-nVal.getInt());
+                    yield new Value(-nVal.floatValue());
+                yield new Value(-nVal.intValue());
             }
         };
     }

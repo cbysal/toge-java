@@ -45,7 +45,7 @@ public final class MIROpHelper {
                 continue;
             }
             if (dimension instanceof Value value) {
-                offset += value.getInt() * sizes[i];
+                offset += value.intValue() * sizes[i];
                 continue;
             }
             throw new RuntimeException();

@@ -21,44 +21,44 @@ public class BinaryExpAST implements ExpAST {
         return switch (op) {
             case ADD -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() + rVal.getFloat());
+                    yield new Value(lVal.floatValue() + rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() + rVal.getInt());
+                    yield new Value(lVal.floatValue() + rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() + rVal.getFloat());
-                yield new Value(lVal.getInt() + rVal.getInt());
+                    yield new Value(lVal.intValue() + rVal.floatValue());
+                yield new Value(lVal.intValue() + rVal.intValue());
             }
             case DIV -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() / rVal.getFloat());
+                    yield new Value(lVal.floatValue() / rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() / rVal.getInt());
+                    yield new Value(lVal.floatValue() / rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() / rVal.getFloat());
-                yield new Value(lVal.getInt() / rVal.getInt());
+                    yield new Value(lVal.intValue() / rVal.floatValue());
+                yield new Value(lVal.intValue() / rVal.intValue());
             }
             case MOD -> {
                 if (lVal.getType() == Type.FLOAT || rVal.getType() == Type.FLOAT)
                     throw new RuntimeException();
-                yield new Value(lVal.getInt() % rVal.getInt());
+                yield new Value(lVal.intValue() % rVal.intValue());
             }
             case MUL -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() * rVal.getFloat());
+                    yield new Value(lVal.floatValue() * rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() * rVal.getInt());
+                    yield new Value(lVal.floatValue() * rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() * rVal.getFloat());
-                yield new Value(lVal.getInt() * rVal.getInt());
+                    yield new Value(lVal.intValue() * rVal.floatValue());
+                yield new Value(lVal.intValue() * rVal.intValue());
             }
             case SUB -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() - rVal.getFloat());
+                    yield new Value(lVal.floatValue() - rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() - rVal.getInt());
+                    yield new Value(lVal.floatValue() - rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() - rVal.getFloat());
-                yield new Value(lVal.getInt() - rVal.getInt());
+                    yield new Value(lVal.intValue() - rVal.floatValue());
+                yield new Value(lVal.intValue() - rVal.intValue());
             }
         };
     }

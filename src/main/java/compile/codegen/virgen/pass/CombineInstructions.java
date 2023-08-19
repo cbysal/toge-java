@@ -39,9 +39,9 @@ public class CombineInstructions extends Pass {
                                     Pair<VReg, Value> regValue = mulIRs.get(reg1);
                                     if (regValue.first() == reg2) {
                                         block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.target,
-                                                regValue.first(), new Value(regValue.second().getInt() + 1)));
+                                                regValue.first(), new Value(regValue.second().intValue() + 1)));
                                         mulIRs.put(binaryVIR.target, new Pair<>(regValue.first(),
-                                                new Value(regValue.second().getInt() + 1)));
+                                                new Value(regValue.second().intValue() + 1)));
                                         modified = true;
                                     } else {
                                         mulIRs.remove(binaryVIR.target);
@@ -52,9 +52,9 @@ public class CombineInstructions extends Pass {
                                     Pair<VReg, Value> regValue = mulIRs.get(reg2);
                                     if (regValue.first() == reg1) {
                                         block.set(i, new BinaryVIR(BinaryVIR.Type.MUL, binaryVIR.target,
-                                                regValue.first(), new Value(regValue.second().getInt() + 1)));
+                                                regValue.first(), new Value(regValue.second().intValue() + 1)));
                                         mulIRs.put(binaryVIR.target, new Pair<>(regValue.first(),
-                                                new Value(regValue.second().getInt() + 1)));
+                                                new Value(regValue.second().intValue() + 1)));
                                         modified = true;
                                     } else {
                                         mulIRs.remove(binaryVIR.target);

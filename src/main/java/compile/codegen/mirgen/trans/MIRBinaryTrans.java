@@ -40,15 +40,15 @@ public final class MIRBinaryTrans {
         switch (binaryVIR.type) {
             case ADD -> {
                 if (binaryVIR.target.getType() == Type.FLOAT)
-                    transAddRegImmF(irs, binaryVIR.target, reg, value.getFloat());
+                    transAddRegImmF(irs, binaryVIR.target, reg, value.floatValue());
                 else
-                    transAddRegImmI(irs, binaryVIR.target, reg, value.getInt());
+                    transAddRegImmI(irs, binaryVIR.target, reg, value.intValue());
             }
             case DIV -> {
                 if (binaryVIR.target.getType() == Type.FLOAT)
-                    transDivImmRegF(irs, binaryVIR.target, value.getFloat(), reg);
+                    transDivImmRegF(irs, binaryVIR.target, value.floatValue(), reg);
                 else
-                    transDivImmRegI(irs, binaryVIR.target, value.getInt(), reg);
+                    transDivImmRegI(irs, binaryVIR.target, value.intValue(), reg);
             }
             case EQ, GE, GT, LE, LT, NE -> {
                 BinaryVIR.Type type = switch (binaryVIR.type) {
@@ -61,22 +61,22 @@ public final class MIRBinaryTrans {
                     default -> throw new RuntimeException();
                 };
                 if (reg.getType() == Type.FLOAT)
-                    transCmpRegImmF(irs, type, binaryVIR.target, reg, value.getFloat());
+                    transCmpRegImmF(irs, type, binaryVIR.target, reg, value.floatValue());
                 else
-                    transCmpRegImmI(irs, type, binaryVIR.target, reg, value.getInt());
+                    transCmpRegImmI(irs, type, binaryVIR.target, reg, value.intValue());
             }
-            case MOD -> transModImmReg(irs, binaryVIR.target, value.getInt(), reg);
+            case MOD -> transModImmReg(irs, binaryVIR.target, value.intValue(), reg);
             case MUL -> {
                 if (binaryVIR.target.getType() == Type.FLOAT)
-                    transMulRegImmF(irs, binaryVIR.target, reg, value.getFloat());
+                    transMulRegImmF(irs, binaryVIR.target, reg, value.floatValue());
                 else
-                    transMulRegImmI(irs, binaryVIR.target, reg, value.getInt());
+                    transMulRegImmI(irs, binaryVIR.target, reg, value.intValue());
             }
             case SUB -> {
                 if (binaryVIR.target.getType() == Type.FLOAT)
-                    transSubImmRegF(irs, binaryVIR.target, value.getFloat(), reg);
+                    transSubImmRegF(irs, binaryVIR.target, value.floatValue(), reg);
                 else
-                    transSubImmRegI(irs, binaryVIR.target, value.getInt(), reg);
+                    transSubImmRegI(irs, binaryVIR.target, value.intValue(), reg);
             }
             default -> throw new RuntimeException();
         }
@@ -86,34 +86,34 @@ public final class MIRBinaryTrans {
         switch (binaryVIR.type) {
             case ADD -> {
                 if (binaryVIR.target.getType() == Type.FLOAT)
-                    transAddRegImmF(irs, binaryVIR.target, reg, value.getFloat());
+                    transAddRegImmF(irs, binaryVIR.target, reg, value.floatValue());
                 else
-                    transAddRegImmI(irs, binaryVIR.target, reg, value.getInt());
+                    transAddRegImmI(irs, binaryVIR.target, reg, value.intValue());
             }
             case DIV -> {
                 if (binaryVIR.target.getType() == Type.FLOAT)
-                    transDivRegImmF(irs, binaryVIR.target, reg, value.getFloat());
+                    transDivRegImmF(irs, binaryVIR.target, reg, value.floatValue());
                 else
-                    transDivRegImmI(irs, binaryVIR.target, reg, value.getInt());
+                    transDivRegImmI(irs, binaryVIR.target, reg, value.intValue());
             }
             case EQ, GE, GT, LE, LT, NE -> {
                 if (reg.getType() == Type.FLOAT)
-                    transCmpRegImmF(irs, binaryVIR.type, binaryVIR.target, reg, value.getFloat());
+                    transCmpRegImmF(irs, binaryVIR.type, binaryVIR.target, reg, value.floatValue());
                 else
-                    transCmpRegImmI(irs, binaryVIR.type, binaryVIR.target, reg, value.getInt());
+                    transCmpRegImmI(irs, binaryVIR.type, binaryVIR.target, reg, value.intValue());
             }
-            case MOD -> transModRegImm(irs, binaryVIR.target, reg, value.getInt());
+            case MOD -> transModRegImm(irs, binaryVIR.target, reg, value.intValue());
             case MUL -> {
                 if (binaryVIR.target.getType() == Type.FLOAT)
-                    transMulRegImmF(irs, binaryVIR.target, reg, value.getFloat());
+                    transMulRegImmF(irs, binaryVIR.target, reg, value.floatValue());
                 else
-                    transMulRegImmI(irs, binaryVIR.target, reg, value.getInt());
+                    transMulRegImmI(irs, binaryVIR.target, reg, value.intValue());
             }
             case SUB -> {
                 if (binaryVIR.target.getType() == Type.FLOAT)
-                    transSubRegImmF(irs, binaryVIR.target, reg, value.getFloat());
+                    transSubRegImmF(irs, binaryVIR.target, reg, value.floatValue());
                 else
-                    transSubRegImmI(irs, binaryVIR.target, reg, value.getInt());
+                    transSubRegImmI(irs, binaryVIR.target, reg, value.intValue());
             }
             default -> throw new RuntimeException();
         }

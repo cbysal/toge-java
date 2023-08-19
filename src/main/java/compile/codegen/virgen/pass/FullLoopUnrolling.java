@@ -38,14 +38,14 @@ public class FullLoopUnrolling extends Pass {
                 if (item1 instanceof VReg reg && item2 instanceof Value value) {
                     loopReg = reg;
                     switch (value.getType()) {
-                        case FLOAT -> loopLimit = value.getFloat();
-                        case INT -> loopLimit = value.getInt();
+                        case FLOAT -> loopLimit = value.floatValue();
+                        case INT -> loopLimit = value.intValue();
                     }
                 } else if (item1 instanceof Value value && item2 instanceof VReg reg) {
                     loopReg = reg;
                     switch (value.getType()) {
-                        case FLOAT -> loopLimit = value.getFloat();
-                        case INT -> loopLimit = value.getInt();
+                        case FLOAT -> loopLimit = value.floatValue();
+                        case INT -> loopLimit = value.intValue();
                     }
                     cond = switch (cond) {
                         case EQ -> BranchVIR.Type.EQ;
@@ -151,11 +151,11 @@ public class FullLoopUnrolling extends Pass {
         if (curValue instanceof Integer) {
             int leftValue, rightValue;
             if (loopIR.left instanceof Value value) {
-                leftValue = value.getInt();
+                leftValue = value.intValue();
                 rightValue = curValue.intValue();
             } else {
                 leftValue = curValue.intValue();
-                rightValue = ((Value) loopIR.right).getInt();
+                rightValue = ((Value) loopIR.right).intValue();
             }
             return switch (loopIR.type) {
                 case ADD -> leftValue + rightValue;
@@ -173,11 +173,11 @@ public class FullLoopUnrolling extends Pass {
         } else {
             float leftValue, rightValue;
             if (loopIR.left instanceof Value value) {
-                leftValue = value.getFloat();
+                leftValue = value.floatValue();
                 rightValue = curValue.intValue();
             } else {
                 leftValue = curValue.intValue();
-                rightValue = ((Value) loopIR.right).getFloat();
+                rightValue = ((Value) loopIR.right).floatValue();
             }
             return switch (loopIR.type) {
                 case ADD -> leftValue + rightValue;

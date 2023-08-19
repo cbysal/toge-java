@@ -37,8 +37,8 @@ public class ConstantFolding extends Pass {
                                 case LT -> left.lt(right);
                             };
                             switch (result.getType()) {
-                                case INT -> block.set(i, new LiVIR(binaryVIR.target, result.getInt()));
-                                case FLOAT -> block.set(i, new LiVIR(binaryVIR.target, result.getFloat()));
+                                case INT -> block.set(i, new LiVIR(binaryVIR.target, result.intValue()));
+                                case FLOAT -> block.set(i, new LiVIR(binaryVIR.target, result.floatValue()));
                             }
                             modified = true;
                         }
@@ -70,8 +70,8 @@ public class ConstantFolding extends Pass {
                                 case ABS -> source.abs();
                             };
                             switch (result.getType()) {
-                                case INT -> block.set(i, new LiVIR(unaryVIR.target, result.getInt()));
-                                case FLOAT -> block.set(i, new LiVIR(unaryVIR.target, result.getFloat()));
+                                case INT -> block.set(i, new LiVIR(unaryVIR.target, result.intValue()));
+                                case FLOAT -> block.set(i, new LiVIR(unaryVIR.target, result.floatValue()));
                             }
                             modified = true;
                         }

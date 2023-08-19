@@ -79,9 +79,9 @@ public class FunctionInline extends Pass {
                                 VReg reg = new VReg(toReplaceCall.func.getParams().get(i).getType(), 4);
                                 paramToRegMap.put(param, reg);
                                 if (value.getType() == Type.FLOAT)
-                                    preCallBlock.add(new LiVIR(reg, value.getFloat()));
+                                    preCallBlock.add(new LiVIR(reg, value.floatValue()));
                                 else
-                                    preCallBlock.add(new LiVIR(reg, value.getInt()));
+                                    preCallBlock.add(new LiVIR(reg, value.intValue()));
                                 continue;
                             }
                             throw new RuntimeException();

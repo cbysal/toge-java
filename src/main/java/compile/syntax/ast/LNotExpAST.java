@@ -14,7 +14,7 @@ public class LNotExpAST implements ExpAST {
     public Value calc() {
         Value nVal = next.calc();
         if (nVal.getType() == Type.FLOAT)
-            return new Value(nVal.getFloat() == 0.0f);
-        return new Value(nVal.getInt() == 0);
+            return new Value(nVal.floatValue() == 0.0f);
+        return new Value(nVal.intValue() == 0);
     }
 }

@@ -37,9 +37,9 @@ public class MatchPatterns extends Pass {
                 if (block.getLast() instanceof BranchVIR branchVIR) {
                     BranchVIR.Type type = branchVIR.type;
                     VReg passReg;
-                    if ((type == BranchVIR.Type.LE || type == BranchVIR.Type.LT) && branchVIR.left instanceof VReg reg && branchVIR.right instanceof Value value && (value.getType() == Type.FLOAT ? value.getFloat() : value.getInt()) == 0) {
+                    if ((type == BranchVIR.Type.LE || type == BranchVIR.Type.LT) && branchVIR.left instanceof VReg reg && branchVIR.right instanceof Value value && (value.getType() == Type.FLOAT ? value.floatValue() : value.intValue()) == 0) {
                         passReg = reg;
-                    } else if ((type == BranchVIR.Type.GE || type == BranchVIR.Type.GT) && branchVIR.left instanceof Value value && branchVIR.right instanceof VReg reg && (value.getType() == Type.FLOAT ? value.getFloat() : value.getInt()) == 0) {
+                    } else if ((type == BranchVIR.Type.GE || type == BranchVIR.Type.GT) && branchVIR.left instanceof Value value && branchVIR.right instanceof VReg reg && (value.getType() == Type.FLOAT ? value.floatValue() : value.intValue()) == 0) {
                         passReg = reg;
                     } else
                         continue;

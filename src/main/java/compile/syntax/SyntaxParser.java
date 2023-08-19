@@ -133,21 +133,21 @@ public class SyntaxParser {
                 if (isFloat)
                     condDef.add(new ConstDefAST(symbolTable.makeConst(Type.FLOAT, name, dimensions,
                             exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                    exp -> Float.floatToIntBits(exp.getValue().calc().getFloat()))))));
+                                    exp -> Float.floatToIntBits(exp.getValue().calc().floatValue()))))));
                 else
                     condDef.add(new ConstDefAST(symbolTable.makeConst(Type.INT, name, dimensions,
                             exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                    exp -> exp.getValue().calc().getInt())))));
+                                    exp -> exp.getValue().calc().intValue())))));
             } else {
                 tokens.next(TokenType.ASSIGN);
                 ExpAST rVal = parseAddSubExp();
                 Value value = rVal.calc();
                 if (isFloat)
                     condDef.add(new ConstDefAST(symbolTable.makeConst(Type.FLOAT, name,
-                            value.getType() == Type.FLOAT ? value.getFloat() : value.getInt())));
+                            value.getType() == Type.FLOAT ? value.floatValue() : value.intValue())));
                 else
                     condDef.add(new ConstDefAST(symbolTable.makeConst(Type.INT, name, value.getType() == Type.FLOAT ?
-                            (int) value.getFloat() : value.getInt())));
+                            (int) value.floatValue() : value.intValue())));
             }
             if (tokens.expect(TokenType.COMMA))
                 tokens.next();
@@ -166,7 +166,7 @@ public class SyntaxParser {
         List<Integer> dimensions = new ArrayList<>();
         while (tokens.expect(TokenType.LB)) {
             tokens.next();
-            dimensions.add(parseAddSubExp().calc().getInt());
+            dimensions.add(parseAddSubExp().calc().intValue());
             tokens.next(TokenType.RB);
         }
         return dimensions;
@@ -248,7 +248,7 @@ public class SyntaxParser {
         while (tokens.expect(TokenType.LB)) {
             tokens.next();
             ExpAST exp = parseAddSubExp();
-            dimensions.add(exp.calc().getInt());
+            dimensions.add(exp.calc().intValue());
             tokens.next(TokenType.RB);
         }
         return symbolTable.makeParam(type, name, dimensions);
@@ -284,11 +284,11 @@ public class SyntaxParser {
                     if (type == Type.FLOAT) {
                         globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(type, name, dimensions,
                                 exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                        exp -> Float.floatToIntBits(exp.getValue().calc().getFloat()))))));
+                                        exp -> Float.floatToIntBits(exp.getValue().calc().floatValue()))))));
                     } else {
                         globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(type, name, dimensions,
                                 exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                                        exp -> exp.getValue().calc().getInt())))));
+                                        exp -> exp.getValue().calc().intValue())))));
                     }
                 } else
                     globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(type, name, dimensions, new HashMap<>())));
@@ -297,9 +297,9 @@ public class SyntaxParser {
                     tokens.next();
                     ExpAST rVal = parseAddSubExp();
                     if (type == Type.FLOAT)
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(type, name, rVal.calc().getFloat())));
+                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(type, name, rVal.calc().floatValue())));
                     else
-                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(type, name, rVal.calc().getInt())));
+                        globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(type, name, rVal.calc().intValue())));
                 } else
                     globalDefs.add(new GlobalDefAST(symbolTable.makeGlobal(type, name, 0)));
             }

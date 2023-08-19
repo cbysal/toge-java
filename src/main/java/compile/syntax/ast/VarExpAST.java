@@ -29,7 +29,7 @@ public class VarExpAST implements ExpAST {
             int offset = 0;
             int[] sizes = globalSymbol.getSizes();
             for (int i = 0; i < dimensions.size(); i++)
-                offset += sizes[i] * dimensions.get(i).calc().getInt();
+                offset += sizes[i] * dimensions.get(i).calc().intValue();
             if (globalSymbol.getType() == Type.FLOAT)
                 return new Value(globalSymbol.getFloat(offset));
             return new Value(globalSymbol.getInt(offset));

@@ -20,57 +20,57 @@ public class CmpExpAST implements ExpAST {
         return switch (op) {
             case EQ -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() == rVal.getFloat());
+                    yield new Value(lVal.floatValue() == rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() == rVal.getInt());
+                    yield new Value(lVal.floatValue() == rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() == rVal.getFloat());
-                yield new Value(lVal.getInt() == rVal.getInt());
+                    yield new Value(lVal.intValue() == rVal.floatValue());
+                yield new Value(lVal.intValue() == rVal.intValue());
             }
             case GE -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() >= rVal.getFloat());
+                    yield new Value(lVal.floatValue() >= rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() >= rVal.getInt());
+                    yield new Value(lVal.floatValue() >= rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() >= rVal.getFloat());
-                yield new Value(lVal.getInt() >= rVal.getInt());
+                    yield new Value(lVal.intValue() >= rVal.floatValue());
+                yield new Value(lVal.intValue() >= rVal.intValue());
             }
             case GT -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() > rVal.getFloat());
+                    yield new Value(lVal.floatValue() > rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() > rVal.getInt());
+                    yield new Value(lVal.floatValue() > rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() > rVal.getFloat());
-                yield new Value(lVal.getInt() > rVal.getInt());
+                    yield new Value(lVal.intValue() > rVal.floatValue());
+                yield new Value(lVal.intValue() > rVal.intValue());
             }
             case LE -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() <= rVal.getFloat());
+                    yield new Value(lVal.floatValue() <= rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() <= rVal.getInt());
+                    yield new Value(lVal.floatValue() <= rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() <= rVal.getFloat());
-                yield new Value(lVal.getInt() <= rVal.getInt());
+                    yield new Value(lVal.intValue() <= rVal.floatValue());
+                yield new Value(lVal.intValue() <= rVal.intValue());
             }
             case LT -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() < rVal.getFloat());
+                    yield new Value(lVal.floatValue() < rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() < rVal.getInt());
+                    yield new Value(lVal.floatValue() < rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() < rVal.getFloat());
-                yield new Value(lVal.getInt() < rVal.getInt());
+                    yield new Value(lVal.intValue() < rVal.floatValue());
+                yield new Value(lVal.intValue() < rVal.intValue());
             }
             case NE -> {
                 if (lVal.getType() == Type.FLOAT && rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() != rVal.getFloat());
+                    yield new Value(lVal.floatValue() != rVal.floatValue());
                 if (lVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getFloat() != rVal.getInt());
+                    yield new Value(lVal.floatValue() != rVal.intValue());
                 if (rVal.getType() == Type.FLOAT)
-                    yield new Value(lVal.getInt() != rVal.getFloat());
-                yield new Value(lVal.getInt() != rVal.getInt());
+                    yield new Value(lVal.intValue() != rVal.floatValue());
+                yield new Value(lVal.intValue() != rVal.intValue());
             }
         };
     }

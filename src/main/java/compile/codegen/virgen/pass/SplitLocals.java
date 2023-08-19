@@ -65,13 +65,13 @@ public class SplitLocals extends Pass {
                     if (ir instanceof LoadVIR loadVIR && loadVIR.symbol instanceof LocalSymbol local && newLocalMap.containsKey(local)) {
                         List<VIRItem> indexes = loadVIR.indexes;
                         block.set(i, new LoadVIR(loadVIR.target,
-                                newLocalMap.get(local).get(((Value) indexes.get(0)).getInt()), indexes.subList(1,
+                                newLocalMap.get(local).get(((Value) indexes.get(0)).intValue()), indexes.subList(1,
                                 indexes.size())));
                         continue;
                     }
                     if (ir instanceof StoreVIR storeVIR && storeVIR.symbol instanceof LocalSymbol local && newLocalMap.containsKey(local)) {
                         List<VIRItem> indexes = storeVIR.indexes;
-                        block.set(i, new StoreVIR(newLocalMap.get(local).get(((Value) indexes.get(0)).getInt()),
+                        block.set(i, new StoreVIR(newLocalMap.get(local).get(((Value) indexes.get(0)).intValue()),
                                 indexes.subList(1, indexes.size()), storeVIR.source));
                         continue;
                     }

@@ -5,189 +5,126 @@ import compile.codegen.virgen.vir.VIRItem;
 import java.util.Objects;
 
 public final class Value implements VIRItem {
-    private final Type type;
-    private final int value;
+    private final Number value;
 
     public Value(boolean value) {
-        this.type = Type.INT;
         this.value = value ? 1 : 0;
     }
 
-    public Value(float value) {
-        this.type = Type.FLOAT;
-        this.value = Float.floatToIntBits(value);
-    }
-
-    public Value(int value) {
-        this.type = Type.INT;
+    public Value(Number value) {
         this.value = value;
     }
 
-    public Value(Number value) {
-        if (value instanceof Integer) {
-            this.type = Type.INT;
-            this.value = (int) value;
-        } else if (value instanceof Float) {
-            this.type = Type.FLOAT;
-            this.value = Float.floatToIntBits(value.floatValue());
-        } else
-            throw new RuntimeException();
-    }
-
     public Value add(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) + Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) + v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value + Float.intBitsToFloat(v.value));
-        return new Value(value + v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() + v.value.floatValue());
+        return new Value(value.intValue() + v.value.intValue());
     }
 
     public Value sub(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) - Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) - v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value - Float.intBitsToFloat(v.value));
-        return new Value(value - v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() - v.value.floatValue());
+        return new Value(value.intValue() - v.value.intValue());
     }
 
     public Value mul(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) * Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) * v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value * Float.intBitsToFloat(v.value));
-        return new Value(value * v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() * v.value.floatValue());
+        return new Value(value.intValue() * v.value.intValue());
     }
 
     public Value div(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) / Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) / v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value / Float.intBitsToFloat(v.value));
-        return new Value(value / v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() / v.value.floatValue());
+        return new Value(value.intValue() / v.value.intValue());
     }
 
     public Value mod(Value v) {
-        return new Value(value % v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            throw new RuntimeException();
+        return new Value(value.intValue() % v.value.intValue());
     }
 
     public Value eq(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) == Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) == v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value == Float.intBitsToFloat(v.value));
-        return new Value(value == v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() == v.value.floatValue());
+        return new Value(value.intValue() == v.value.intValue());
     }
 
     public Value ne(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) != Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) != v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value != Float.intBitsToFloat(v.value));
-        return new Value(value != v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() != v.value.floatValue());
+        return new Value(value.intValue() != v.value.intValue());
     }
 
     public Value ge(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) >= Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) >= v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value >= Float.intBitsToFloat(v.value));
-        return new Value(value >= v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() >= v.value.floatValue());
+        return new Value(value.intValue() >= v.value.intValue());
     }
 
     public Value gt(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) > Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) > v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value > Float.intBitsToFloat(v.value));
-        return new Value(value > v.value);
-    }
-
-    public Value toInt() {
-        if (type == Type.INT)
-            throw new RuntimeException();
-        return new Value((int) Float.intBitsToFloat(value));
-    }
-
-    public Value toFloat() {
-        if (type == Type.FLOAT)
-            throw new RuntimeException();
-        return new Value((float) value);
-    }
-
-    public Value neg() {
-        if (type == Type.FLOAT)
-            return new Value(-Float.intBitsToFloat(value));
-        return new Value(-value);
-    }
-
-    public Value lNot() {
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) == 0.0f);
-        return new Value(value == 0);
-    }
-
-    public boolean isZero() {
-        if (type == Type.FLOAT)
-            return Float.intBitsToFloat(value) == 0.0f;
-        return value == 0;
-    }
-
-    public Value abs() {
-        if (type == Type.FLOAT)
-            return new Value(Math.abs(Float.intBitsToFloat(value)));
-        return new Value(Math.abs(value));
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() > v.value.floatValue());
+        return new Value(value.intValue() > v.value.intValue());
     }
 
     public Value le(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) <= Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) <= v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value <= Float.intBitsToFloat(v.value));
-        return new Value(value <= v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() <= v.value.floatValue());
+        return new Value(value.intValue() <= v.value.intValue());
     }
 
     public Value lt(Value v) {
-        if (type == Type.FLOAT && v.type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) < Float.intBitsToFloat(v.value));
-        if (type == Type.FLOAT)
-            return new Value(Float.intBitsToFloat(value) < v.value);
-        if (v.type == Type.FLOAT)
-            return new Value(value < Float.intBitsToFloat(v.value));
-        return new Value(value < v.value);
+        if (value instanceof Float || v.value instanceof Float)
+            return new Value(value.floatValue() < v.value.floatValue());
+        return new Value(value.intValue() < v.value.intValue());
+    }
+
+    public Value neg() {
+        if (value instanceof Float)
+            return new Value(-value.floatValue());
+        return new Value(-value.intValue());
+    }
+
+    public Value lNot() {
+        if (value instanceof Float)
+            return new Value(value.floatValue() == 0.0f);
+        return new Value(value.intValue() == 0);
+    }
+
+    public Value abs() {
+        if (value instanceof Float)
+            return new Value(Math.abs(value.floatValue()));
+        return new Value(Math.abs(value.intValue()));
+    }
+
+    public Value toInt() {
+        return new Value(value.intValue());
+    }
+
+    public Value toFloat() {
+        return new Value(value.floatValue());
+    }
+
+    public boolean isZero() {
+        if (value instanceof Float)
+            return value.floatValue() == 0.0f;
+        return value.intValue() == 0;
     }
 
     public Type getType() {
-        return type;
+        if (value instanceof Float)
+            return Type.FLOAT;
+        return Type.INT;
     }
 
-    public float getFloat() {
-        if (type == Type.INT)
-            return value;
-        return Float.intBitsToFloat(value);
+    public int intValue() {
+        return value.intValue();
     }
 
-    public int getInt() {
-        if (type == Type.INT)
-            return value;
-        return (int) Float.intBitsToFloat(value);
+    public float floatValue() {
+        return value.floatValue();
     }
 
     @Override
@@ -197,16 +134,16 @@ public final class Value implements VIRItem {
         if (o == null || getClass() != o.getClass())
             return false;
         Value value1 = (Value) o;
-        return value == value1.value && type == value1.type;
+        return Objects.equals(value, value1.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, value);
+        return Objects.hash(value);
     }
 
     @Override
     public String toString() {
-        return "#" + (type == Type.FLOAT ? String.valueOf(Float.intBitsToFloat(value)) : String.valueOf(value));
+        return "#" + value;
     }
 }

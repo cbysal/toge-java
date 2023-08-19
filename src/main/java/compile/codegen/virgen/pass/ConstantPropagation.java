@@ -320,9 +320,9 @@ public class ConstantPropagation extends Pass {
                         case LT -> value1.lt(value2);
                     };
                     if (binaryVIR.target.getType() == Type.FLOAT)
-                        block.set(irId, new LiVIR(binaryVIR.target, result.getFloat()));
+                        block.set(irId, new LiVIR(binaryVIR.target, result.floatValue()));
                     else
-                        block.set(irId, new LiVIR(binaryVIR.target, result.getInt()));
+                        block.set(irId, new LiVIR(binaryVIR.target, result.intValue()));
                     continue;
                 }
                 if (ir instanceof BranchVIR branchVIR && branchVIR.left instanceof Value value1 && branchVIR.right instanceof Value value2) {
@@ -346,9 +346,9 @@ public class ConstantPropagation extends Pass {
                         case ABS -> value.abs();
                     };
                     if (unaryVIR.target.getType() == Type.FLOAT)
-                        block.set(irId, new LiVIR(unaryVIR.target, result.getFloat()));
+                        block.set(irId, new LiVIR(unaryVIR.target, result.floatValue()));
                     else
-                        block.set(irId, new LiVIR(unaryVIR.target, result.getInt()));
+                        block.set(irId, new LiVIR(unaryVIR.target, result.intValue()));
                     continue;
                 }
             }

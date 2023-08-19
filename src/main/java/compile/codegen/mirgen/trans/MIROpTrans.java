@@ -25,9 +25,9 @@ public final class MIROpTrans {
         } else {
             reg1 = new VReg(lReg.getType(), 4);
             if (lReg.getType() == Type.FLOAT) {
-                MIROpHelper.loadImmToReg(irs, reg1, ((Value) lReg).getFloat());
+                MIROpHelper.loadImmToReg(irs, reg1, ((Value) lReg).floatValue());
             } else {
-                MIROpHelper.loadImmToReg(irs, reg1, ((Value) lReg).getInt());
+                MIROpHelper.loadImmToReg(irs, reg1, ((Value) lReg).intValue());
             }
         }
         if (rReg instanceof VReg reg) {
@@ -35,9 +35,9 @@ public final class MIROpTrans {
         } else {
             reg2 = new VReg(rReg.getType(), 4);
             if (rReg.getType() == Type.FLOAT) {
-                MIROpHelper.loadImmToReg(irs, reg2, ((Value) rReg).getFloat());
+                MIROpHelper.loadImmToReg(irs, reg2, ((Value) rReg).floatValue());
             } else {
-                MIROpHelper.loadImmToReg(irs, reg2, ((Value) rReg).getInt());
+                MIROpHelper.loadImmToReg(irs, reg2, ((Value) rReg).intValue());
             }
         }
         if (lReg.getType() == Type.FLOAT || rReg.getType() == Type.FLOAT) {
@@ -97,7 +97,7 @@ public final class MIROpTrans {
                     if (param instanceof VReg reg)
                         saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
                     else if (param instanceof Value value)
-                        MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.F_CALLER_REGS.get(fSize), value.getFloat());
+                        MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.F_CALLER_REGS.get(fSize), value.floatValue());
                     else
                         throw new RuntimeException();
                 } else {
@@ -106,7 +106,7 @@ public final class MIROpTrans {
                                 (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     else if (param instanceof Value value) {
                         VReg midReg = new VReg(Type.INT, 4);
-                        MIROpHelper.loadImmToReg(irs, midReg, value.getFloat());
+                        MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg,
                                 (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     } else
@@ -118,7 +118,7 @@ public final class MIROpTrans {
                     if (param instanceof VReg reg)
                         saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), reg));
                     else if (param instanceof Value value)
-                        MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.I_CALLER_REGS.get(iSize), value.getInt());
+                        MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.I_CALLER_REGS.get(iSize), value.intValue());
                     else
                         throw new RuntimeException();
                 } else {
@@ -127,7 +127,7 @@ public final class MIROpTrans {
                                 (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     else if (param instanceof Value value) {
                         VReg midReg = new VReg(Type.INT, 4);
-                        MIROpHelper.loadImmToReg(irs, midReg, value.getInt());
+                        MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg,
                                 (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                     } else
