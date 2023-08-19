@@ -3,6 +3,7 @@ package compile.codegen.virgen.vir;
 import compile.codegen.virgen.VReg;
 import compile.symbol.FuncSymbol;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,6 +16,11 @@ public class CallVIR extends VIR {
         this.func = func;
         this.target = target;
         this.params = params;
+    }
+
+    @Override
+    public VIR copy() {
+        return new CallVIR(func, target, new ArrayList<>(params));
     }
 
     @Override

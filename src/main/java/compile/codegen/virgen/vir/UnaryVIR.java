@@ -8,10 +8,16 @@ public class UnaryVIR extends VIR {
     public final Type type;
     public final VReg target;
     public final VIRItem source;
+
     public UnaryVIR(Type type, VReg target, VIRItem source) {
         this.type = type;
         this.target = target;
         this.source = source;
+    }
+
+    @Override
+    public VIR copy() {
+        return new UnaryVIR(type, target, source);
     }
 
     @Override

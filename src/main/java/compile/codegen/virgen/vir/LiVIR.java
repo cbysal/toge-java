@@ -12,6 +12,11 @@ public class LiVIR extends VIR {
     }
 
     @Override
+    public VIR copy() {
+        return new LiVIR(target, value);
+    }
+
+    @Override
     public VReg getWrite() {
         return target;
     }

@@ -3,6 +3,7 @@ package compile.codegen.virgen.vir;
 import compile.codegen.virgen.VReg;
 import compile.symbol.DataSymbol;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,6 +16,11 @@ public class LoadVIR extends VIR {
         this.target = target;
         this.symbol = symbol;
         this.indexes = indexes;
+    }
+
+    @Override
+    public VIR copy() {
+        return new LoadVIR(target, symbol, new ArrayList<>(indexes));
     }
 
     @Override

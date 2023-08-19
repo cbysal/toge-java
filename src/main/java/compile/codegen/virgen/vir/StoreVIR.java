@@ -18,6 +18,11 @@ public class StoreVIR extends VIR {
     }
 
     @Override
+    public VIR copy() {
+        return new StoreVIR(symbol, new ArrayList<>(indexes), source);
+    }
+
+    @Override
     public List<VReg> getRead() {
         List<VReg> regs = new ArrayList<>();
         for (VIRItem item : indexes)

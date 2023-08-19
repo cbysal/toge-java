@@ -12,6 +12,11 @@ public class RetVIR extends VIR {
     }
 
     @Override
+    public VIR copy() {
+        return new RetVIR(retVal);
+    }
+
+    @Override
     public List<VReg> getRead() {
         if (retVal == null)
             return List.of();

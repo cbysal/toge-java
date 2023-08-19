@@ -14,6 +14,11 @@ public class MovVIR extends VIR {
     }
 
     @Override
+    public VIR copy() {
+        return new MovVIR(target, source);
+    }
+
+    @Override
     public List<VReg> getRead() {
         return List.of(source);
     }

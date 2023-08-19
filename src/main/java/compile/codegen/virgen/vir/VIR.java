@@ -12,6 +12,8 @@ public abstract class VIR {
         this.id = counter++;
     }
 
+    abstract public VIR copy();
+
     @Override
     public boolean equals(Object o) {
         if (this == o)

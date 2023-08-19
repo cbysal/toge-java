@@ -8,11 +8,17 @@ public class BinaryVIR extends VIR {
     public final Type type;
     public final VReg target;
     public final VIRItem left, right;
+
     public BinaryVIR(Type type, VReg target, VIRItem left, VIRItem right) {
         this.type = type;
         this.target = target;
         this.left = left;
         this.right = right;
+    }
+
+    @Override
+    public VIR copy() {
+        return new BinaryVIR(type, target, left, right);
     }
 
     @Override

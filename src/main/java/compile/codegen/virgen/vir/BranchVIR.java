@@ -9,12 +9,18 @@ public class BranchVIR extends VIR {
     public final Type type;
     public final VIRItem left, right;
     public final Block trueBlock, falseBlock;
+
     public BranchVIR(Type type, VIRItem left, VIRItem right, Block trueBlock, Block falseBlock) {
         this.type = type;
         this.left = left;
         this.right = right;
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
+    }
+
+    @Override
+    public VIR copy() {
+        return new BranchVIR(type, left, right, trueBlock, falseBlock);
     }
 
     @Override

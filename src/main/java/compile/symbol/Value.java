@@ -23,6 +23,17 @@ public final class Value implements VIRItem {
         this.value = value;
     }
 
+    public Value(Number value) {
+        if (value instanceof Integer) {
+            this.type = Type.INT;
+            this.value = (int) value;
+        } else if (value instanceof Float) {
+            this.type = Type.FLOAT;
+            this.value = Float.floatToIntBits(value.floatValue());
+        } else
+            throw new RuntimeException();
+    }
+
     public Value add(Value v) {
         if (type == Type.FLOAT && v.type == Type.FLOAT)
             return new Value(Float.intBitsToFloat(value) + Float.intBitsToFloat(v.value));
