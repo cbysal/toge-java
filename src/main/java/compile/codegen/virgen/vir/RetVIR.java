@@ -5,9 +5,9 @@ import compile.codegen.virgen.VReg;
 import java.util.List;
 
 public class RetVIR extends VIR {
-    public final VReg retVal;
+    public final VIRItem retVal;
 
-    public RetVIR(VReg retVal) {
+    public RetVIR(VIRItem retVal) {
         this.retVal = retVal;
     }
 
@@ -18,9 +18,9 @@ public class RetVIR extends VIR {
 
     @Override
     public List<VReg> getRead() {
-        if (retVal == null)
-            return List.of();
-        return List.of(retVal);
+        if (retVal instanceof VReg reg)
+            return List.of(reg);
+        return List.of();
     }
 
     @Override

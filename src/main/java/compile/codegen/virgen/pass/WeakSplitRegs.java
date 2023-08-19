@@ -124,9 +124,9 @@ public class WeakSplitRegs extends Pass {
                         continue;
                     }
                     if (ir instanceof RetVIR retVIR) {
-                        VReg retVal = retVIR.retVal;
-                        if (assignMap.containsKey(retVal))
-                            retVal = assignMap.get(retVal);
+                        VIRItem retVal = retVIR.retVal;
+                        if (retVal instanceof VReg reg && assignMap.containsKey(reg))
+                            retVal = assignMap.get(reg);
                         block.set(i, new RetVIR(retVal));
                         continue;
                     }

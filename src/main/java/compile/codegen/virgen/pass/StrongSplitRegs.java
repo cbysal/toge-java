@@ -96,8 +96,8 @@ public class StrongSplitRegs extends Pass {
                     continue;
                 }
                 if (ir instanceof RetVIR retVIR) {
-                    VReg retVal = retVIR.retVal;
-                    if (retVal == originReg)
+                    VIRItem retVal = retVIR.retVal;
+                    if (retVal instanceof VReg reg && reg == originReg)
                         retVal = rMap.get(ir);
                     block.set(i, new RetVIR(retVal));
                     continue;

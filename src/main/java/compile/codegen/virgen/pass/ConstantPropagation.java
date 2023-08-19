@@ -125,6 +125,16 @@ public class ConstantPropagation extends Pass {
                         globalToRegMap.entrySet().removeIf(entry -> entry.getValue() == movVIR.target);
                         continue;
                     }
+                    if (ir instanceof RetVIR retVIR) {
+                        VIRItem retVal = retVIR.retVal;
+                        if (retVal instanceof VReg reg && regToValueMap.containsKey(reg)) {
+                            retVal = new Value(regToValueMap.get(reg));
+                            toContinue = true;
+                            modified = true;
+                        }
+                        block.set(irId, new RetVIR(retVal));
+                        continue;
+                    }
                     if (ir instanceof StoreVIR storeVIR) {
                         List<VIRItem> indexes = storeVIR.indexes;
                         for (int j = 0; j < indexes.size(); j++)

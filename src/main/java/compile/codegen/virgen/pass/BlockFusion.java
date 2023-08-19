@@ -28,11 +28,14 @@ public class BlockFusion extends Pass {
                     if (nextBlockMap.get(curBlock).size() != 1)
                         continue;
                     Block nextBlock = nextBlockMap.get(curBlock).iterator().next();
-                    if (curBlock == lastBlock || nextBlock == lastBlock)
-                        continue;
                     if (prevBlockMap.get(nextBlock).size() != 1)
                         continue;
                     mergeBlocks(blocks, curBlock, nextBlock);
+                    if (nextBlock == lastBlock) {
+                        lastBlock = curBlock;
+                        blocks.remove(lastBlock);
+                        blocks.add(lastBlock);
+                    }
                     innerModified = true;
                     modified = true;
                     break;

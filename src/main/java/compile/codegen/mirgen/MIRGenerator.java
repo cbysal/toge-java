@@ -3,6 +3,7 @@ package compile.codegen.mirgen;
 import common.Pair;
 import compile.codegen.mirgen.mir.BMIR;
 import compile.codegen.mirgen.mir.LabelMIR;
+import compile.codegen.mirgen.mir.LiMIR;
 import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
 import compile.codegen.virgen.Block;
@@ -130,9 +131,15 @@ public class MIRGenerator {
                 if (vir instanceof MovVIR movVIR)
                     MIROpTrans.transMov(mFunc.getIrs(), movVIR);
                 if (vir instanceof RetVIR retVIR) {
-                    if (retVIR.retVal != null) {
+                    if (retVIR.retVal instanceof VReg reg)
                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == Type.INT ? MReg.A0 :
-                                MReg.FA0, retVIR.retVal));
+                                MReg.FA0, reg));
+                    else if (retVIR.retVal instanceof Value value) {
+                        switch (value.getType()) {
+                            case INT -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
+                            case FLOAT ->
+                                    mFunc.getIrs().add(new LiMIR(MReg.FA0, Float.floatToIntBits(value.floatValue())));
+                        }
                     }
                 }
                 if (vir instanceof UnaryVIR unaryVIR)

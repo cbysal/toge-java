@@ -230,12 +230,18 @@ public class FunctionInline extends Pass {
                                     continue;
                                 }
                                 if (toReplaceIR instanceof RetVIR retVIR) {
-                                    if (retVIR.retVal != null) {
-                                        VReg retVal = retVIR.retVal;
-                                        if (!oldToNewRegMap.containsKey(retVal))
-                                            oldToNewRegMap.put(retVal, new VReg(retVal.getType(), retVal.getSize()));
-                                        retVal = oldToNewRegMap.get(retVal);
-                                        newBlock.add(new MovVIR(toReplaceCall.target, retVal));
+                                    VIRItem retVal = retVIR.retVal;
+                                    if (retVal instanceof VReg reg) {
+                                        if (!oldToNewRegMap.containsKey(reg))
+                                            oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
+                                        reg = oldToNewRegMap.get(reg);
+                                        newBlock.add(new MovVIR(toReplaceCall.target, reg));
+                                    } else if (retVal instanceof Value value) {
+                                        switch (value.getType()) {
+                                            case INT -> newBlock.add(new LiVIR(toReplaceCall.target, value.intValue()));
+                                            case FLOAT ->
+                                                    newBlock.add(new LiVIR(toReplaceCall.target, value.floatValue()));
+                                        }
                                     }
                                     newBlock.add(new JumpVIR(lastBlock));
                                     continue;
