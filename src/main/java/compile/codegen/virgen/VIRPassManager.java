@@ -3,9 +3,6 @@ package compile.codegen.virgen;
 import compile.codegen.virgen.pass.*;
 import compile.symbol.GlobalSymbol;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,14 +38,6 @@ public class VIRPassManager {
             } while (toContinue);
             toContinue = new StrongSplitRegs(globals, funcs).run();
         } while (toContinue);
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("b3.vir"))) {
-            for (VirtualFunction func : funcs.values()) {
-                writer.write(func.toString());
-                writer.newLine();
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
         new FunctionInline(globals, funcs).run();
         new ParamToReg(globals, funcs).run();
         do {
