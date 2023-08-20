@@ -26,7 +26,7 @@ public final class MIRUnaryTrans {
             irs.add(new RrMIR(RrMIR.Op.CVT, midReg, MReg.ZERO));
             irs.add(new RrrMIR(RrrMIR.Op.EQ, target, source, midReg));
         } else {
-            irs.add(new RriMIR(RriMIR.Op.SLTIU, target, source, 1));
+            irs.add(new RrMIR(RrMIR.Op.SEQZ, target, source));
         }
     }
 

@@ -171,7 +171,7 @@ public final class MIRBinaryTrans {
     private static void transCmpRegRegF(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source1, VReg source2) {
         if (type == BinaryVIR.Type.NE) {
             irs.add(new RrrMIR(RrrMIR.Op.EQ, target, source1, source2));
-            irs.add(new RriMIR(RriMIR.Op.SLTIU, target, target, 1));
+            irs.add(new RriMIR(RriMIR.Op.XORI, target, target, 1));
             return;
         }
         irs.add(new RrrMIR(switch (type) {
@@ -187,37 +187,27 @@ public final class MIRBinaryTrans {
     private static void transCmpRegRegI(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source1, VReg source2) {
         switch (type) {
             case EQ -> {
-                VReg midReg = new VReg(Type.INT, 4);
+                VReg midReg = new VReg(Type.INT, 8);
                 irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
-                irs.add(new RriMIR(RriMIR.Op.SLTIU, target, midReg, 1));
+                irs.add(new RrMIR(RrMIR.Op.SEQZ, target, midReg));
             }
             case NE -> {
-                VReg midReg1 = new VReg(Type.INT, 4);
-                VReg midReg2 = new VReg(Type.INT, 4);
-                irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg1, source1, source2));
-                irs.add(new RriMIR(RriMIR.Op.SLTIU, midReg2, midReg1, 1));
-                irs.add(new RriMIR(RriMIR.Op.SLTIU, target, midReg2, 1));
+                VReg midReg = new VReg(Type.INT, 8);
+                irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
+                irs.add(new RrMIR(RrMIR.Op.SNEZ, target, midReg));
             }
             case GE -> {
-                VReg midReg = new VReg(Type.INT, 4);
-                irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source2, source1));
-                irs.add(new RriMIR(RriMIR.Op.SLTI, target, midReg, 1));
+                VReg midReg = new VReg(Type.INT, 8);
+                irs.add(new RrrMIR(RrrMIR.Op.SLT, midReg, source1, source2));
+                irs.add(new RriMIR(RriMIR.Op.XORI, target, midReg, 1));
             }
-            case GT -> {
-                VReg midReg = new VReg(Type.INT, 4);
-                irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source2, source1));
-                irs.add(new RriMIR(RriMIR.Op.SLTI, target, midReg, 0));
-            }
+            case GT -> irs.add(new RrrMIR(RrrMIR.Op.SGT, target, source1, source2));
             case LE -> {
-                VReg midReg = new VReg(Type.INT, 4);
-                irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
-                irs.add(new RriMIR(RriMIR.Op.SLTI, target, midReg, 1));
+                VReg midReg = new VReg(Type.INT, 8);
+                irs.add(new RrrMIR(RrrMIR.Op.SGT, midReg, source1, source2));
+                irs.add(new RriMIR(RriMIR.Op.XORI, target, midReg, 1));
             }
-            case LT -> {
-                VReg midReg = new VReg(Type.INT, 4);
-                irs.add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
-                irs.add(new RriMIR(RriMIR.Op.SLTI, target, midReg, 0));
-            }
+            case LT -> irs.add(new RrrMIR(RrrMIR.Op.SLT, target, source1, source2));
         }
     }
 
@@ -289,7 +279,7 @@ public final class MIRBinaryTrans {
     }
 
     private static void transDivRegRegI(List<MIR> irs, VReg target, VReg source1, VReg source2) {
-        irs.add(new RrrMIR(RrrMIR.Op.DIV, target, source1, source2));
+        irs.add(new RrrMIR(RrrMIR.Op.DIVW, target, source1, source2));
     }
 
     private static void transModImmReg(List<MIR> irs, VReg target, int imm, VReg source) {

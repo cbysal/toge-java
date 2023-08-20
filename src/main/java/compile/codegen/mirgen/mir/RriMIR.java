@@ -11,6 +11,7 @@ public class RriMIR extends MIR {
     public final Op op;
     public final Reg dest, src;
     public final int imm;
+
     public RriMIR(Op op, Reg dest, Reg src, int imm) {
         this.op = op;
         this.dest = dest;
@@ -69,6 +70,6 @@ public class RriMIR extends MIR {
     }
 
     public enum Op {
-        ADDI, SLTI, SLTIU, ANDI, SLLIW, SRAI, SRAIW, SRLI, SRLIW
+        ADDI, ANDI, SLLIW, SRAIW, SRLI, SRLIW, XORI
     }
 }

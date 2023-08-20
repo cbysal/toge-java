@@ -11,6 +11,7 @@ import java.util.Map;
 public class RrMIR extends MIR {
     public final Op op;
     public final Reg dest, src;
+
     public RrMIR(Op op, Reg dest, Reg src) {
         this.op = op;
         this.dest = dest;
@@ -105,10 +106,11 @@ public class RrMIR extends MIR {
                 };
                 default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
             }, dest, src);
+            case SEQZ, SNEZ -> String.format("%s\t%s,%s", op.toString().toLowerCase(), dest, src);
         };
     }
 
     public enum Op {
-        CVT, FABS, MV, NEG
+        CVT, FABS, MV, NEG, SEQZ, SNEZ
     }
 }

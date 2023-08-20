@@ -10,6 +10,7 @@ import java.util.Map;
 public class RrrMIR extends MIR {
     public final Op op;
     public final Reg dest, src1, src2;
+
     public RrrMIR(Op op, Reg dest, Reg src1, Reg src2) {
         this.op = op;
         this.dest = dest;
@@ -104,7 +105,8 @@ public class RrrMIR extends MIR {
                 default -> throw new IllegalStateException("Unexpected value: " + op);
             };
             case INT -> switch (op) {
-                case ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, REMW, XOR, AND -> op.toString().toLowerCase();
+                case ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, DIVW, REMW, XOR, AND, SLT, SGT ->
+                        op.toString().toLowerCase();
                 case EQ, GE, GT, LE, LT -> String.format("f%s.s", op.toString().toLowerCase());
             };
             default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
@@ -112,6 +114,6 @@ public class RrrMIR extends MIR {
     }
 
     public enum Op {
-        ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, REMW, EQ, GE, GT, LE, LT, AND, XOR
+        ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, DIVW, REMW, EQ, GE, GT, LE, LT, AND, XOR, SLT, SGT
     }
 }
