@@ -103,6 +103,15 @@ public class AssignmentPropagation extends Pass {
                             regToRegMap.removeByValue(movVIR.target);
                             continue;
                         }
+                        if (ir instanceof RetVIR retVIR) {
+                            if (retVIR.retVal instanceof VReg reg && regToRegMap.containsKey(reg)) {
+                                block.set(irId, new RetVIR(regToRegMap.get(reg)));
+                                toContinue = true;
+                                modified = true;
+                                continue;
+                            }
+                            continue;
+                        }
                         if (ir instanceof StoreVIR storeVIR) {
                             List<VIRItem> indexes = storeVIR.indexes;
                             for (int j = 0; j < indexes.size(); j++)
