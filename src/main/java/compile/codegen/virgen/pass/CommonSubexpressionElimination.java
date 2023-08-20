@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class CommonSubexpressionElimination extends Pass {
-    private static int counter = 0;
     private record Item(Item.Op op, VIRItem source1, VIRItem source2) {
         public enum Op {
             ADD, SUB, MUL, DIV, MOD, EQ, NE, GE, GT, LE, LT, F2I, I2F, NEG, L_NOT, ABS
@@ -45,7 +44,6 @@ public class CommonSubexpressionElimination extends Pass {
                             case LT -> Item.Op.LT;
                         }, binaryVIR.left, binaryVIR.right);
                         if (replaceMap.containsKey(item)) {
-                            System.out.println(counter++);
                             block.set(i, new MovVIR(target, replaceMap.get(item)));
                             continue;
                         }
@@ -62,7 +60,6 @@ public class CommonSubexpressionElimination extends Pass {
                             case ABS -> Item.Op.ABS;
                         }, unaryVIR.source, null);
                         if (replaceMap.containsKey(item)) {
-                            System.out.println(counter++);
                             block.set(i, new MovVIR(target, replaceMap.get(item)));
                             continue;
                         }
