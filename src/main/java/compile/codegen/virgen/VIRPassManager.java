@@ -35,6 +35,7 @@ public class VIRPassManager {
                 toContinue |= new CombineInstructions(globals, funcs).run();
                 toContinue |= new MatchPatterns(globals, funcs).run();
                 toContinue |= new PeekHole(globals, funcs).run();
+                toContinue |= new CommonSubexpressionElimination(globals, funcs).run();
             } while (toContinue);
             toContinue = new StrongSplitRegs(globals, funcs).run();
         } while (toContinue);
@@ -57,6 +58,7 @@ public class VIRPassManager {
                 toContinue |= new CombineInstructions(globals, funcs).run();
                 toContinue |= new MatchPatterns(globals, funcs).run();
                 toContinue |= new PeekHole(globals, funcs).run();
+                toContinue |= new CommonSubexpressionElimination(globals, funcs).run();
                 toContinue |= new RemoveUnreachableBlocks(globals, funcs).run();
                 toContinue |= new FullLoopUnrolling(globals, funcs).run();
             } while (toContinue);
