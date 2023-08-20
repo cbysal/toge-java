@@ -52,11 +52,11 @@ public class SplitGlobals extends Pass {
                 int dimension = global.getDimensions().get(0);
                 for (int i = 0; i < dimension; i++) {
                     if (global.getType() == Type.INT)
-                        newGlobals.add(new GlobalSymbol(global.isConst(), global.getType(),
-                                global.getName() + "." + i, global.getInt(i)));
+                        newGlobals.add(new GlobalSymbol(global.getType(), global.getName() + "." + i,
+                                global.getInt(i)));
                     else
-                        newGlobals.add(new GlobalSymbol(global.isConst(), global.getType(),
-                                global.getName() + "." + i, global.getFloat(i)));
+                        newGlobals.add(new GlobalSymbol(global.getType(), global.getName() + "." + i,
+                                global.getFloat(i)));
                 }
             } else {
                 List<Integer> oldDimensions = global.getDimensions();
@@ -70,7 +70,7 @@ public class SplitGlobals extends Pass {
                     initMapList.get(index).put(entry.getKey() % newSize, entry.getValue());
                 }
                 for (int i = 0; i < oldDimensions.get(0); i++) {
-                    newGlobals.add(new GlobalSymbol(global.isConst(), global.getType(), global.getName() + "." + i,
+                    newGlobals.add(new GlobalSymbol(global.getType(), global.getName() + "." + i,
                             oldDimensions.subList(1, oldDimensions.size()), initMapList.get(i)));
                 }
             }

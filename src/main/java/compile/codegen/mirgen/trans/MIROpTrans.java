@@ -157,12 +157,8 @@ public final class MIROpTrans {
     public static void transLoad(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets, Map<Symbol,
             Pair<Boolean, Integer>> paramOffsets) {
         Symbol symbol = loadVIR.symbol;
-        if (symbol instanceof GlobalSymbol globalSymbol) {
-            if (globalSymbol.isConst())
-                MIRLoadTrans.transLoadConst(irs, loadVIR);
-            else
-                MIRLoadTrans.transLoadGlobal(irs, loadVIR);
-        }
+        if (symbol instanceof GlobalSymbol)
+            MIRLoadTrans.transLoadGlobal(irs, loadVIR);
         if (symbol instanceof LocalSymbol)
             MIRLoadTrans.transLoadLocal(irs, loadVIR, localOffsets);
         if (symbol instanceof ParamSymbol)

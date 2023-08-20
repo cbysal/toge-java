@@ -98,19 +98,19 @@ public class SymbolTable extends LinkedList<Map<String, Symbol>> {
     }
 
     public GlobalSymbol makeConst(Type type, String name, float value) {
-        GlobalSymbol symbol = new GlobalSymbol(true, type, name, value);
+        GlobalSymbol symbol = new GlobalSymbol(type, name, value);
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
     public GlobalSymbol makeConst(Type type, String name, int value) {
-        GlobalSymbol symbol = new GlobalSymbol(true, type, name, value);
+        GlobalSymbol symbol = new GlobalSymbol(type, name, value);
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
     public GlobalSymbol makeConst(Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
-        GlobalSymbol symbol = new GlobalSymbol(true, type, name, dimensions, values);
+        GlobalSymbol symbol = new GlobalSymbol(type, name, dimensions, values);
         this.getFirst().put(name, symbol);
         return symbol;
     }
@@ -122,19 +122,19 @@ public class SymbolTable extends LinkedList<Map<String, Symbol>> {
     }
 
     public GlobalSymbol makeGlobal(Type type, String name, float value) {
-        GlobalSymbol symbol = new GlobalSymbol(false, type, name, value);
+        GlobalSymbol symbol = new GlobalSymbol(type, name, value);
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
     public GlobalSymbol makeGlobal(Type type, String name, int value) {
-        GlobalSymbol symbol = new GlobalSymbol(false, type, name, value);
+        GlobalSymbol symbol = new GlobalSymbol(type, name, value);
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
     public GlobalSymbol makeGlobal(Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
-        GlobalSymbol symbol = new GlobalSymbol(false, type, name, dimensions, values);
+        GlobalSymbol symbol = new GlobalSymbol(type, name, dimensions, values);
         this.getFirst().put(name, symbol);
         return symbol;
     }
