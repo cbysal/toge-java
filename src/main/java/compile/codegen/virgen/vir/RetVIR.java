@@ -25,6 +25,8 @@ public class RetVIR extends VIR {
 
     @Override
     public String toString() {
+        if (retVal == null)
+            return "RET";
         return "RET     " + retVal;
     }
 }
