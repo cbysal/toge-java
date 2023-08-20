@@ -28,11 +28,9 @@ public final class MIROpHelper {
     }
 
     public static void addRtRbRsImm(List<MIR> irs, VReg target, VReg source1, VReg source2, int imm) {
-        VReg midReg1 = new VReg(Type.INT, 4);
-        VReg midReg2 = new VReg(Type.INT, 4);
-        loadImmToReg(irs, midReg1, imm);
-        irs.add(new RrrMIR(RrrMIR.Op.MULW, midReg2, source2, midReg1));
-        irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg2));
+        VReg midReg = new VReg(Type.INT, 4);
+        MIRBinaryTrans.transMulRegImmI(irs, midReg, source2, imm);
+        irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg));
     }
 
     public static Pair<Integer, List<Pair<VReg, Integer>>> calcDimension(List<VIRItem> dimensions, int[] sizes) {

@@ -339,7 +339,7 @@ public final class MIRBinaryTrans {
         transMulRegRegF(irs, target, source, midReg);
     }
 
-    private static void transMulRegImmI(List<MIR> irs, VReg target, VReg source, int imm) {
+    public static void transMulRegImmI(List<MIR> irs, VReg target, VReg source, int imm) {
         if (imm == 0) {
             MIROpHelper.loadImmToReg(irs, target, 0);
             return;
