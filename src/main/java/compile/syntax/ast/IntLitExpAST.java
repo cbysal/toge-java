@@ -13,4 +13,8 @@ public class IntLitExpAST implements ExpAST {
     public Value calc() {
         return new Value(value);
     }
+
+    public IntLitExpAST copy() {
+        return new IntLitExpAST(value);
+    }
 }

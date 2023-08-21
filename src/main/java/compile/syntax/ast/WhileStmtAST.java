@@ -8,4 +8,8 @@ public class WhileStmtAST implements StmtAST {
         this.cond = cond;
         this.body = body;
     }
+
+    public WhileStmtAST copy() {
+        return new WhileStmtAST(cond.copy(), body.copy());
+    }
 }

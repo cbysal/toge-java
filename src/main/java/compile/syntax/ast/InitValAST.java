@@ -9,4 +9,11 @@ public class InitValAST extends ArrayList<ExpAST> implements ExpAST {
     public Value calc() {
         return null;
     }
+
+    public InitValAST copy() {
+        InitValAST newInitVal = new InitValAST();
+        for (ExpAST exp : this)
+            newInitVal.add(exp.copy());
+        return newInitVal;
+    }
 }

@@ -20,4 +20,11 @@ public class RootAST extends AST implements Iterable<CompUnitAST> {
     public boolean addAll(Collection<? extends CompUnitAST> c) {
         return this.stmts.addAll(c);
     }
+
+    public RootAST copy() {
+        RootAST newRoot = new RootAST();
+        for (CompUnitAST stmt : stmts)
+            newRoot.add(stmt.copy());
+        return newRoot;
+    }
 }

@@ -8,4 +8,8 @@ public class GlobalDefAST extends CompUnitAST {
     public GlobalDefAST(GlobalSymbol symbol) {
         this.symbol = symbol;
     }
+
+    public GlobalDefAST copy() {
+        return new GlobalDefAST(symbol);
+    }
 }

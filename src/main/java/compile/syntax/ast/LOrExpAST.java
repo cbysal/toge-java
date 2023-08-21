@@ -24,4 +24,7 @@ public class LOrExpAST implements ExpAST {
             return new Value(lVal.intValue() != 0 || rVal.floatValue() != 0.0f);
         return new Value(lVal.intValue() != 0 || rVal.intValue() != 0);
     }
+    public LOrExpAST copy() {
+        return new LOrExpAST(left.copy(), right.copy());
+    }
 }

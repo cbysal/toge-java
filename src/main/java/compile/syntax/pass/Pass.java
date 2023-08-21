@@ -9,5 +9,5 @@ public abstract class Pass {
         this.rootAST = rootAST;
     }
 
-    public abstract boolean optimize();
+    public abstract boolean run();
 }

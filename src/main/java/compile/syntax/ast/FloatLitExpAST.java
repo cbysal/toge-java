@@ -13,4 +13,8 @@ public class FloatLitExpAST implements ExpAST {
     public Value calc() {
         return new Value(value);
     }
+
+    public FloatLitExpAST copy() {
+        return new FloatLitExpAST(value);
+    }
 }

@@ -5,8 +5,9 @@ import compile.symbol.Value;
 
 public class CmpExpAST implements ExpAST {
     public final Op op;
-    public final ExpAST left;
-    public final ExpAST right;
+    public ExpAST left;
+    public ExpAST right;
+
     public CmpExpAST(Op op, ExpAST left, ExpAST right) {
         this.op = op;
         this.left = left;
@@ -73,6 +74,11 @@ public class CmpExpAST implements ExpAST {
                 yield new Value(lVal.intValue() != rVal.intValue());
             }
         };
+    }
+
+    @Override
+    public CmpExpAST copy() {
+        return new CmpExpAST(op, left.copy(), right.copy());
     }
 
     public enum Op {

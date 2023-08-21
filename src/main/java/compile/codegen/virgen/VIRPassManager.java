@@ -26,7 +26,9 @@ public class VIRPassManager {
                 toContinue |= new SplitGlobals(globals, funcs).run();
                 toContinue |= new SplitLocals(globals, funcs).run();
                 toContinue |= new WeakSplitRegs(globals, funcs).run();
+                toContinue |= new CommonSubexpressionElimination(globals, funcs).run();
                 toContinue |= new GlobalToImm(globals, funcs).run();
+                toContinue |= new GlobalToLocal(globals, funcs).run();
                 toContinue |= new RemoveUselessIRs(globals, funcs).run();
                 toContinue |= new ConstantPropagation(globals, funcs).run();
                 toContinue |= new AssignmentPropagation(globals, funcs).run();
@@ -35,7 +37,6 @@ public class VIRPassManager {
                 toContinue |= new CombineInstructions(globals, funcs).run();
                 toContinue |= new MatchPatterns(globals, funcs).run();
                 toContinue |= new PeekHole(globals, funcs).run();
-                toContinue |= new CommonSubexpressionElimination(globals, funcs).run();
             } while (toContinue);
             toContinue = new StrongSplitRegs(globals, funcs).run();
         } while (toContinue);
@@ -49,7 +50,9 @@ public class VIRPassManager {
                 toContinue |= new SplitGlobals(globals, funcs).run();
                 toContinue |= new SplitLocals(globals, funcs).run();
                 toContinue |= new WeakSplitRegs(globals, funcs).run();
+                toContinue |= new CommonSubexpressionElimination(globals, funcs).run();
                 toContinue |= new GlobalToImm(globals, funcs).run();
+                toContinue |= new GlobalToLocal(globals, funcs).run();
                 toContinue |= new RemoveUselessIRs(globals, funcs).run();
                 toContinue |= new ConstantPropagation(globals, funcs).run();
                 toContinue |= new AssignmentPropagation(globals, funcs).run();
@@ -58,7 +61,6 @@ public class VIRPassManager {
                 toContinue |= new CombineInstructions(globals, funcs).run();
                 toContinue |= new MatchPatterns(globals, funcs).run();
                 toContinue |= new PeekHole(globals, funcs).run();
-                toContinue |= new CommonSubexpressionElimination(globals, funcs).run();
                 toContinue |= new RemoveUnreachableBlocks(globals, funcs).run();
                 toContinue |= new FullLoopUnrolling(globals, funcs).run();
             } while (toContinue);

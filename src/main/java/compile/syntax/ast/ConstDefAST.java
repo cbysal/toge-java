@@ -8,4 +8,9 @@ public class ConstDefAST extends CompUnitAST implements StmtAST {
     public ConstDefAST(GlobalSymbol symbol) {
         this.symbol = symbol;
     }
+
+    @Override
+    public ConstDefAST copy() {
+        return new ConstDefAST(symbol);
+    }
 }

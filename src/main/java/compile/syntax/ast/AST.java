@@ -8,6 +8,8 @@ public abstract class AST {
         this.id = counter++;
     }
 
+    public abstract AST copy();
+
     @Override
     public boolean equals(Object o) {
         if (this == o)

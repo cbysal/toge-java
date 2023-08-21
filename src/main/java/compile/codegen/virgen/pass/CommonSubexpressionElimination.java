@@ -22,6 +22,7 @@ public class CommonSubexpressionElimination extends Pass {
 
     @Override
     public boolean run() {
+        boolean modified = false;
         Set<FuncSymbol> pureFuncs = new HashSet<>();
         for (VirtualFunction func : funcs.values())
             pureFuncs.add(func.getSymbol());
@@ -81,6 +82,7 @@ public class CommonSubexpressionElimination extends Pass {
                         }, null, List.of(binaryVIR.left, binaryVIR.right));
                         if (replaceMap.containsKey(item)) {
                             block.set(i, new MovVIR(target, replaceMap.get(item)));
+                            modified = true;
                             continue;
                         }
                         replaceMap.put(item, target);
@@ -92,6 +94,7 @@ public class CommonSubexpressionElimination extends Pass {
                             Item item = new Item(Item.Op.CALL, callVIR.func, callVIR.params);
                             if (replaceMap.containsKey(item)) {
                                 block.set(i, new MovVIR(target, replaceMap.get(item)));
+                                modified = true;
                                 continue;
                             }
                             replaceMap.put(item, target);
@@ -110,6 +113,7 @@ public class CommonSubexpressionElimination extends Pass {
                         }, null, List.of(unaryVIR.source));
                         if (replaceMap.containsKey(item)) {
                             block.set(i, new MovVIR(target, replaceMap.get(item)));
+                            modified = true;
                             continue;
                         }
                         replaceMap.put(item, target);
@@ -118,6 +122,6 @@ public class CommonSubexpressionElimination extends Pass {
                 }
             }
         }
-        return false;
+        return modified;
     }
 }

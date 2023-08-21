@@ -34,6 +34,10 @@ public class UnaryExpAST implements ExpAST {
         };
     }
 
+    public UnaryExpAST copy() {
+        return new UnaryExpAST(op, next.copy());
+    }
+
     public enum Op {
         F2I, I2F, NEG
     }

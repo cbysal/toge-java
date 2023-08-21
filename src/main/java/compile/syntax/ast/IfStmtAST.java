@@ -14,4 +14,8 @@ public final class IfStmtAST implements StmtAST {
     public boolean hasElse() {
         return stmt2 != null;
     }
+
+    public IfStmtAST copy() {
+        return new IfStmtAST(cond.copy(), stmt1.copy(), stmt2 == null ? null : stmt2.copy());
+    }
 }

@@ -17,4 +17,8 @@ public class LNotExpAST implements ExpAST {
             return new Value(nVal.floatValue() == 0.0f);
         return new Value(nVal.intValue() == 0);
     }
+
+    public LNotExpAST copy() {
+        return new LNotExpAST(next.copy());
+    }
 }

@@ -2,6 +2,7 @@ package compile;
 
 import compile.codegen.CodeGenerator;
 import compile.codegen.mirgen.MIRGenerator;
+import compile.codegen.mirgen.MIRPassManager;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.regalloc.RegAllocator;
 import compile.codegen.virgen.VIRGenerator;
@@ -66,10 +67,12 @@ public class Compiler {
         MIRGenerator mirGenerator = new MIRGenerator(globals, vFuncs);
         globals = mirGenerator.getGlobals();
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
-        if (options.containsKey(Executor.OptionPool.PRINT_MIR))
-            printMIR(mFuncs);
-        if (options.containsKey(Executor.OptionPool.EMIT_MIR))
-            emitMIR(options.get(Executor.OptionPool.EMIT_MIR), mFuncs);
+        if (options.containsKey(Executor.OptionPool.EMIT_MIR_BEFORE_OPTIMIZATION))
+            emitMIR(options.get(Executor.OptionPool.EMIT_MIR_BEFORE_OPTIMIZATION), mFuncs);
+        MIRPassManager mirPassManager = new MIRPassManager(globals, mFuncs);
+        mirPassManager.run();
+        if (options.containsKey(Executor.OptionPool.EMIT_MIR_AFTER_OPTIMIZATION))
+            emitMIR(options.get(Executor.OptionPool.EMIT_MIR_AFTER_OPTIMIZATION), mFuncs);
         RegAllocator regAllocator = new RegAllocator(mFuncs);
         regAllocator.allocate();
         CodeGenerator codeGenerator = new CodeGenerator(globals, mFuncs);

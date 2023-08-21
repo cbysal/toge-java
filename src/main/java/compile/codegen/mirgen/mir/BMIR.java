@@ -21,7 +21,7 @@ public class BMIR extends MIR {
 
     @Override
     public List<Reg> getRead() {
-        if (src1 == null) {
+        if (op == null) {
             return List.of();
         }
         return List.of(src1, src2);

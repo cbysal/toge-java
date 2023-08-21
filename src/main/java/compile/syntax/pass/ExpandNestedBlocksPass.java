@@ -8,7 +8,7 @@ public class ExpandNestedBlocksPass extends Pass {
     }
 
     @Override
-    public boolean optimize() {
+    public boolean run() {
         return visit(rootAST);
     }
 

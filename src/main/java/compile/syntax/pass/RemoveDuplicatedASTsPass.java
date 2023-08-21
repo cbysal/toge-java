@@ -8,7 +8,7 @@ public class RemoveDuplicatedASTsPass extends Pass {
     }
 
     @Override
-    public boolean optimize() {
+    public boolean run() {
         return visit(rootAST);
     }
 

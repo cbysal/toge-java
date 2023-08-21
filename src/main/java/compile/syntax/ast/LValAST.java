@@ -2,6 +2,7 @@ package compile.syntax.ast;
 
 import compile.symbol.DataSymbol;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class LValAST extends AST {
@@ -15,5 +16,12 @@ public class LValAST extends AST {
 
     public boolean isSingle() {
         return dimensions.isEmpty();
+    }
+
+    public LValAST copy() {
+        List<ExpAST> newDimensions = new ArrayList<>();
+        for (ExpAST dimension : dimensions)
+            newDimensions.add(dimension.copy());
+        return new LValAST(symbol, newDimensions);
     }
 }

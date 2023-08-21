@@ -6,4 +6,8 @@ public class RetStmtAST implements StmtAST {
     public RetStmtAST(ExpAST value) {
         this.value = value;
     }
+
+    public RetStmtAST copy() {
+        return new RetStmtAST(value.copy());
+    }
 }

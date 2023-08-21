@@ -24,4 +24,8 @@ public class LAndExpAST implements ExpAST {
             return new Value(lVal.intValue() != 0 && rVal.floatValue() != 0.0f);
         return new Value(lVal.intValue() != 0 && rVal.intValue() != 0);
     }
+
+    public LAndExpAST copy() {
+        return new LAndExpAST(left.copy(), right.copy());
+    }
 }

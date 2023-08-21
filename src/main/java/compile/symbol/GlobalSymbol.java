@@ -4,25 +4,34 @@ import java.util.List;
 import java.util.Map;
 
 public class GlobalSymbol extends DataSymbol {
+    private final boolean isConst;
     private final int value;
     private final Map<Integer, Integer> values;
 
-    public GlobalSymbol(Type type, String name, float value) {
+    public GlobalSymbol(boolean isConst, Type type, String name, float value) {
         super(type, name);
+        this.isConst = isConst;
         this.value = Float.floatToIntBits(value);
         this.values = null;
     }
 
-    public GlobalSymbol(Type type, String name, int value) {
+    public GlobalSymbol(boolean isConst, Type type, String name, int value) {
         super(type, name);
+        this.isConst = isConst;
         this.value = value;
         this.values = null;
     }
 
-    public GlobalSymbol(Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
+    public GlobalSymbol(boolean isConst, Type type, String name, List<Integer> dimensions,
+                        Map<Integer, Integer> values) {
         super(type, name, dimensions);
+        this.isConst = isConst;
         this.value = 0;
         this.values = values;
+    }
+
+    public boolean isConst() {
+        return isConst;
     }
 
     public boolean isInBss() {

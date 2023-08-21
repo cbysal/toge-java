@@ -68,8 +68,8 @@ public class Executor {
         public static final String EMIT_VIR_BEFORE_OPTIMIZATION = "emit-vir-before-optimization";
         public static final String PRINT_VIR_AFTER_OPTIMIZATION = "print-vir-after-optimization";
         public static final String EMIT_VIR_AFTER_OPTIMIZATION = "emit-vir-after-optimization";
-        public static final String PRINT_MIR = "print-mir";
-        public static final String EMIT_MIR = "emit-mir";
+        public static final String EMIT_MIR_BEFORE_OPTIMIZATION = "emit-mir-before-optimization";
+        public static final String EMIT_MIR_AFTER_OPTIMIZATION = "emit-mir-after-optimization";
         public static final String PRINT_ASM = "print-asm";
         public static final String EMIT_ASM = "emit-asm";
         private final HashMap<String, String> pool = new HashMap<>();

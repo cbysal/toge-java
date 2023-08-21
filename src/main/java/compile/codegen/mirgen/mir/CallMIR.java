@@ -9,10 +9,10 @@ import compile.symbol.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BlMIR extends MIR {
+public class CallMIR extends MIR {
     public final FuncSymbol func;
 
-    public BlMIR(FuncSymbol func) {
+    public CallMIR(FuncSymbol func) {
         this.func = func;
     }
 

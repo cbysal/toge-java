@@ -3,6 +3,7 @@ package compile.syntax.ast;
 import compile.symbol.FuncSymbol;
 import compile.symbol.Value;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class FuncCallExpAST implements ExpAST {
@@ -17,5 +18,12 @@ public class FuncCallExpAST implements ExpAST {
     @Override
     public Value calc() {
         throw new RuntimeException();
+    }
+
+    public FuncCallExpAST copy() {
+        List<ExpAST> newParams = new ArrayList<>();
+        for (ExpAST param : params)
+            newParams.add(param.copy());
+        return new FuncCallExpAST(func, newParams);
     }
 }

@@ -160,9 +160,9 @@ public class RegAllocatorForSingleFunc {
         for (Block block : blocks) {
             for (int i = block.getBegin(); i < block.getEnd(); i++) {
                 MIR ir = irs.get(i);
-                if (ir instanceof BlMIR blMIR) {
+                if (ir instanceof CallMIR callMIR) {
                     int iSize = 0, fSize = 0;
-                    for (ParamSymbol param : blMIR.func.getParams()) {
+                    for (ParamSymbol param : callMIR.func.getParams()) {
                         if (param.isSingle() && param.getType() == Type.FLOAT && fSize < MReg.F_CALLER_REGS.size()) {
                             if (!block.containsInDef(MReg.F_CALLER_REGS.get(fSize)))
                                 block.addUse(MReg.F_CALLER_REGS.get(fSize));
@@ -225,7 +225,7 @@ public class RegAllocatorForSingleFunc {
         Set<MReg> usedFCalleeRegs = new HashSet<>();
         callAddrSize = 0;
         for (MIR ir : func.getIrs()) {
-            if (ir instanceof BlMIR)
+            if (ir instanceof CallMIR)
                 callAddrSize = 8;
             for (Reg reg : ir.getRegs())
                 if (reg instanceof MReg mReg) {

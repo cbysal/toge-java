@@ -5,6 +5,7 @@ import compile.symbol.GlobalSymbol;
 import compile.symbol.Type;
 import compile.symbol.Value;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class VarExpAST implements ExpAST {
@@ -35,6 +36,13 @@ public class VarExpAST implements ExpAST {
             return new Value(globalSymbol.getInt(offset));
         }
         throw new RuntimeException("Can not calculate symbol: " + symbol.getName());
+    }
+
+    public VarExpAST copy() {
+        List<ExpAST> newDimensions = new ArrayList<>();
+        for (ExpAST dimension : dimensions)
+            newDimensions.add(dimension.copy());
+        return new VarExpAST(symbol, newDimensions);
     }
 
     public boolean isSingle() {

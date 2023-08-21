@@ -8,4 +8,9 @@ public class AssignStmtAST implements StmtAST {
         this.lVal = lVal;
         this.rVal = rVal;
     }
+
+    @Override
+    public AssignStmtAST copy() {
+        return new AssignStmtAST(lVal.copy(), rVal.copy());
+    }
 }

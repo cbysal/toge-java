@@ -137,7 +137,7 @@ public final class MIROpTrans {
             }
         }
         irs.addAll(saveCalleeIRs);
-        irs.add(new BlMIR(callVIR.func));
+        irs.add(new CallMIR(callVIR.func));
         if (callVIR.target != null) {
             if (callVIR.target.getType() == Type.FLOAT)
                 irs.add(new RrMIR(RrMIR.Op.MV, callVIR.target, MReg.FA0));

@@ -8,4 +8,8 @@ public class LocalDefAST implements StmtAST {
     public LocalDefAST(LocalSymbol symbol) {
         this.symbol = symbol;
     }
+
+    public LocalDefAST copy() {
+        return new LocalDefAST(symbol);
+    }
 }

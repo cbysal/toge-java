@@ -10,4 +10,8 @@ public class FuncDefAST extends CompUnitAST {
         this.decl = decl;
         this.body = body;
     }
+
+    public FuncDefAST copy() {
+        return new FuncDefAST(decl, body.copy());
+    }
 }
