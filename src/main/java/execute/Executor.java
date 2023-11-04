@@ -1,35 +1,39 @@
 package execute;
 
 import compile.Compiler;
+import org.apache.commons.cli.*;
 import preprocess.Preprocessor;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.HashMap;
 
 public class Executor {
-    private final String[] args;
     private final OptionPool options = new OptionPool();
     private boolean isProcessed;
     private Path source;
     private Path target;
 
     public Executor(String[] args) {
-        this.args = args;
-    }
-
-    private void parseArgs() {
-        for (int i = 0; i < args.length; i++) {
-            if (args[i].charAt(0) != '-') {
-                source = Path.of(args[i]);
-                continue;
+        Options options = new Options();
+        options.addOption(Option.builder("S").build());
+        options.addOption(Option.builder("O").hasArg().type(Number.class).build());
+        options.addOption(Option.builder("o").hasArg().type(File.class).build());
+        CommandLine commandLine;
+        try {
+            commandLine = DefaultParser.builder().build().parse(options, args);
+            if (commandLine.hasOption("o")) {
+                setTarget(((File) commandLine.getParsedOptionValue("o")).toPath());
             }
-            switch (args[i].charAt(1)) {
-                case 'O', 'S' -> {
+            for (String arg : commandLine.getArgList()) {
+                if (arg.startsWith("--")) {
+                    setExtraOptions(arg.substring(2));
+                } else {
+                    source = Path.of(arg);
                 }
-                case 'o' -> setTarget(Path.of(args[++i]));
-                case '-' -> setExtraOptions(args[i].substring(2));
-                default -> throw new RuntimeException("Unsupported option: " + args[i]);
             }
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -56,7 +60,6 @@ public class Executor {
             return;
         }
         isProcessed = true;
-        parseArgs();
         Preprocessor preprocessor = new Preprocessor(source);
         String srcContent = preprocessor.preprocess();
         Compiler compiler = new Compiler(options, srcContent, target);
