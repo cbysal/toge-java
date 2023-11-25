@@ -8,18 +8,13 @@ import compile.codegen.regalloc.RegAllocator;
 import compile.codegen.virgen.VIRGenerator;
 import compile.codegen.virgen.VIRPassManager;
 import compile.codegen.virgen.VirtualFunction;
-import compile.lexical.LexicalParser;
-import compile.lexical.token.TokenList;
 import compile.symbol.GlobalSymbol;
-import compile.symbol.SymbolTable;
-import compile.syntax.SyntaxParser;
-import compile.syntax.SyntaxPassManager;
-import compile.syntax.ast.RootAST;
+import compile.sysy.SysYLexer;
+import compile.sysy.SysYParser;
 import execute.Executor;
+import org.antlr.v4.runtime.*;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -37,15 +32,11 @@ public class Compiler {
     }
 
     public void compile() {
-        LexicalParser lexicalParser = new LexicalParser(input);
-        TokenList tokens = lexicalParser.getTokens();
-        SymbolTable symbolTable = new SymbolTable();
-        SyntaxParser syntaxParser = new SyntaxParser(symbolTable, tokens);
-        RootAST rootAST = syntaxParser.getRootAST();
-        SyntaxPassManager syntaxPassManager = new SyntaxPassManager(rootAST);
-        syntaxPassManager.run();
-        rootAST = syntaxPassManager.getRootAST();
-        VIRGenerator virGenerator = new VIRGenerator(rootAST);
+        SysYLexer lexer = new SysYLexer(CharStreams.fromString(input));
+        CommonTokenStream commonTokenStream = new CommonTokenStream(lexer);
+        SysYParser parser = new SysYParser(commonTokenStream);
+        SysYParser.RootContext rootContext = parser.root();
+        VIRGenerator virGenerator = new VIRGenerator(rootContext);
         Set<GlobalSymbol> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
         if (options.containsKey("emit-vir"))
