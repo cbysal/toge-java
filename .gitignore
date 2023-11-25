@@ -44,3 +44,7 @@ testcase
 *.sy
 *.in
 *.out
+
+# Antlr generated files
+*.interp
+*.tokens
