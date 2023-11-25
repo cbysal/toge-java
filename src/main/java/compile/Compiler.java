@@ -18,7 +18,6 @@ import compile.syntax.ast.RootAST;
 import execute.Executor;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -37,11 +36,6 @@ public class Compiler {
         this.outputFile = outputFile;
     }
 
-    private static void printVIR(Map<String, VirtualFunction> funcs) {
-        System.out.println("============ print-vir ============");
-        funcs.forEach((key, value) -> System.out.println(value));
-    }
-
     public void compile() {
         LexicalParser lexicalParser = new LexicalParser(input);
         TokenList tokens = lexicalParser.getTokens();
@@ -54,43 +48,27 @@ public class Compiler {
         VIRGenerator virGenerator = new VIRGenerator(rootAST);
         Set<GlobalSymbol> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
-        if (options.containsKey(Executor.OptionPool.PRINT_VIR_BEFORE_OPTIMIZATION))
-            printVIR(vFuncs);
-        if (options.containsKey(Executor.OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION))
-            emitVIR(options.get(Executor.OptionPool.EMIT_VIR_BEFORE_OPTIMIZATION), vFuncs);
+        if (options.containsKey("emit-vir"))
+            emitVIR(options.get("emit-vir"), vFuncs);
         VIRPassManager virPassManager = new VIRPassManager(globals, vFuncs);
         virPassManager.run();
-        if (options.containsKey(Executor.OptionPool.PRINT_VIR_AFTER_OPTIMIZATION))
-            printVIR(vFuncs);
-        if (options.containsKey(Executor.OptionPool.EMIT_VIR_AFTER_OPTIMIZATION))
-            emitVIR(options.get(Executor.OptionPool.EMIT_VIR_AFTER_OPTIMIZATION), vFuncs);
+        if (options.containsKey("emit-opt-vir"))
+            emitVIR(options.get("emit-opt-vir"), vFuncs);
         MIRGenerator mirGenerator = new MIRGenerator(globals, vFuncs);
         globals = mirGenerator.getGlobals();
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
-        if (options.containsKey(Executor.OptionPool.EMIT_MIR_BEFORE_OPTIMIZATION))
-            emitMIR(options.get(Executor.OptionPool.EMIT_MIR_BEFORE_OPTIMIZATION), mFuncs);
+        if (options.containsKey("emit-mir"))
+            emitMIR(options.get("emit-mir"), mFuncs);
         MIRPassManager mirPassManager = new MIRPassManager(globals, mFuncs);
         mirPassManager.run();
-        if (options.containsKey(Executor.OptionPool.EMIT_MIR_AFTER_OPTIMIZATION))
-            emitMIR(options.get(Executor.OptionPool.EMIT_MIR_AFTER_OPTIMIZATION), mFuncs);
+        if (options.containsKey("emit-opt-mir"))
+            emitMIR(options.get("emit-opt-mir"), mFuncs);
         RegAllocator regAllocator = new RegAllocator(mFuncs);
         regAllocator.allocate();
         CodeGenerator codeGenerator = new CodeGenerator(globals, mFuncs);
         String output = codeGenerator.getOutput();
-        if (options.containsKey(Executor.OptionPool.PRINT_ASM))
-            System.out.println(output);
         try {
             Files.writeString(outputFile, output);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        if (options.containsKey(Executor.OptionPool.EMIT_ASM))
-            emitASM(new File(options.get(Executor.OptionPool.EMIT_ASM)), output);
-    }
-
-    private void emitASM(File file, String output) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-            writer.write(output);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -116,10 +94,5 @@ public class Compiler {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private void printMIR(Map<String, MachineFunction> funcs) {
-        System.out.println("============ print-mir ============");
-        funcs.forEach((key, value) -> System.out.println(value));
     }
 }

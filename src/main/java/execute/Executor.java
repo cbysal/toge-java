@@ -19,11 +19,21 @@ public class Executor {
         options.addOption(Option.builder("S").build());
         options.addOption(Option.builder("O").hasArg().type(Number.class).build());
         options.addOption(Option.builder("o").hasArg().type(File.class).build());
+        options.addOption(Option.builder().longOpt("emit-vir").hasArg().build());
+        options.addOption(Option.builder().longOpt("emit-opt-vir").hasArg().build());
+        options.addOption(Option.builder().longOpt("emit-mir").hasArg().build());
+        options.addOption(Option.builder().longOpt("emit-opt-mir").hasArg().build());
         CommandLine commandLine;
         try {
             commandLine = DefaultParser.builder().build().parse(options, args);
             if (commandLine.hasOption("o")) {
                 setTarget(((File) commandLine.getParsedOptionValue("o")).toPath());
+            }
+            if (commandLine.hasOption("emit-vir")) {
+                this.options.put("emit-vir", commandLine.getOptionValue("emit-vir"));
+            }
+            if (commandLine.hasOption("emit-opt-vir")) {
+                this.options.put("emit-opt-vir", commandLine.getOptionValue("emit-opt-vir"));
             }
             for (String arg : commandLine.getArgList()) {
                 if (arg.startsWith("--")) {
@@ -67,14 +77,6 @@ public class Executor {
     }
 
     public static class OptionPool {
-        public static final String PRINT_VIR_BEFORE_OPTIMIZATION = "print-vir-before-optimization";
-        public static final String EMIT_VIR_BEFORE_OPTIMIZATION = "emit-vir-before-optimization";
-        public static final String PRINT_VIR_AFTER_OPTIMIZATION = "print-vir-after-optimization";
-        public static final String EMIT_VIR_AFTER_OPTIMIZATION = "emit-vir-after-optimization";
-        public static final String EMIT_MIR_BEFORE_OPTIMIZATION = "emit-mir-before-optimization";
-        public static final String EMIT_MIR_AFTER_OPTIMIZATION = "emit-mir-after-optimization";
-        public static final String PRINT_ASM = "print-asm";
-        public static final String EMIT_ASM = "emit-asm";
         private final HashMap<String, String> pool = new HashMap<>();
 
         public boolean containsKey(String key) {
