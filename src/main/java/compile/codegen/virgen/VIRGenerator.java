@@ -1,12 +1,12 @@
 package compile.codegen.virgen;
 
 import common.NumberUtils;
-import common.Pair;
 import compile.codegen.virgen.vir.*;
 import compile.symbol.*;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
 import java.util.function.BinaryOperator;
@@ -267,8 +267,8 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     public Object visitAssignStmt(SysYParser.AssignStmtContext ctx) {
         Pair<DataSymbol, List<VIRItem>> lValUnit = visitLVal(ctx.lVal());
         VReg rReg = visitBinaryExp(ctx.binaryExp());
-        rReg = typeConversion(rReg, lValUnit.first().getType());
-        curBlock.add(new StoreVIR(lValUnit.first(), lValUnit.second(), rReg));
+        rReg = typeConversion(rReg, lValUnit.getLeft().getType());
+        curBlock.add(new StoreVIR(lValUnit.getLeft(), lValUnit.getRight(), rReg));
         return null;
     }
 
@@ -379,9 +379,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     public Pair<DataSymbol, List<VIRItem>> visitLVal(SysYParser.LValContext ctx) {
         DataSymbol symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
         if (ctx.binaryExp().isEmpty())
-            return new Pair<>(symbol, List.of());
+            return Pair.of(symbol, List.of());
         List<VIRItem> dimensions = ctx.binaryExp().stream().map(this::visitBinaryExp).collect(Collectors.toList());
-        return new Pair<>(symbol, dimensions);
+        return Pair.of(symbol, dimensions);
     }
 
     @Override

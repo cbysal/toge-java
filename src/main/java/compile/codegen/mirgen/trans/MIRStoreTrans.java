@@ -1,6 +1,5 @@
 package compile.codegen.mirgen.trans;
 
-import common.Pair;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.StoreVIR;
@@ -8,6 +7,7 @@ import compile.codegen.virgen.vir.VIRItem;
 import compile.symbol.DataSymbol;
 import compile.symbol.Symbol;
 import compile.symbol.Type;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -33,12 +33,10 @@ public final class MIRStoreTrans {
         transStoreGlobalElement(irs, source, storeVIR.indexes, symbol);
     }
 
-    private static void transStoreGlobalElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
-                                                DataSymbol symbol) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
-                symbol.getSizes());
-        int offset = offsetRegDimensions.first();
-        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
+    private static void transStoreGlobalElement(List<MIR> irs, VReg source, List<VIRItem> dimensions, DataSymbol symbol) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+        int offset = offsetRegDimensions.getLeft();
+        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         if (regDimensions.isEmpty()) {
             VReg midReg = new VReg(Type.INT, 8);
             irs.add(new LlaMIR(midReg, symbol));
@@ -69,12 +67,10 @@ public final class MIRStoreTrans {
         transStoreLocalElement(irs, source, storeVIR.indexes, symbol, offset);
     }
 
-    private static void transStoreLocalElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
-                                               DataSymbol symbol, int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
-                symbol.getSizes());
-        offset += offsetRegDimensions.first();
-        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
+    private static void transStoreLocalElement(List<MIR> irs, VReg source, List<VIRItem> dimensions, DataSymbol symbol, int offset) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+        offset += offsetRegDimensions.getLeft();
+        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         if (regDimensions.isEmpty()) {
             irs.add(new StoreItemMIR(StoreItemMIR.Item.LOCAL, source, offset));
             return;
@@ -95,30 +91,27 @@ public final class MIRStoreTrans {
         VReg source = storeVIR.source;
         Pair<Boolean, Integer> rawOffset = paramOffsets.get(symbol);
         if (symbol.isSingle()) {
-            transStoreParamSingle(irs, source, rawOffset.first(), rawOffset.second());
+            transStoreParamSingle(irs, source, rawOffset.getLeft(), rawOffset.getRight());
             return;
         }
-        transStoreParamElement(irs, source, storeVIR.indexes, symbol, rawOffset.first(), rawOffset.second());
+        transStoreParamElement(irs, source, storeVIR.indexes, symbol, rawOffset.getLeft(), rawOffset.getRight());
     }
 
-    private static void transStoreParamElement(List<MIR> irs, VReg source, List<VIRItem> dimensions,
-                                               DataSymbol symbol, Boolean isInner, Integer offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions,
-                symbol.getSizes());
-        int innerOffset = offsetRegDimensions.first();
-        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.second();
+    private static void transStoreParamElement(List<MIR> irs, VReg source, List<VIRItem> dimensions, DataSymbol symbol, Boolean isInner, Integer offset) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+        int innerOffset = offsetRegDimensions.getLeft();
+        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         VReg midReg = new VReg(Type.INT, 8);
         irs.add(new LoadItemMIR(isInner ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, offset));
         for (Pair<VReg, Integer> regDimension : regDimensions) {
             VReg midReg1 = new VReg(Type.INT, 8);
-            MIROpHelper.addRtRbRsImm(irs, midReg1, midReg, regDimension.first(), regDimension.second());
+            MIROpHelper.addRtRbRsImm(irs, midReg1, midReg, regDimension.getLeft(), regDimension.getRight());
             midReg = midReg1;
         }
         strRsRtImm(irs, source, midReg, innerOffset);
     }
 
     private static void transStoreParamSingle(List<MIR> irs, VReg source, Boolean isInner, Integer offset) {
-        irs.add(new StoreItemMIR(isInner ? StoreItemMIR.Item.PARAM_INNER : StoreItemMIR.Item.PARAM_OUTER, source,
-                offset));
+        irs.add(new StoreItemMIR(isInner ? StoreItemMIR.Item.PARAM_INNER : StoreItemMIR.Item.PARAM_OUTER, source, offset));
     }
 }

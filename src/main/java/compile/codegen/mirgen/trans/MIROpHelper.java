@@ -1,6 +1,5 @@
 package compile.codegen.mirgen.trans;
 
-import common.Pair;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.mir.LiMIR;
 import compile.codegen.mirgen.mir.MIR;
@@ -10,21 +9,20 @@ import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.VIRItem;
 import compile.symbol.Type;
 import compile.symbol.Value;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class MIROpHelper {
-    public static void addRegDimensionsToReg(List<MIR> irs, VReg target, List<Pair<VReg, Integer>> regDimensions,
-                                             VReg source) {
+    public static void addRegDimensionsToReg(List<MIR> irs, VReg target, List<Pair<VReg, Integer>> regDimensions, VReg source) {
         for (int i = 0; i < regDimensions.size() - 1; i++) {
             Pair<VReg, Integer> regDimension = regDimensions.get(i);
             VReg midReg = new VReg(Type.INT, 8);
-            addRtRbRsImm(irs, midReg, source, regDimension.first(), regDimension.second());
+            addRtRbRsImm(irs, midReg, source, regDimension.getLeft(), regDimension.getRight());
             source = midReg;
         }
-        addRtRbRsImm(irs, target, source, regDimensions.get(regDimensions.size() - 1).first(),
-                regDimensions.get(regDimensions.size() - 1).second());
+        addRtRbRsImm(irs, target, source, regDimensions.get(regDimensions.size() - 1).getLeft(), regDimensions.get(regDimensions.size() - 1).getRight());
     }
 
     public static void addRtRbRsImm(List<MIR> irs, VReg target, VReg source1, VReg source2, int imm) {
@@ -39,7 +37,7 @@ public final class MIROpHelper {
         for (int i = 0; i < dimensions.size(); i++) {
             VIRItem dimension = dimensions.get(i);
             if (dimension instanceof VReg reg) {
-                regDimensions.add(new Pair<>(reg, sizes[i]));
+                regDimensions.add(Pair.of(reg, sizes[i]));
                 continue;
             }
             if (dimension instanceof Value value) {
@@ -48,7 +46,7 @@ public final class MIROpHelper {
             }
             throw new RuntimeException();
         }
-        return new Pair<>(offset, regDimensions);
+        return Pair.of(offset, regDimensions);
     }
 
     public static void loadImmToReg(List<MIR> irs, Reg reg, float imm) {

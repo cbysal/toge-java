@@ -1,11 +1,11 @@
 package compile.codegen.virgen.pass;
 
-import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
 import compile.codegen.virgen.vir.*;
 import compile.symbol.GlobalSymbol;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
 
@@ -19,8 +19,8 @@ public class StrongSplitRegs extends Pass {
         Map<VIR, VReg> rMap = new HashMap<>();
         for (Pair<Set<VIR>, Set<VIR>> r2w : w2RList) {
             VReg newReg = new VReg(originReg.getType(), originReg.getSize());
-            Set<VIR> writeSet = r2w.first();
-            Set<VIR> readSet = r2w.second();
+            Set<VIR> writeSet = r2w.getLeft();
+            Set<VIR> readSet = r2w.getRight();
             for (VIR ir : writeSet)
                 wMap.put(ir, newReg);
             for (VIR ir : readSet)
@@ -129,8 +129,7 @@ public class StrongSplitRegs extends Pass {
         }
     }
 
-    private static Map<VIR, Set<VIR>> searchW2R(Map<Block, List<Integer>> wIRs, Map<Block, List<Integer>> rIRs,
-                                                Map<Block, List<Integer>> beginIRs) {
+    private static Map<VIR, Set<VIR>> searchW2R(Map<Block, List<Integer>> wIRs, Map<Block, List<Integer>> rIRs, Map<Block, List<Integer>> beginIRs) {
         Map<VIR, Set<VIR>> w2RMap = new HashMap<>();
         for (Map.Entry<Block, List<Integer>> beginIRInfos : beginIRs.entrySet()) {
             Block beginBlock = beginIRInfos.getKey();
@@ -224,26 +223,24 @@ public class StrongSplitRegs extends Pass {
         return modified;
     }
 
-    private List<Pair<Set<VIR>, Set<VIR>>> analyzeW2RInfo(Map<Block, List<Integer>> wIRs,
-                                                          Map<Block, List<Integer>> rIRs,
-                                                          Map<Block, List<Integer>> beginIRs) {
+    private List<Pair<Set<VIR>, Set<VIR>>> analyzeW2RInfo(Map<Block, List<Integer>> wIRs, Map<Block, List<Integer>> rIRs, Map<Block, List<Integer>> beginIRs) {
         Map<VIR, Set<VIR>> w2RMap = searchW2R(wIRs, rIRs, beginIRs);
         List<Pair<Set<VIR>, Set<VIR>>> w2RList = new ArrayList<>();
         for (Map.Entry<VIR, Set<VIR>> innerEntry : w2RMap.entrySet())
-            w2RList.add(new Pair<>(new HashSet<>(List.of(innerEntry.getKey())), innerEntry.getValue()));
+            w2RList.add(Pair.of(new HashSet<>(List.of(innerEntry.getKey())), innerEntry.getValue()));
         for (int i = 0; i < w2RList.size(); i++) {
             boolean toContinue = false;
             for (int j = i + 1; j < w2RList.size(); j++) {
                 boolean flag = false;
-                for (VIR ir : w2RList.get(i).second()) {
-                    if (w2RList.get(j).second().contains(ir)) {
+                for (VIR ir : w2RList.get(i).getRight()) {
+                    if (w2RList.get(j).getRight().contains(ir)) {
                         flag = true;
                         break;
                     }
                 }
                 if (flag) {
-                    w2RList.get(i).first().addAll(w2RList.get(j).first());
-                    w2RList.get(i).second().addAll(w2RList.get(j).second());
+                    w2RList.get(i).getLeft().addAll(w2RList.get(j).getLeft());
+                    w2RList.get(i).getRight().addAll(w2RList.get(j).getRight());
                     w2RList.remove(j);
                     toContinue = true;
                     break;
@@ -255,8 +252,7 @@ public class StrongSplitRegs extends Pass {
         return w2RList;
     }
 
-    private void analyzeBasicInfo(List<Block> blocks, Map<VReg, Map<Block, List<Integer>>> wMap, Map<VReg, Map<Block,
-            List<Integer>>> rMap) {
+    private void analyzeBasicInfo(List<Block> blocks, Map<VReg, Map<Block, List<Integer>>> wMap, Map<VReg, Map<Block, List<Integer>>> rMap) {
         for (Block block : blocks) {
             for (int i = 0; i < block.size(); i++) {
                 VIR ir = block.get(i);

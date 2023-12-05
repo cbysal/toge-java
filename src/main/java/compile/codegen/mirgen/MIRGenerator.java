@@ -1,6 +1,5 @@
 package compile.codegen.mirgen;
 
-import common.Pair;
 import compile.codegen.mirgen.mir.BMIR;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.LiMIR;
@@ -11,6 +10,7 @@ import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
 import compile.codegen.virgen.vir.*;
 import compile.symbol.*;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.HashMap;
 import java.util.List;
@@ -42,7 +42,7 @@ public class MIRGenerator {
                 iSize = Integer.min(iSize + 1, MReg.I_CALLER_REGS.size());
             else
                 fSize = Integer.min(fSize + 1, MReg.F_CALLER_REGS.size());
-        return new Pair<>(iSize, fSize);
+        return Pair.of(iSize, fSize);
     }
 
     public Map<String, MachineFunction> getFuncs() {
@@ -63,7 +63,7 @@ public class MIRGenerator {
             localOffsets.put(localSymbol, localSize);
             localSize += size;
         }
-        return new Pair<>(localSize, localOffsets);
+        return Pair.of(localSize, localOffsets);
     }
 
     private Map<Symbol, Pair<Boolean, Integer>> calcParamOffsets(List<ParamSymbol> params) {
@@ -81,17 +81,15 @@ public class MIRGenerator {
         for (ParamSymbol param : params) {
             if (!param.isSingle() || param.getType() == Type.INT) {
                 if (iSize < MReg.I_CALLER_REGS.size())
-                    paramOffsets.put(param, new Pair<>(true, (iCallerNum + fCallerNum - iSize - 1) * 8));
+                    paramOffsets.put(param, Pair.of(true, (iCallerNum + fCallerNum - iSize - 1) * 8));
                 else
-                    paramOffsets.put(param, new Pair<>(false,
-                            (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
+                    paramOffsets.put(param, Pair.of(false, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                 iSize++;
             } else {
                 if (fSize < MReg.F_CALLER_REGS.size())
-                    paramOffsets.put(param, new Pair<>(true, (fCallerNum - fSize - 1) * 8));
+                    paramOffsets.put(param, Pair.of(true, (fCallerNum - fSize - 1) * 8));
                 else
-                    paramOffsets.put(param, new Pair<>(false,
-                            (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
+                    paramOffsets.put(param, Pair.of(false, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                 fSize++;
             }
         }
@@ -107,10 +105,9 @@ public class MIRGenerator {
         Map<Symbol, Pair<Boolean, Integer>> paramOffsets = calcParamOffsets(vFunc.getSymbol().getParams());
         Pair<Integer, Map<Symbol, Integer>> locals = calcLocalOffsets(vFunc.getLocals());
         Pair<Integer, Integer> callerNums = getCallerNumbers(vFunc.getSymbol());
-        MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.first(), callerNums.first(),
-                callerNums.second());
+        MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
         Map<VReg, MReg> replaceMap = new HashMap<>();
-        Map<Symbol, Integer> localOffsets = locals.second();
+        Map<Symbol, Integer> localOffsets = locals.getRight();
         for (Block block : vFunc.getBlocks()) {
             mFunc.addIR(new LabelMIR(block.getLabel()));
             for (VIR vir : block) {
@@ -132,8 +129,7 @@ public class MIRGenerator {
                     MIROpTrans.transMov(mFunc.getIrs(), movVIR);
                 if (vir instanceof RetVIR retVIR) {
                     if (retVIR.retVal instanceof VReg reg)
-                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == Type.INT ? MReg.A0 :
-                                MReg.FA0, reg));
+                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == Type.INT ? MReg.A0 : MReg.FA0, reg));
                     else if (retVIR.retVal instanceof Value value) {
                         switch (value.getType()) {
                             case INT -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));

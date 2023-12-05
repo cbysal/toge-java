@@ -1,12 +1,12 @@
 package compile.codegen.mirgen.trans;
 
-import common.Pair;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.*;
 import compile.symbol.*;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -102,13 +102,11 @@ public final class MIROpTrans {
                         throw new RuntimeException();
                 } else {
                     if (param instanceof VReg reg)
-                        irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg,
-                                (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
+                        irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     else if (param instanceof Value value) {
                         VReg midReg = new VReg(Type.INT, 4);
                         MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
-                        irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg,
-                                (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
+                        irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     } else
                         throw new RuntimeException();
                 }
@@ -123,13 +121,11 @@ public final class MIROpTrans {
                         throw new RuntimeException();
                 } else {
                     if (param instanceof VReg reg)
-                        irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg,
-                                (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
+                        irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     else if (param instanceof Value value) {
                         VReg midReg = new VReg(Type.INT, 4);
                         MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
-                        irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg,
-                                (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
+                        irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                     } else
                         throw new RuntimeException();
                 }
@@ -154,8 +150,7 @@ public final class MIROpTrans {
             MIROpHelper.loadImmToReg(irs, liVIR.target, Float.floatToIntBits(liVIR.value.floatValue()));
     }
 
-    public static void transLoad(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets, Map<Symbol,
-            Pair<Boolean, Integer>> paramOffsets) {
+    public static void transLoad(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
         Symbol symbol = loadVIR.symbol;
         if (symbol instanceof GlobalSymbol)
             MIRLoadTrans.transLoadGlobal(irs, loadVIR);
@@ -172,8 +167,7 @@ public final class MIROpTrans {
             irs.add(new RrMIR(RrMIR.Op.MV, movVIR.target, movVIR.source));
     }
 
-    public static void transStore(List<MIR> irs, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets, Map<Symbol,
-            Pair<Boolean, Integer>> paramOffsets) {
+    public static void transStore(List<MIR> irs, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
         DataSymbol symbol = storeVIR.symbol;
         if (symbol instanceof GlobalSymbol) {
             MIRStoreTrans.transStoreGlobal(irs, storeVIR);

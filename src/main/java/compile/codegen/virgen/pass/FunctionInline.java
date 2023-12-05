@@ -1,11 +1,11 @@
 package compile.codegen.virgen.pass;
 
-import common.Pair;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
 import compile.codegen.virgen.vir.*;
 import compile.symbol.*;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
 
@@ -55,7 +55,7 @@ public class FunctionInline extends Pass {
             for (Block oldBlock : blocks)
                 for (VIR ir : oldBlock)
                     if (ir instanceof LoadVIR loadVIR && loadVIR.indexes.size() != loadVIR.symbol.getDimensionSize())
-                        arrayParamMap.put(loadVIR.target, new Pair<>(loadVIR.symbol, loadVIR.indexes));
+                        arrayParamMap.put(loadVIR.target, Pair.of(loadVIR.symbol, loadVIR.indexes));
             for (int blockId = 0; blockId < blocks.size(); blockId++) {
                 Block curBlock = blocks.get(blockId);
                 for (int irId = 0; irId < curBlock.size(); irId++) {
@@ -137,9 +137,7 @@ public class FunctionInline extends Pass {
                                             oldToNewRegMap.put(reg, new VReg(reg.getType(), reg.getSize()));
                                         right = oldToNewRegMap.get(reg);
                                     }
-                                    newBlock.add(new BranchVIR(type, left, right,
-                                            oldToNewBlockMap.get(branchVIR.trueBlock),
-                                            oldToNewBlockMap.get(branchVIR.falseBlock)));
+                                    newBlock.add(new BranchVIR(type, left, right, oldToNewBlockMap.get(branchVIR.trueBlock), oldToNewBlockMap.get(branchVIR.falseBlock)));
                                     continue;
                                 }
                                 if (toReplaceIR instanceof CallVIR callVIR) {
@@ -183,9 +181,8 @@ public class FunctionInline extends Pass {
                                         if (paramSymbol.isSingle()) {
                                             newBlock.add(new MovVIR(target, toReplaceReg));
                                         } else {
-                                            Pair<DataSymbol, List<VIRItem>> toReplaceSymbol =
-                                                    arrayParamMap.get(paramPropagationMap.get(toReplaceReg));
-                                            List<VIRItem> indexes = new ArrayList<>(toReplaceSymbol.second());
+                                            Pair<DataSymbol, List<VIRItem>> toReplaceSymbol = arrayParamMap.get(paramPropagationMap.get(toReplaceReg));
+                                            List<VIRItem> indexes = new ArrayList<>(toReplaceSymbol.getRight());
                                             for (VIRItem index : loadVIR.indexes) {
                                                 if (index instanceof VReg reg) {
                                                     if (!oldToNewRegMap.containsKey(reg))
@@ -194,7 +191,7 @@ public class FunctionInline extends Pass {
                                                 } else
                                                     indexes.add(index);
                                             }
-                                            newBlock.add(new LoadVIR(target, toReplaceSymbol.first(), indexes));
+                                            newBlock.add(new LoadVIR(target, toReplaceSymbol.getLeft(), indexes));
                                         }
                                         continue;
                                     }
@@ -256,9 +253,8 @@ public class FunctionInline extends Pass {
                                         if (paramSymbol.isSingle()) {
                                             newBlock.add(new MovVIR(toReplaceReg, source));
                                         } else {
-                                            Pair<DataSymbol, List<VIRItem>> toReplaceSymbol =
-                                                    arrayParamMap.get(paramPropagationMap.get(toReplaceReg));
-                                            List<VIRItem> indexes = new ArrayList<>(toReplaceSymbol.second());
+                                            Pair<DataSymbol, List<VIRItem>> toReplaceSymbol = arrayParamMap.get(paramPropagationMap.get(toReplaceReg));
+                                            List<VIRItem> indexes = new ArrayList<>(toReplaceSymbol.getRight());
                                             for (VIRItem index : storeVIR.indexes) {
                                                 if (index instanceof VReg reg) {
                                                     if (!oldToNewRegMap.containsKey(reg))
@@ -267,7 +263,7 @@ public class FunctionInline extends Pass {
                                                 } else
                                                     indexes.add(index);
                                             }
-                                            newBlock.add(new StoreVIR(toReplaceSymbol.first(), indexes, source));
+                                            newBlock.add(new StoreVIR(toReplaceSymbol.getLeft(), indexes, source));
                                         }
                                         continue;
                                     }
