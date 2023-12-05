@@ -1,5 +1,6 @@
 package compile.codegen.virgen;
 
+import common.NumberUtils;
 import common.Pair;
 import compile.codegen.virgen.vir.*;
 import compile.symbol.*;
@@ -14,72 +15,24 @@ import java.util.stream.Collectors;
 
 public class VIRGenerator extends SysYBaseVisitor<Object> {
     private static final Map<String, UnaryOperator<Number>> UOP_MAP = new HashMap<>() {{
-        put("+", num -> num);
-        put("-", num -> {
-            if (num instanceof Float)
-                return -num.floatValue();
-            return -num.intValue();
-        });
-        put("!", num -> num.intValue() == 0 ? 1 : 0);
+        put("+", NumberUtils::self);
+        put("-", NumberUtils::neg);
+        put("!", NumberUtils::lnot);
     }};
     private static final Map<String, BinaryOperator<Number>> BIOP_MAP = new HashMap<>() {{
-        put("==", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() == num2.floatValue() ? 1 : 0;
-            return num1.intValue() == num2.intValue() ? 1 : 0;
-        });
-        put("!=", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() != num2.floatValue() ? 1 : 0;
-            return num1.intValue() != num2.intValue() ? 1 : 0;
-        });
-        put(">=", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() >= num2.floatValue() ? 1 : 0;
-            return num1.intValue() >= num2.intValue() ? 1 : 0;
-        });
-        put(">", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() > num2.floatValue() ? 1 : 0;
-            return num1.intValue() > num2.intValue() ? 1 : 0;
-        });
-        put("<=", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() <= num2.floatValue() ? 1 : 0;
-            return num1.intValue() <= num2.intValue() ? 1 : 0;
-        });
-        put("<", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() < num2.floatValue() ? 1 : 0;
-            return num1.intValue() < num2.intValue() ? 1 : 0;
-        });
-        put("+", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() + num2.floatValue();
-            return num1.intValue() + num2.intValue();
-        });
-        put("-", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() - num2.floatValue();
-            return num1.intValue() - num2.intValue();
-        });
-        put("*", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() * num2.floatValue();
-            return num1.intValue() * num2.intValue();
-        });
-        put("/", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                return num1.floatValue() / num2.floatValue();
-            return num1.intValue() / num2.intValue();
-        });
-        put("%", (num1, num2) -> {
-            if (num1 instanceof Float || num2 instanceof Float)
-                throw new ArithmeticException("float does not support mod operation");
-            return num1.intValue() % num2.intValue();
-        });
-        put("&&", (num1, num2) -> num1.intValue() != 0 && num2.intValue() != 0 ? 1 : 0);
-        put("||", (num1, num2) -> num1.intValue() != 0 || num2.intValue() != 0 ? 1 : 0);
+        put("==", (num1, num2) -> NumberUtils.compare(num1, num2) == 0 ? 1 : 0);
+        put("!=", (num1, num2) -> NumberUtils.compare(num1, num2) != 0 ? 1 : 0);
+        put(">=", (num1, num2) -> NumberUtils.compare(num1, num2) >= 0 ? 1 : 0);
+        put(">", (num1, num2) -> NumberUtils.compare(num1, num2) > 0 ? 1 : 0);
+        put("<=", (num1, num2) -> NumberUtils.compare(num1, num2) <= 0 ? 1 : 0);
+        put("<", (num1, num2) -> NumberUtils.compare(num1, num2) < 0 ? 1 : 0);
+        put("+", NumberUtils::add);
+        put("-", NumberUtils::sub);
+        put("*", NumberUtils::mul);
+        put("/", NumberUtils::div);
+        put("%", NumberUtils::mod);
+        put("&&", NumberUtils::land);
+        put("||", NumberUtils::lor);
     }};
     private final SysYParser.RootContext rootAST;
     private final Set<GlobalSymbol> globals = new HashSet<>();
