@@ -1,8 +1,8 @@
 package compile.codegen.mirgen;
 
 import compile.codegen.Reg;
-import compile.codegen.virgen.vir.type.BasicType;
-import compile.codegen.virgen.vir.type.Type;
+import compile.vir.type.BasicType;
+import compile.vir.type.Type;
 
 import java.util.List;
 

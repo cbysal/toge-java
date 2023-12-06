@@ -1,4 +1,4 @@
-package compile.codegen.virgen.vir.type;
+package compile.vir.type;
 
 public enum BasicType implements Type {
     I32, FLOAT, VOID;

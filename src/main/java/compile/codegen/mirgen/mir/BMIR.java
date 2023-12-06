@@ -3,7 +3,7 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.Label;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
-import compile.codegen.virgen.VReg;
+import compile.vir.VReg;
 
 import java.util.List;
 import java.util.Map;

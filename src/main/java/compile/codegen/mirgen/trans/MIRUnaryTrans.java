@@ -5,9 +5,9 @@ import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.mir.RriMIR;
 import compile.codegen.mirgen.mir.RrrMIR;
-import compile.codegen.virgen.VReg;
-import compile.codegen.virgen.vir.UnaryVIR;
-import compile.codegen.virgen.vir.type.BasicType;
+import compile.vir.VReg;
+import compile.vir.ir.UnaryVIR;
+import compile.vir.type.BasicType;
 
 import java.util.List;
 

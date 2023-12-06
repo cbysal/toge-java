@@ -2,8 +2,8 @@ package compile.codegen.mirgen.mir;
 
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
-import compile.codegen.virgen.VReg;
-import compile.codegen.virgen.vir.type.BasicType;
+import compile.vir.VReg;
+import compile.vir.type.BasicType;
 
 import java.util.List;
 import java.util.Map;

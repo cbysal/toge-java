@@ -1,4 +1,4 @@
-package compile.codegen.virgen.vir.type;
+package compile.vir.type;
 
 import java.util.Objects;
 

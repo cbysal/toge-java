@@ -1,6 +1,6 @@
-package compile.codegen.virgen;
+package compile.vir;
 
-import compile.codegen.virgen.vir.VIR;
+import compile.vir.ir.VIR;
 import compile.symbol.FuncSymbol;
 import compile.symbol.LocalSymbol;
 

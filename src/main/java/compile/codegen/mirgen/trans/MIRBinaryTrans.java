@@ -1,9 +1,9 @@
 package compile.codegen.mirgen.trans;
 
 import compile.codegen.mirgen.mir.*;
-import compile.codegen.virgen.VReg;
-import compile.codegen.virgen.vir.BinaryVIR;
-import compile.codegen.virgen.vir.type.BasicType;
+import compile.vir.VReg;
+import compile.vir.ir.BinaryVIR;
+import compile.vir.type.BasicType;
 import compile.symbol.Value;
 
 import java.util.List;

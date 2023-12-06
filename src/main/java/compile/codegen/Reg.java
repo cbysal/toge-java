@@ -1,6 +1,6 @@
 package compile.codegen;
 
-import compile.codegen.virgen.vir.type.Type;
+import compile.vir.type.Type;
 
 public abstract class Reg {
     protected final Type type;

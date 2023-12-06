@@ -1,6 +1,6 @@
 package compile.symbol;
 
-import compile.codegen.virgen.vir.type.Type;
+import compile.vir.type.Type;
 
 import java.util.List;
 

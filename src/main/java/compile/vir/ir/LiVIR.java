@@ -1,6 +1,6 @@
-package compile.codegen.virgen.vir;
+package compile.vir.ir;
 
-import compile.codegen.virgen.VReg;
+import compile.vir.VReg;
 
 public class LiVIR extends VIR {
     public final VReg target;

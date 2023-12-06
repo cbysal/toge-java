@@ -1,9 +1,12 @@
-package compile.codegen.virgen;
+package compile;
 
 import common.NumberUtils;
-import compile.codegen.virgen.vir.*;
-import compile.codegen.virgen.vir.type.BasicType;
-import compile.codegen.virgen.vir.type.Type;
+import compile.vir.Block;
+import compile.vir.VReg;
+import compile.vir.VirtualFunction;
+import compile.vir.ir.*;
+import compile.vir.type.BasicType;
+import compile.vir.type.Type;
 import compile.symbol.*;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;

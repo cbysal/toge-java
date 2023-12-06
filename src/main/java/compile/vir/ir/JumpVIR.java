@@ -1,6 +1,6 @@
-package compile.codegen.virgen.vir;
+package compile.vir.ir;
 
-import compile.codegen.virgen.Block;
+import compile.vir.Block;
 
 public class JumpVIR extends VIR {
     public final Block target;

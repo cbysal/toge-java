@@ -1,7 +1,7 @@
 package compile.symbol;
 
-import compile.codegen.virgen.vir.type.BasicType;
-import compile.codegen.virgen.vir.type.Type;
+import compile.vir.type.BasicType;
+import compile.vir.type.Type;
 
 import java.util.HashMap;
 import java.util.LinkedList;

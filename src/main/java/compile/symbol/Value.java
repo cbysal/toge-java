@@ -1,8 +1,8 @@
 package compile.symbol;
 
-import compile.codegen.virgen.vir.VIRItem;
-import compile.codegen.virgen.vir.type.BasicType;
-import compile.codegen.virgen.vir.type.Type;
+import compile.vir.ir.VIRItem;
+import compile.vir.type.BasicType;
+import compile.vir.type.Type;
 
 import java.util.Objects;
 

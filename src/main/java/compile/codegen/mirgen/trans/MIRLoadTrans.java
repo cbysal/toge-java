@@ -1,10 +1,10 @@
 package compile.codegen.mirgen.trans;
 
 import compile.codegen.mirgen.mir.*;
-import compile.codegen.virgen.VReg;
-import compile.codegen.virgen.vir.LoadVIR;
-import compile.codegen.virgen.vir.VIRItem;
-import compile.codegen.virgen.vir.type.BasicType;
+import compile.vir.VReg;
+import compile.vir.ir.LoadVIR;
+import compile.vir.ir.VIRItem;
+import compile.vir.type.BasicType;
 import compile.symbol.DataSymbol;
 import compile.symbol.Symbol;
 import org.apache.commons.lang3.tuple.Pair;

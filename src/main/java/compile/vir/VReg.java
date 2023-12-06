@@ -1,9 +1,9 @@
-package compile.codegen.virgen;
+package compile.vir;
 
 import compile.codegen.Reg;
-import compile.codegen.virgen.vir.VIRItem;
-import compile.codegen.virgen.vir.type.BasicType;
-import compile.codegen.virgen.vir.type.Type;
+import compile.vir.ir.VIRItem;
+import compile.vir.type.BasicType;
+import compile.vir.type.Type;
 
 public class VReg extends Reg implements VIRItem {
     private static int counter = 0;

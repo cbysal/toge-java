@@ -5,11 +5,11 @@ import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.LiMIR;
 import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
-import compile.codegen.virgen.Block;
-import compile.codegen.virgen.VReg;
-import compile.codegen.virgen.VirtualFunction;
-import compile.codegen.virgen.vir.*;
-import compile.codegen.virgen.vir.type.BasicType;
+import compile.vir.Block;
+import compile.vir.VReg;
+import compile.vir.VirtualFunction;
+import compile.vir.ir.*;
+import compile.vir.type.BasicType;
 import compile.symbol.*;
 import org.apache.commons.lang3.tuple.Pair;
 
