@@ -9,6 +9,7 @@ import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.VirtualFunction;
 import compile.codegen.virgen.vir.*;
+import compile.codegen.virgen.vir.type.BasicType;
 import compile.symbol.*;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -38,7 +39,7 @@ public class MIRGenerator {
     private Pair<Integer, Integer> getCallerNumbers(FuncSymbol func) {
         int iSize = 0, fSize = 0;
         for (ParamSymbol param : func.getParams())
-            if (!param.isSingle() || param.getType() == Type.INT)
+            if (!param.isSingle() || param.getType() == BasicType.I32)
                 iSize = Integer.min(iSize + 1, MReg.I_CALLER_REGS.size());
             else
                 fSize = Integer.min(fSize + 1, MReg.F_CALLER_REGS.size());
@@ -70,7 +71,7 @@ public class MIRGenerator {
         Map<Symbol, Pair<Boolean, Integer>> paramOffsets = new HashMap<>();
         int iCallerNum = 0, fCallerNum = 0;
         for (ParamSymbol param : params) {
-            if (param.isSingle() && param.getType() == Type.FLOAT)
+            if (param.isSingle() && param.getType() == BasicType.FLOAT)
                 fCallerNum++;
             else
                 iCallerNum++;
@@ -79,7 +80,7 @@ public class MIRGenerator {
         fCallerNum = Integer.min(fCallerNum, MReg.F_CALLER_REGS.size());
         int iSize = 0, fSize = 0;
         for (ParamSymbol param : params) {
-            if (!param.isSingle() || param.getType() == Type.INT) {
+            if (!param.isSingle() || param.getType() == BasicType.I32) {
                 if (iSize < MReg.I_CALLER_REGS.size())
                     paramOffsets.put(param, Pair.of(true, (iCallerNum + fCallerNum - iSize - 1) * 8));
                 else
@@ -129,12 +130,13 @@ public class MIRGenerator {
                     MIROpTrans.transMov(mFunc.getIrs(), movVIR);
                 if (vir instanceof RetVIR retVIR) {
                     if (retVIR.retVal instanceof VReg reg)
-                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == Type.INT ? MReg.A0 : MReg.FA0, reg));
+                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, reg));
                     else if (retVIR.retVal instanceof Value value) {
                         switch (value.getType()) {
-                            case INT -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
-                            case FLOAT ->
+                            case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
+                            case BasicType.FLOAT ->
                                     mFunc.getIrs().add(new LiMIR(MReg.FA0, Float.floatToIntBits(value.floatValue())));
+                            default -> throw new IllegalStateException("Unexpected value: " + value.getType());
                         }
                     }
                 }

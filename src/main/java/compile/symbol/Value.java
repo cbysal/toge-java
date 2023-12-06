@@ -1,6 +1,8 @@
 package compile.symbol;
 
 import compile.codegen.virgen.vir.VIRItem;
+import compile.codegen.virgen.vir.type.BasicType;
+import compile.codegen.virgen.vir.type.Type;
 
 import java.util.Objects;
 
@@ -115,8 +117,8 @@ public final class Value implements VIRItem {
 
     public Type getType() {
         if (value instanceof Float)
-            return Type.FLOAT;
-        return Type.INT;
+            return BasicType.FLOAT;
+        return BasicType.I32;
     }
 
     public int intValue() {

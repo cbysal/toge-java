@@ -3,6 +3,7 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
+import compile.codegen.virgen.vir.type.BasicType;
 
 import java.util.List;
 import java.util.Map;
@@ -66,8 +67,8 @@ public class LoadMIR extends MIR {
     @Override
     public String toString() {
         return String.format("%s\t%s,%d(%s)", switch (dest.getType()) {
-            case FLOAT -> "flw";
-            case INT -> switch (size) {
+            case BasicType.FLOAT -> "flw";
+            case BasicType.I32 -> switch (size) {
                 case 4 -> "lw";
                 case 8 -> "ld";
                 default -> throw new IllegalStateException("Unexpected value: " + size);

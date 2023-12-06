@@ -5,6 +5,7 @@ import compile.codegen.mirgen.mir.*;
 import compile.codegen.virgen.Block;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.*;
+import compile.codegen.virgen.vir.type.BasicType;
 import compile.symbol.*;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -24,7 +25,7 @@ public final class MIROpTrans {
             reg1 = reg;
         } else {
             reg1 = new VReg(lReg.getType(), 4);
-            if (lReg.getType() == Type.FLOAT) {
+            if (lReg.getType() == BasicType.FLOAT) {
                 MIROpHelper.loadImmToReg(irs, reg1, ((Value) lReg).floatValue());
             } else {
                 MIROpHelper.loadImmToReg(irs, reg1, ((Value) lReg).intValue());
@@ -34,14 +35,14 @@ public final class MIROpTrans {
             reg2 = reg;
         } else {
             reg2 = new VReg(rReg.getType(), 4);
-            if (rReg.getType() == Type.FLOAT) {
+            if (rReg.getType() == BasicType.FLOAT) {
                 MIROpHelper.loadImmToReg(irs, reg2, ((Value) rReg).floatValue());
             } else {
                 MIROpHelper.loadImmToReg(irs, reg2, ((Value) rReg).intValue());
             }
         }
-        if (lReg.getType() == Type.FLOAT || rReg.getType() == Type.FLOAT) {
-            VReg midReg = new VReg(Type.INT, 4);
+        if (lReg.getType() == BasicType.FLOAT || rReg.getType() == BasicType.FLOAT) {
+            VReg midReg = new VReg(BasicType.I32, 4);
             if (type == BranchVIR.Type.NE) {
                 irs.add(new RrrMIR(RrrMIR.Op.EQ, midReg, reg1, reg2));
                 irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, trueBlock.getLabel()));
@@ -92,7 +93,7 @@ public final class MIROpTrans {
         List<MIR> saveCalleeIRs = new ArrayList<>();
         int iSize = 0, fSize = 0;
         for (VIRItem param : params) {
-            if (param.getType() == Type.FLOAT) {
+            if (param.getType() == BasicType.FLOAT) {
                 if (fSize < MReg.F_CALLER_REGS.size()) {
                     if (param instanceof VReg reg)
                         saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
@@ -104,7 +105,7 @@ public final class MIROpTrans {
                     if (param instanceof VReg reg)
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     else if (param instanceof Value value) {
-                        VReg midReg = new VReg(Type.INT, 4);
+                        VReg midReg = new VReg(BasicType.I32, 4);
                         MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     } else
@@ -123,7 +124,7 @@ public final class MIROpTrans {
                     if (param instanceof VReg reg)
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.F_CALLER_REGS.size(), 0)) * 8));
                     else if (param instanceof Value value) {
-                        VReg midReg = new VReg(Type.INT, 4);
+                        VReg midReg = new VReg(BasicType.I32, 4);
                         MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
                         irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                     } else
@@ -135,7 +136,7 @@ public final class MIROpTrans {
         irs.addAll(saveCalleeIRs);
         irs.add(new CallMIR(callVIR.func));
         if (callVIR.target != null) {
-            if (callVIR.target.getType() == Type.FLOAT)
+            if (callVIR.target.getType() == BasicType.FLOAT)
                 irs.add(new RrMIR(RrMIR.Op.MV, callVIR.target, MReg.FA0));
             else
                 irs.add(new RrMIR(RrMIR.Op.MV, callVIR.target, MReg.A0));
@@ -144,7 +145,7 @@ public final class MIROpTrans {
     }
 
     public static void transLI(List<MIR> irs, LiVIR liVIR) {
-        if (liVIR.target.getType() == Type.INT)
+        if (liVIR.target.getType() == BasicType.I32)
             MIROpHelper.loadImmToReg(irs, liVIR.target, liVIR.value.intValue());
         else
             MIROpHelper.loadImmToReg(irs, liVIR.target, Float.floatToIntBits(liVIR.value.floatValue()));
@@ -161,7 +162,7 @@ public final class MIROpTrans {
     }
 
     public static void transMov(List<MIR> irs, MovVIR movVIR) {
-        if (movVIR.target.getType() == Type.FLOAT)
+        if (movVIR.target.getType() == BasicType.FLOAT)
             irs.add(new RrMIR(RrMIR.Op.MV, movVIR.target, movVIR.source));
         else
             irs.add(new RrMIR(RrMIR.Op.MV, movVIR.target, movVIR.source));

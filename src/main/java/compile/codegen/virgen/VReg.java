@@ -2,7 +2,8 @@ package compile.codegen.virgen;
 
 import compile.codegen.Reg;
 import compile.codegen.virgen.vir.VIRItem;
-import compile.symbol.Type;
+import compile.codegen.virgen.vir.type.BasicType;
+import compile.codegen.virgen.vir.type.Type;
 
 public class VReg extends Reg implements VIRItem {
     private static int counter = 0;
@@ -21,6 +22,6 @@ public class VReg extends Reg implements VIRItem {
 
     @Override
     public String toString() {
-        return (type == Type.FLOAT ? "$f" : "$i") + id;
+        return (type == BasicType.FLOAT ? "$f" : "$i") + id;
     }
 }

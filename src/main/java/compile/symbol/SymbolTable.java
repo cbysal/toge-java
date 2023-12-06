@@ -1,5 +1,8 @@
 package compile.symbol;
 
+import compile.codegen.virgen.vir.type.BasicType;
+import compile.codegen.virgen.vir.type.Type;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,61 +42,61 @@ public class SymbolTable extends LinkedList<Map<String, Symbol>> {
 
     private void initBuiltInFuncs() {
         FuncSymbol func;
-        func = new FuncSymbol(Type.INT, "getint");
+        func = new FuncSymbol(BasicType.I32, "getint");
         this.getFirst().put("getint", func);
         // getch
-        func = new FuncSymbol(Type.INT, "getch");
+        func = new FuncSymbol(BasicType.I32, "getch");
         this.getFirst().put("getch", func);
         // getarray
-        func = new FuncSymbol(Type.INT, "getarray");
-        func.addParam(new ParamSymbol(Type.INT, "a", List.of(-1)));
+        func = new FuncSymbol(BasicType.I32, "getarray");
+        func.addParam(new ParamSymbol(BasicType.I32, "a", List.of(-1)));
         this.getFirst().put("getarray", func);
         // getfloat
-        func = new FuncSymbol(Type.FLOAT, "getfloat");
+        func = new FuncSymbol(BasicType.FLOAT, "getfloat");
         this.getFirst().put("getfloat", func);
         // getfarray
-        func = new FuncSymbol(Type.INT, "getfarray");
-        func.addParam(new ParamSymbol(Type.FLOAT, "a", List.of(-1)));
+        func = new FuncSymbol(BasicType.I32, "getfarray");
+        func.addParam(new ParamSymbol(BasicType.FLOAT, "a", List.of(-1)));
         this.getFirst().put("getfarray", func);
         // putint
-        func = new FuncSymbol(Type.VOID, "putint");
-        func.addParam(new ParamSymbol(Type.INT, "a"));
+        func = new FuncSymbol(BasicType.VOID, "putint");
+        func.addParam(new ParamSymbol(BasicType.I32, "a"));
         this.getFirst().put("putint", func);
         // putch
-        func = new FuncSymbol(Type.VOID, "putch");
-        func.addParam(new ParamSymbol(Type.INT, "a"));
+        func = new FuncSymbol(BasicType.VOID, "putch");
+        func.addParam(new ParamSymbol(BasicType.I32, "a"));
         this.getFirst().put("putch", func);
         // putarray
-        func = new FuncSymbol(Type.VOID, "putarray");
-        func.addParam(new ParamSymbol(Type.INT, "n"));
-        func.addParam(new ParamSymbol(Type.INT, "a", List.of(-1)));
+        func = new FuncSymbol(BasicType.VOID, "putarray");
+        func.addParam(new ParamSymbol(BasicType.I32, "n"));
+        func.addParam(new ParamSymbol(BasicType.I32, "a", List.of(-1)));
         this.getFirst().put("putarray", func);
         // putfloat
-        func = new FuncSymbol(Type.VOID, "putfloat");
-        func.addParam(new ParamSymbol(Type.FLOAT, "a"));
+        func = new FuncSymbol(BasicType.VOID, "putfloat");
+        func.addParam(new ParamSymbol(BasicType.FLOAT, "a"));
         this.getFirst().put("putfloat", func);
         // putfarray
-        func = new FuncSymbol(Type.VOID, "putfarray");
-        func.addParam(new ParamSymbol(Type.INT, "n"));
-        func.addParam(new ParamSymbol(Type.FLOAT, "a", List.of(-1)));
+        func = new FuncSymbol(BasicType.VOID, "putfarray");
+        func.addParam(new ParamSymbol(BasicType.I32, "n"));
+        func.addParam(new ParamSymbol(BasicType.FLOAT, "a", List.of(-1)));
         this.getFirst().put("putfarray", func);
         // _sysy_starttime
-        func = new FuncSymbol(Type.VOID, "_sysy_starttime");
-        func.addParam(new ParamSymbol(Type.INT, "lineno"));
+        func = new FuncSymbol(BasicType.VOID, "_sysy_starttime");
+        func.addParam(new ParamSymbol(BasicType.I32, "lineno"));
         this.getFirst().put("_sysy_starttime", func);
         // _sysy_stoptime
-        func = new FuncSymbol(Type.VOID, "_sysy_stoptime");
-        func.addParam(new ParamSymbol(Type.INT, "lineno"));
+        func = new FuncSymbol(BasicType.VOID, "_sysy_stoptime");
+        func.addParam(new ParamSymbol(BasicType.I32, "lineno"));
         this.getFirst().put("_sysy_stoptime", func);
     }
 
     private void initSyscalls() {
         FuncSymbol func;
         // memset
-        func = new FuncSymbol(Type.VOID, "memset");
-        func.addParam(new ParamSymbol(Type.INT, "addr"));
-        func.addParam(new ParamSymbol(Type.INT, "size"));
-        func.addParam(new ParamSymbol(Type.INT, "value"));
+        func = new FuncSymbol(BasicType.VOID, "memset");
+        func.addParam(new ParamSymbol(BasicType.I32, "addr"));
+        func.addParam(new ParamSymbol(BasicType.I32, "size"));
+        func.addParam(new ParamSymbol(BasicType.I32, "value"));
         this.getFirst().put("memset", func);
     }
 

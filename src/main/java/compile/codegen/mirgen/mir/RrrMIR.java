@@ -3,6 +3,7 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
+import compile.codegen.virgen.vir.type.BasicType;
 
 import java.util.List;
 import java.util.Map;
@@ -100,11 +101,11 @@ public class RrrMIR extends MIR {
     @Override
     public String toString() {
         return String.format("%s\t%s, %s, %s", switch (dest.getType()) {
-            case FLOAT -> switch (op) {
+            case BasicType.FLOAT -> switch (op) {
                 case ADD, SUB, MUL, DIV -> String.format("f%s.s", op.toString().toLowerCase());
                 default -> throw new IllegalStateException("Unexpected value: " + op);
             };
-            case INT -> switch (op) {
+            case BasicType.I32 -> switch (op) {
                 case ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, DIVW, REMW, XOR, AND, SLT, SGT ->
                         op.toString().toLowerCase();
                 case EQ, GE, GT, LE, LT -> String.format("f%s.s", op.toString().toLowerCase());

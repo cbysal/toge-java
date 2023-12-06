@@ -7,7 +7,7 @@ import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.mir.RrrMIR;
 import compile.codegen.virgen.VReg;
 import compile.codegen.virgen.vir.VIRItem;
-import compile.symbol.Type;
+import compile.codegen.virgen.vir.type.BasicType;
 import compile.symbol.Value;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -18,7 +18,7 @@ public final class MIROpHelper {
     public static void addRegDimensionsToReg(List<MIR> irs, VReg target, List<Pair<VReg, Integer>> regDimensions, VReg source) {
         for (int i = 0; i < regDimensions.size() - 1; i++) {
             Pair<VReg, Integer> regDimension = regDimensions.get(i);
-            VReg midReg = new VReg(Type.INT, 8);
+            VReg midReg = new VReg(BasicType.I32, 8);
             addRtRbRsImm(irs, midReg, source, regDimension.getLeft(), regDimension.getRight());
             source = midReg;
         }
@@ -26,7 +26,7 @@ public final class MIROpHelper {
     }
 
     public static void addRtRbRsImm(List<MIR> irs, VReg target, VReg source1, VReg source2, int imm) {
-        VReg midReg = new VReg(Type.INT, 4);
+        VReg midReg = new VReg(BasicType.I32, 4);
         MIRBinaryTrans.transMulRegImmI(irs, midReg, source2, imm);
         irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg));
     }
@@ -50,20 +50,20 @@ public final class MIROpHelper {
     }
 
     public static void loadImmToReg(List<MIR> irs, Reg reg, float imm) {
-        if (reg.getType() != Type.FLOAT)
+        if (reg.getType() != BasicType.FLOAT)
             throw new RuntimeException();
         loadImmToFReg(irs, reg, Float.floatToIntBits(imm));
     }
 
     public static void loadImmToReg(List<MIR> irs, Reg reg, int imm) {
-        if (reg.getType() != Type.INT)
+        if (reg.getType() != BasicType.I32)
             loadImmToFReg(irs, reg, imm);
         else
             loadImmToIReg(irs, reg, imm);
     }
 
     private static void loadImmToFReg(List<MIR> irs, Reg reg, int imm) {
-        VReg midReg = new VReg(Type.INT, 4);
+        VReg midReg = new VReg(BasicType.I32, 4);
         loadImmToIReg(irs, midReg, imm);
         irs.add(new RrMIR(RrMIR.Op.MV, reg, midReg));
     }

@@ -3,7 +3,7 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
-import compile.symbol.Type;
+import compile.codegen.virgen.vir.type.BasicType;
 
 import java.util.List;
 import java.util.Map;
@@ -67,13 +67,13 @@ public class RrMIR extends MIR {
     public String toString() {
         return switch (op) {
             case CVT -> switch (dest.getType()) {
-                case FLOAT -> {
-                    if (src.getType() != Type.INT)
+                case BasicType.FLOAT -> {
+                    if (src.getType() != BasicType.I32)
                         throw new RuntimeException();
                     yield String.format("fcvt.s.w\t%s,%s", dest, src);
                 }
-                case INT -> {
-                    if (src.getType() != Type.FLOAT)
+                case BasicType.I32 -> {
+                    if (src.getType() != BasicType.FLOAT)
                         throw new RuntimeException();
                     yield String.format("fcvt.w.s\t%s,%s,rtz", dest, src);
                 }
@@ -81,27 +81,27 @@ public class RrMIR extends MIR {
             };
             case FABS -> String.format("fabs.s\t%s,%s", dest, src);
             case NEG -> switch (dest.getType()) {
-                case FLOAT -> {
-                    if (src.getType() != Type.FLOAT)
+                case BasicType.FLOAT -> {
+                    if (src.getType() != BasicType.FLOAT)
                         throw new RuntimeException();
                     yield String.format("fneg.s\t%s,%s", dest, src);
                 }
-                case INT -> {
-                    if (src.getType() != Type.INT)
+                case BasicType.I32 -> {
+                    if (src.getType() != BasicType.I32)
                         throw new RuntimeException();
                     yield String.format("negw\t%s,%s", dest, src);
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
             };
             case MV -> String.format("%s\t%s,%s", switch (dest.getType()) {
-                case FLOAT -> switch (src.getType()) {
-                    case FLOAT -> "fmv.s";
-                    case INT -> "fmv.w.x";
+                case BasicType.FLOAT -> switch (src.getType()) {
+                    case BasicType.FLOAT -> "fmv.s";
+                    case BasicType.I32 -> "fmv.w.x";
                     default -> throw new IllegalStateException("Unexpected value: " + src.getType());
                 };
-                case INT -> switch (src.getType()) {
-                    case FLOAT -> "fmv.x.w";
-                    case INT -> "mv";
+                case BasicType.I32 -> switch (src.getType()) {
+                    case BasicType.FLOAT -> "fmv.x.w";
+                    case BasicType.I32 -> "mv";
                     default -> throw new IllegalStateException("Unexpected value: " + src.getType());
                 };
                 default -> throw new IllegalStateException("Unexpected value: " + dest.getType());

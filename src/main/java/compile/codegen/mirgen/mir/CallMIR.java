@@ -2,9 +2,9 @@ package compile.codegen.mirgen.mir;
 
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
+import compile.codegen.virgen.vir.type.BasicType;
 import compile.symbol.FuncSymbol;
 import compile.symbol.ParamSymbol;
-import compile.symbol.Type;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ public class CallMIR extends MIR {
         List<Reg> regs = new ArrayList<>();
         int iSize = 0, fSize = 0;
         for (ParamSymbol param : func.getParams()) {
-            if (param.isSingle() && param.getType() == Type.FLOAT) {
+            if (param.isSingle() && param.getType() == BasicType.FLOAT) {
                 if (fSize < MReg.F_CALLER_REGS.size())
                     regs.add(MReg.F_CALLER_REGS.get(fSize));
                 fSize++;

@@ -6,8 +6,8 @@ import compile.codegen.mirgen.MReg;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.virgen.VReg;
+import compile.codegen.virgen.vir.type.BasicType;
 import compile.symbol.ParamSymbol;
-import compile.symbol.Type;
 
 import java.util.*;
 
@@ -21,6 +21,7 @@ public class RegAllocatorForSingleFunc {
     private int funcParamSize, alignSize, spillSize, localSize;
     private int savedRegSize;
     private int callAddrSize;
+
     public RegAllocatorForSingleFunc(MachineFunction func) {
         this.func = func;
         this.iCallerRegs = MReg.I_CALLER_REGS.subList(0, func.getICallerNum());
@@ -163,7 +164,7 @@ public class RegAllocatorForSingleFunc {
                 if (ir instanceof CallMIR callMIR) {
                     int iSize = 0, fSize = 0;
                     for (ParamSymbol param : callMIR.func.getParams()) {
-                        if (param.isSingle() && param.getType() == Type.FLOAT && fSize < MReg.F_CALLER_REGS.size()) {
+                        if (param.isSingle() && param.getType() == BasicType.FLOAT && fSize < MReg.F_CALLER_REGS.size()) {
                             if (!block.containsInDef(MReg.F_CALLER_REGS.get(fSize)))
                                 block.addUse(MReg.F_CALLER_REGS.get(fSize));
                             fSize++;
@@ -192,7 +193,7 @@ public class RegAllocatorForSingleFunc {
         Map<VReg, MReg> vRegToMRegMap = new HashMap<>();
         for (Reg toAllocateReg : conflictMap.keySet()) {
             if (toAllocateReg instanceof VReg vReg) {
-                List<MReg> regs = vReg.getType() == Type.FLOAT ? MReg.F_REGS : MReg.I_REGS;
+                List<MReg> regs = vReg.getType() == BasicType.FLOAT ? MReg.F_REGS : MReg.I_REGS;
                 Set<MReg> usedRegs = new HashSet<>();
                 for (Reg reg : conflictMap.get(vReg)) {
                     if (reg instanceof VReg vReg1) {
@@ -265,7 +266,7 @@ public class RegAllocatorForSingleFunc {
             MReg toSaveReg = toSaveRegs.get(i);
             if (iCallerRegs.contains(toSaveReg) || fCallerRegs.contains(toSaveReg))
                 continue;
-            func.addIR(new LoadMIR(toSaveReg, MReg.SP, -8 * (i + 1), toSaveReg.getType() == Type.INT ? 8 : 4));
+            func.addIR(new LoadMIR(toSaveReg, MReg.SP, -8 * (i + 1), toSaveReg.getType() == BasicType.I32 ? 8 : 4));
         }
     }
 
@@ -278,7 +279,7 @@ public class RegAllocatorForSingleFunc {
         List.of(iCallerRegs, fCallerRegs, iCalleeRegs, fCalleeRegs).forEach(toSaveRegs::addAll);
         for (int i = 0; i < toSaveRegs.size(); i++) {
             MReg toSaveReg = toSaveRegs.get(i);
-            headIRs.add(new StoreMIR(toSaveReg, MReg.SP, -8 * (i + 1), toSaveReg.getType() == Type.INT ? 8 : 4));
+            headIRs.add(new StoreMIR(toSaveReg, MReg.SP, -8 * (i + 1), toSaveReg.getType() == BasicType.I32 ? 8 : 4));
         }
         int totalSize = toSaveRegs.size() * 8 + funcParamSize + alignSize + spillSize + localSize;
         if (totalSize > 0 && totalSize <= 255)
@@ -317,8 +318,8 @@ public class RegAllocatorForSingleFunc {
                 int size = switch (loadItemMIR.item) {
                     case LOCAL -> 4;
                     case SPILL, PARAM_INNER, PARAM_OUTER -> switch (loadItemMIR.dest.getType()) {
-                        case FLOAT -> 4;
-                        case INT -> 8;
+                        case BasicType.FLOAT -> 4;
+                        case BasicType.I32 -> 8;
                         default -> throw new IllegalStateException("Unexpected value: " + loadItemMIR.dest.getType());
                     };
                 };
@@ -345,8 +346,8 @@ public class RegAllocatorForSingleFunc {
                 int size = switch (storeItemMIR.item) {
                     case LOCAL -> 4;
                     case PARAM_CALL, PARAM_INNER, PARAM_OUTER, SPILL -> switch (storeItemMIR.src.getType()) {
-                        case FLOAT -> 4;
-                        case INT -> 8;
+                        case BasicType.FLOAT -> 4;
+                        case BasicType.I32 -> 8;
                         default -> throw new IllegalStateException("Unexpected value: " + storeItemMIR.src.getType());
                     };
                 };
@@ -378,7 +379,7 @@ public class RegAllocatorForSingleFunc {
                     if (toAllocateReg instanceof VReg vReg) {
                         allocatedVRegs.add(vReg);
                         boolean toSpill = true;
-                        List<MReg> regs = vReg.getType() == Type.FLOAT ? MReg.F_REGS : MReg.I_REGS;
+                        List<MReg> regs = vReg.getType() == BasicType.FLOAT ? MReg.F_REGS : MReg.I_REGS;
                         Set<MReg> usedRegs = new HashSet<>();
                         for (Reg reg : conflictMap.get(vReg)) {
                             if (reg instanceof VReg vReg1) {

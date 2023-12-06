@@ -1,5 +1,7 @@
 package compile.symbol;
 
+import compile.codegen.virgen.vir.type.Type;
+
 import java.util.List;
 
 public class ParamSymbol extends DataSymbol {

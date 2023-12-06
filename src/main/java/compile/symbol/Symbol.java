@@ -1,5 +1,7 @@
 package compile.symbol;
 
+import compile.codegen.virgen.vir.type.Type;
+
 public abstract class Symbol {
     protected final Type type;
     protected final String name;

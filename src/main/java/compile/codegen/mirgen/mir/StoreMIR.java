@@ -3,6 +3,7 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.Reg;
 import compile.codegen.mirgen.MReg;
 import compile.codegen.virgen.VReg;
+import compile.codegen.virgen.vir.type.BasicType;
 
 import java.util.List;
 import java.util.Map;
@@ -61,8 +62,8 @@ public class StoreMIR extends MIR {
     @Override
     public String toString() {
         return String.format("%s\t%s,%d(%s)", switch (src.getType()) {
-            case FLOAT -> "fsw";
-            case INT -> switch (size) {
+            case BasicType.FLOAT -> "fsw";
+            case BasicType.I32 -> switch (size) {
                 case 4 -> "sw";
                 case 8 -> "sd";
                 default -> throw new IllegalStateException("Unexpected value: " + size);

@@ -2,6 +2,8 @@ package compile.codegen.virgen;
 
 import common.NumberUtils;
 import compile.codegen.virgen.vir.*;
+import compile.codegen.virgen.vir.type.BasicType;
+import compile.codegen.virgen.vir.type.Type;
 import compile.symbol.*;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
@@ -97,9 +99,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public Type visitType(SysYParser.TypeContext ctx) {
         curType = switch (ctx.getText()) {
-            case "int" -> Type.INT;
-            case "float" -> Type.FLOAT;
-            case "void" -> Type.VOID;
+            case "int" -> BasicType.I32;
+            case "float" -> BasicType.FLOAT;
+            case "void" -> BasicType.VOID;
             default -> throw new IllegalStateException("Unexpected value: " + ctx.getText());
         };
         return curType;
@@ -130,10 +132,10 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                 allocInitVal(dimensions, exps, 0, initVal);
                 globals.add(switch (curType) {
-                    case INT ->
-                            symbolTable.makeConst(Type.INT, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
-                    case FLOAT ->
-                            symbolTable.makeConst(Type.FLOAT, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
+                    case BasicType.I32 ->
+                            symbolTable.makeConst(BasicType.I32, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
+                    case BasicType.FLOAT ->
+                            symbolTable.makeConst(BasicType.FLOAT, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else if (symbolTable.size() == 1) {
@@ -141,23 +143,19 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 if (initVal != null)
                     allocInitVal(dimensions, exps, 0, initVal);
                 globals.add(switch (curType) {
-                    case INT ->
-                            symbolTable.makeGlobal(Type.INT, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
-                    case FLOAT ->
-                            symbolTable.makeGlobal(Type.FLOAT, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
+                    case BasicType.I32 ->
+                            symbolTable.makeGlobal(BasicType.I32, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
+                    case BasicType.FLOAT ->
+                            symbolTable.makeGlobal(BasicType.FLOAT, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else {
-                LocalSymbol localSymbol = symbolTable.makeLocal(switch (curType) {
-                    case INT -> Type.INT;
-                    case FLOAT -> Type.FLOAT;
-                    default -> throw new IllegalStateException("Unexpected value: " + curType);
-                }, name, dimensions);
+                LocalSymbol localSymbol = symbolTable.makeLocal(curType, name, dimensions);
                 curFunc.addLocal(localSymbol);
                 if (initVal != null) {
                     Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
-                    VReg symbolReg = new VReg(Type.INT, 8);
+                    VReg symbolReg = new VReg(BasicType.I32, 8);
                     curBlock.add(new LoadVIR(symbolReg, localSymbol, List.of()));
                     curBlock.add(new CallVIR(symbolTable.getFunc("memset"), null, List.of(symbolReg, new Value(0), new Value(dimensions.stream().reduce(4, Math::multiplyExact)))));
                     int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
@@ -181,27 +179,27 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             if (isConst) {
                 Number value = calc(ctx.initVal().binaryExp());
                 globals.add(switch (curType) {
-                    case INT -> symbolTable.makeConst(Type.INT, name, value.intValue());
-                    case FLOAT -> symbolTable.makeConst(Type.FLOAT, name, value.floatValue());
+                    case BasicType.I32 -> symbolTable.makeConst(BasicType.I32, name, value.intValue());
+                    case BasicType.FLOAT -> symbolTable.makeConst(BasicType.FLOAT, name, value.floatValue());
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else if (symbolTable.size() == 1) {
                 Number value = switch (curType) {
-                    case INT -> 0;
-                    case FLOAT -> 0.0f;
+                    case BasicType.I32 -> 0;
+                    case BasicType.FLOAT -> 0.0f;
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 };
                 if (ctx.initVal() != null)
                     value = calc(ctx.initVal().binaryExp());
                 globals.add(switch (curType) {
-                    case INT -> symbolTable.makeGlobal(Type.INT, name, value.intValue());
-                    case FLOAT -> symbolTable.makeGlobal(Type.FLOAT, name, value.floatValue());
+                    case BasicType.I32 -> symbolTable.makeGlobal(BasicType.I32, name, value.intValue());
+                    case BasicType.FLOAT -> symbolTable.makeGlobal(BasicType.FLOAT, name, value.floatValue());
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else {
                 LocalSymbol localSymbol = symbolTable.makeLocal(switch (curType) {
-                    case INT -> Type.INT;
-                    case FLOAT -> Type.FLOAT;
+                    case BasicType.I32 -> BasicType.I32;
+                    case BasicType.FLOAT -> BasicType.FLOAT;
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 }, name);
                 curFunc.addLocal(localSymbol);
@@ -226,8 +224,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         curFunc = new VirtualFunction(func);
         retBlock = new Block();
         retVal = switch (func.getType()) {
-            case FLOAT, INT -> new VReg(funcType, 4);
-            case VOID -> null;
+            case BasicType.FLOAT, BasicType.I32 -> new VReg(funcType, 4);
+            case BasicType.VOID -> null;
+            default -> throw new IllegalStateException("Unexpected value: " + func.getType());
         };
         retBlock.add(new RetVIR(retVal));
         curBlock = new Block();
@@ -415,7 +414,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     yield result;
                 }
                 case "!" -> {
-                    VReg result = new VReg(Type.INT, 4);
+                    VReg result = new VReg(BasicType.I32, 4);
                     curBlock.add(new UnaryVIR(UnaryVIR.Type.L_NOT, result, reg));
                     yield result;
                 }
@@ -428,13 +427,13 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             return reg;
         }
         if (ctx.IntConst() != null) {
-            VReg reg = new VReg(Type.INT, 4);
+            VReg reg = new VReg(BasicType.I32, 4);
             curBlock.add(new LiVIR(reg, Integer.decode(ctx.IntConst().getSymbol().getText())));
             this.calculatingCond = calculatingCond;
             return reg;
         }
         if (ctx.FloatConst() != null) {
-            VReg reg = new VReg(Type.FLOAT, 4);
+            VReg reg = new VReg(BasicType.FLOAT, 4);
             curBlock.add(new LiVIR(reg, Float.parseFloat(ctx.FloatConst().getSymbol().getText())));
             this.calculatingCond = calculatingCond;
             return reg;
@@ -447,7 +446,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public VReg visitVarExp(SysYParser.VarExpContext ctx) {
         DataSymbol symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
-        VReg result = new VReg(ctx.binaryExp().size() == symbol.getDimensionSize() && symbol.getType() == Type.FLOAT ? Type.FLOAT : Type.INT, ctx.binaryExp().size() == symbol.getDimensionSize() || symbol.getType() == Type.FLOAT ? 4 : 8);
+        VReg result = new VReg(ctx.binaryExp().size() == symbol.getDimensionSize() && symbol.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32, ctx.binaryExp().size() == symbol.getDimensionSize() || symbol.getType() == BasicType.FLOAT ? 4 : 8);
         if (ctx.binaryExp().isEmpty()) {
             curBlock.add(new LoadVIR(result, symbol, List.of()));
             return result;
@@ -455,7 +454,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         List<VIRItem> dimensions = new ArrayList<>();
         for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
             VReg reg = visitBinaryExp(dimension);
-            reg = typeConversion(reg, Type.INT);
+            reg = typeConversion(reg, BasicType.I32);
             dimensions.add(reg);
         }
         curBlock.add(new LoadVIR(result, symbol, dimensions));
@@ -469,14 +468,15 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         for (int i = 0; i < ctx.binaryExp().size(); i++) {
             SysYParser.BinaryExpContext exp = ctx.binaryExp().get(i);
             VReg param = visitBinaryExp(exp);
-            Type targetType = symbol.getParams().get(i).isSingle() && symbol.getParams().get(i).getType() == Type.FLOAT ? Type.FLOAT : Type.INT;
+            Type targetType = symbol.getParams().get(i).isSingle() && symbol.getParams().get(i).getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
             param = typeConversion(param, targetType);
             params.add(param);
         }
         VReg retReg = switch (symbol.getType()) {
-            case FLOAT -> new VReg(Type.FLOAT, 4);
-            case INT -> new VReg(Type.INT, 4);
-            case VOID -> null;
+            case BasicType.FLOAT -> new VReg(BasicType.FLOAT, 4);
+            case BasicType.I32 -> new VReg(BasicType.I32, 4);
+            case BasicType.VOID -> null;
+            default -> throw new IllegalStateException("Unexpected value: " + symbol.getType());
         };
         curBlock.add(new CallVIR(symbol, retReg, params));
         return retReg;
@@ -557,7 +557,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 default -> throw new IllegalStateException("Unexpected value: " + op);
             }, result, lReg, rReg));
             case "==", "!=", ">=", ">", "<=", "<" -> {
-                result = new VReg(Type.INT, 4);
+                result = new VReg(BasicType.I32, 4);
                 curBlock.add(calculatingCond ? new BranchVIR(switch (op) {
                     case "==" -> BranchVIR.Type.EQ;
                     case "!=" -> BranchVIR.Type.NE;
@@ -620,7 +620,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             DataSymbol symbol = symbolTable.getData(name);
             if (symbol instanceof GlobalSymbol globalSymbol) {
                 if (varExp.binaryExp().isEmpty()) {
-                    if (globalSymbol.getType() == Type.FLOAT)
+                    if (globalSymbol.getType() == BasicType.FLOAT)
                         return globalSymbol.getFloat();
                     return globalSymbol.getInt();
                 }
@@ -630,7 +630,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 int[] sizes = globalSymbol.getSizes();
                 for (int i = 0; i < varExp.binaryExp().size(); i++)
                     offset += sizes[i] * calc(varExp.binaryExp().get(i)).intValue();
-                if (globalSymbol.getType() == Type.FLOAT)
+                if (globalSymbol.getType() == BasicType.FLOAT)
                     return globalSymbol.getFloat(offset);
                 return globalSymbol.getInt(offset);
             }
@@ -640,19 +640,19 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     private static Type automaticTypePromotion(Type type1, Type type2) {
-        return type1 == Type.FLOAT || type2 == Type.FLOAT ? Type.FLOAT : Type.INT;
+        return type1 == BasicType.FLOAT || type2 == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
     }
 
     private VReg typeConversion(VReg reg, Type targetType) {
         if (reg.getType() == targetType)
             return reg;
-        if (reg.getType() == Type.FLOAT && targetType == Type.INT) {
-            VReg newReg = new VReg(Type.INT, 4);
+        if (reg.getType() == BasicType.FLOAT && targetType == BasicType.I32) {
+            VReg newReg = new VReg(BasicType.I32, 4);
             curBlock.add(new UnaryVIR(UnaryVIR.Type.F2I, newReg, reg));
             reg = newReg;
         }
-        if (reg.getType() == Type.INT && targetType == Type.FLOAT) {
-            VReg newReg = new VReg(Type.FLOAT, 4);
+        if (reg.getType() == BasicType.I32 && targetType == BasicType.FLOAT) {
+            VReg newReg = new VReg(BasicType.FLOAT, 4);
             curBlock.add(new UnaryVIR(UnaryVIR.Type.I2F, newReg, reg));
             reg = newReg;
         }
