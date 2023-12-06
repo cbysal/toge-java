@@ -6,7 +6,6 @@ import compile.codegen.mirgen.MIRPassManager;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.regalloc.RegAllocator;
 import compile.codegen.virgen.VIRGenerator;
-import compile.codegen.virgen.VIRPassManager;
 import compile.codegen.virgen.VirtualFunction;
 import compile.symbol.GlobalSymbol;
 import compile.sysy.SysYLexer;
@@ -41,8 +40,6 @@ public class Compiler {
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
         if (options.containsKey("emit-vir"))
             emitVIR(options.get("emit-vir"), vFuncs);
-        VIRPassManager virPassManager = new VIRPassManager(globals, vFuncs);
-        virPassManager.run();
         if (options.containsKey("emit-opt-vir"))
             emitVIR(options.get("emit-opt-vir"), vFuncs);
         MIRGenerator mirGenerator = new MIRGenerator(globals, vFuncs);
