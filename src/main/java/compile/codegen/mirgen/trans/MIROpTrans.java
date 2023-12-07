@@ -7,6 +7,7 @@ import compile.vir.VReg;
 import compile.vir.ir.*;
 import compile.vir.type.BasicType;
 import compile.symbol.*;
+import compile.vir.value.Value;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -16,8 +17,8 @@ import java.util.Map;
 public final class MIROpTrans {
     public static void transBranch(List<MIR> irs, BranchVIR branchVIR) {
         BranchVIR.Type type = branchVIR.type;
-        VIRItem lReg = branchVIR.left;
-        VIRItem rReg = branchVIR.right;
+        Value lReg = branchVIR.left;
+        Value rReg = branchVIR.right;
         Block trueBlock = branchVIR.trueBlock;
         Block falseBlock = branchVIR.falseBlock;
         VReg reg1, reg2;
@@ -71,8 +72,8 @@ public final class MIROpTrans {
     }
 
     public static void transBinary(List<MIR> irs, BinaryVIR binaryVIR) {
-        VIRItem item1 = binaryVIR.left;
-        VIRItem item2 = binaryVIR.right;
+        Value item1 = binaryVIR.left;
+        Value item2 = binaryVIR.right;
         if (item1 instanceof VReg reg1 && item2 instanceof VReg reg2) {
             MIRBinaryTrans.transBinaryRegReg(irs, binaryVIR, reg1, reg2);
             return;
@@ -89,10 +90,10 @@ public final class MIROpTrans {
     }
 
     public static int transCall(List<MIR> irs, CallVIR callVIR) {
-        List<VIRItem> params = callVIR.params;
+        List<Value> params = callVIR.params;
         List<MIR> saveCalleeIRs = new ArrayList<>();
         int iSize = 0, fSize = 0;
-        for (VIRItem param : params) {
+        for (Value param : params) {
             if (param.getType() == BasicType.FLOAT) {
                 if (fSize < MReg.F_CALLER_REGS.size()) {
                     if (param instanceof VReg reg)
@@ -186,7 +187,7 @@ public final class MIROpTrans {
     }
 
     public static void transUnary(List<MIR> irs, UnaryVIR unaryVIR) {
-        VIRItem item = unaryVIR.source;
+        Value item = unaryVIR.source;
         if (item instanceof VReg reg) {
             MIRUnaryTrans.transUnaryReg(irs, unaryVIR, reg);
             return;

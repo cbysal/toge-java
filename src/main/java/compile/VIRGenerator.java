@@ -10,6 +10,7 @@ import compile.vir.type.Type;
 import compile.symbol.*;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
+import compile.vir.value.Value;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -166,7 +167,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                         SysYParser.BinaryExpContext exp = exps.get(i);
                         if (exp != null) {
                             VReg reg = typeConversion(visitBinaryExp(exps.get(i)), curType);
-                            List<VIRItem> items = new ArrayList<>();
+                            List<Value> items = new ArrayList<>();
                             int rest = i;
                             for (int j = 0; j < dimensions.size(); j++) {
                                 items.add(new InstantValue(rest % dimensions.get(dimensions.size() - j - 1)));
@@ -267,7 +268,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Object visitAssignStmt(SysYParser.AssignStmtContext ctx) {
-        Pair<DataSymbol, List<VIRItem>> lValUnit = visitLVal(ctx.lVal());
+        Pair<DataSymbol, List<Value>> lValUnit = visitLVal(ctx.lVal());
         VReg rReg = visitBinaryExp(ctx.binaryExp());
         rReg = typeConversion(rReg, lValUnit.getLeft().getType());
         curBlock.add(new StoreVIR(lValUnit.getLeft(), lValUnit.getRight(), rReg));
@@ -378,11 +379,11 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public Pair<DataSymbol, List<VIRItem>> visitLVal(SysYParser.LValContext ctx) {
+    public Pair<DataSymbol, List<Value>> visitLVal(SysYParser.LValContext ctx) {
         DataSymbol symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
         if (ctx.binaryExp().isEmpty())
             return Pair.of(symbol, List.of());
-        List<VIRItem> dimensions = ctx.binaryExp().stream().map(this::visitBinaryExp).collect(Collectors.toList());
+        List<Value> dimensions = ctx.binaryExp().stream().map(this::visitBinaryExp).collect(Collectors.toList());
         return Pair.of(symbol, dimensions);
     }
 
@@ -454,7 +455,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             curBlock.add(new LoadVIR(result, symbol, List.of()));
             return result;
         }
-        List<VIRItem> dimensions = new ArrayList<>();
+        List<Value> dimensions = new ArrayList<>();
         for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
             VReg reg = visitBinaryExp(dimension);
             reg = typeConversion(reg, BasicType.I32);
@@ -467,7 +468,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public VReg visitFuncCallExp(SysYParser.FuncCallExpContext ctx) {
         FuncSymbol symbol = symbolTable.getFunc(ctx.Ident().getSymbol().getText());
-        List<VIRItem> params = new ArrayList<>();
+        List<Value> params = new ArrayList<>();
         for (int i = 0; i < ctx.binaryExp().size(); i++) {
             SysYParser.BinaryExpContext exp = ctx.binaryExp().get(i);
             VReg param = visitBinaryExp(exp);

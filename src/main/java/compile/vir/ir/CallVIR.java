@@ -2,6 +2,7 @@ package compile.vir.ir;
 
 import compile.vir.VReg;
 import compile.symbol.FuncSymbol;
+import compile.vir.value.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,9 +11,10 @@ import java.util.stream.Collectors;
 public class CallVIR extends VIR {
     public final FuncSymbol func;
     public final VReg target;
-    public final List<VIRItem> params;
+    public final List<Value> params;
 
-    public CallVIR(FuncSymbol func, VReg target, List<VIRItem> params) {
+    public CallVIR(FuncSymbol func, VReg target, List<Value> params) {
+        super(func.getType());
         this.func = func;
         this.target = target;
         this.params = params;

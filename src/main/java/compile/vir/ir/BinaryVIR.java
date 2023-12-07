@@ -1,15 +1,17 @@
 package compile.vir.ir;
 
 import compile.vir.VReg;
+import compile.vir.value.Value;
 
 import java.util.List;
 
 public class BinaryVIR extends VIR {
     public final Type type;
     public final VReg target;
-    public final VIRItem left, right;
+    public final Value left, right;
 
-    public BinaryVIR(Type type, VReg target, VIRItem left, VIRItem right) {
+    public BinaryVIR(Type type, VReg target, Value left, Value right) {
+        super(target.getType());
         this.type = type;
         this.target = target;
         this.left = left;

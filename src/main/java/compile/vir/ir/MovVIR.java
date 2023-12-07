@@ -9,6 +9,7 @@ public class MovVIR extends VIR {
     public final VReg source;
 
     public MovVIR(VReg target, VReg source) {
+        super(target.getType());
         this.target = target;
         this.source = source;
     }

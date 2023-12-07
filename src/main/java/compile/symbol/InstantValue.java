@@ -1,19 +1,21 @@
 package compile.symbol;
 
-import compile.vir.ir.VIRItem;
 import compile.vir.type.BasicType;
 import compile.vir.type.Type;
+import compile.vir.value.Value;
 
 import java.util.Objects;
 
-public final class InstantValue implements VIRItem {
+public final class InstantValue extends Value {
     private final Number value;
 
     public InstantValue(boolean value) {
+        super(BasicType.I32);
         this.value = value ? 1 : 0;
     }
 
     public InstantValue(Number value) {
+        super(BasicType.I32);
         this.value = value;
     }
 

@@ -7,6 +7,7 @@ public class LiVIR extends VIR {
     public final Number value;
 
     public LiVIR(VReg target, Number value) {
+        super(target.getType());
         this.target = target;
         this.value = value;
     }

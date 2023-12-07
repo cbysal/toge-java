@@ -1,15 +1,17 @@
 package compile.vir.ir;
 
 import compile.vir.VReg;
+import compile.vir.value.Value;
 
 import java.util.List;
 
 public class UnaryVIR extends VIR {
     public final Type type;
     public final VReg target;
-    public final VIRItem source;
+    public final Value source;
 
-    public UnaryVIR(Type type, VReg target, VIRItem source) {
+    public UnaryVIR(Type type, VReg target, Value source) {
+        super(target.getType());
         this.type = type;
         this.target = target;
         this.source = source;

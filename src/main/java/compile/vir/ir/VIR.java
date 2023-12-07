@@ -1,14 +1,17 @@
 package compile.vir.ir;
 
 import compile.vir.VReg;
+import compile.vir.type.Type;
+import compile.vir.value.User;
 
 import java.util.List;
 
-public abstract class VIR {
+public abstract class VIR extends User {
     private static int counter = 0;
     private final int id;
 
-    protected VIR() {
+    protected VIR(Type type) {
+        super(type);
         this.id = counter++;
     }
 

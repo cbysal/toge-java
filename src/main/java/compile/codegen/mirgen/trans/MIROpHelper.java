@@ -6,9 +6,9 @@ import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.mir.RrrMIR;
 import compile.vir.VReg;
-import compile.vir.ir.VIRItem;
 import compile.vir.type.BasicType;
 import compile.symbol.InstantValue;
+import compile.vir.value.Value;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -31,11 +31,11 @@ public final class MIROpHelper {
         irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg));
     }
 
-    public static Pair<Integer, List<Pair<VReg, Integer>>> calcDimension(List<VIRItem> dimensions, int[] sizes) {
+    public static Pair<Integer, List<Pair<VReg, Integer>>> calcDimension(List<Value> dimensions, int[] sizes) {
         int offset = 0;
         List<Pair<VReg, Integer>> regDimensions = new ArrayList<>();
         for (int i = 0; i < dimensions.size(); i++) {
-            VIRItem dimension = dimensions.get(i);
+            Value dimension = dimensions.get(i);
             if (dimension instanceof VReg reg) {
                 regDimensions.add(Pair.of(reg, sizes[i]));
                 continue;

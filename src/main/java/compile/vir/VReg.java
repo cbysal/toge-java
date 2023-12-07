@@ -1,11 +1,10 @@
 package compile.vir;
 
 import compile.codegen.Reg;
-import compile.vir.ir.VIRItem;
 import compile.vir.type.BasicType;
 import compile.vir.type.Type;
 
-public class VReg extends Reg implements VIRItem {
+public class VReg extends Reg {
     private static int counter = 0;
     private final int id;
 

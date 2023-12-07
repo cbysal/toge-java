@@ -1,13 +1,16 @@
 package compile.vir.ir;
 
 import compile.vir.VReg;
+import compile.vir.type.BasicType;
+import compile.vir.value.Value;
 
 import java.util.List;
 
 public class RetVIR extends VIR {
-    public final VIRItem retVal;
+    public final Value retVal;
 
-    public RetVIR(VIRItem retVal) {
+    public RetVIR(Value retVal) {
+        super(BasicType.VOID);
         this.retVal = retVal;
     }
 

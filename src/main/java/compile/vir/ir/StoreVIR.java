@@ -2,16 +2,19 @@ package compile.vir.ir;
 
 import compile.vir.VReg;
 import compile.symbol.DataSymbol;
+import compile.vir.type.BasicType;
+import compile.vir.value.Value;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class StoreVIR extends VIR {
     public final DataSymbol symbol;
-    public final List<VIRItem> indexes;
+    public final List<Value> indexes;
     public final VReg source;
 
-    public StoreVIR(DataSymbol symbol, List<VIRItem> indexes, VReg source) {
+    public StoreVIR(DataSymbol symbol, List<Value> indexes, VReg source) {
+        super(BasicType.VOID);
         this.symbol = symbol;
         this.indexes = indexes;
         this.source = source;
@@ -25,7 +28,7 @@ public class StoreVIR extends VIR {
     @Override
     public List<VReg> getRead() {
         List<VReg> regs = new ArrayList<>();
-        for (VIRItem item : indexes)
+        for (Value item : indexes)
             if (item instanceof VReg reg)
                 regs.add(reg);
         regs.add(source);

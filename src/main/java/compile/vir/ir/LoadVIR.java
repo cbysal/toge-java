@@ -2,6 +2,7 @@ package compile.vir.ir;
 
 import compile.vir.VReg;
 import compile.symbol.DataSymbol;
+import compile.vir.value.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,9 +11,10 @@ import java.util.stream.Collectors;
 public class LoadVIR extends VIR {
     public final VReg target;
     public final DataSymbol symbol;
-    public final List<VIRItem> indexes;
+    public final List<Value> indexes;
 
-    public LoadVIR(VReg target, DataSymbol symbol, List<VIRItem> indexes) {
+    public LoadVIR(VReg target, DataSymbol symbol, List<Value> indexes) {
+        super(target.getType());
         this.target = target;
         this.symbol = symbol;
         this.indexes = indexes;
