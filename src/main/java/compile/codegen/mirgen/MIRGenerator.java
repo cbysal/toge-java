@@ -109,6 +109,11 @@ public class MIRGenerator {
         MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
         Map<VReg, MReg> replaceMap = new HashMap<>();
         Map<VIR, VReg> virRegMap = new HashMap<>();
+        for (Block block : vFunc.getBlocks()) {
+            for (VIR ir : block) {
+                virRegMap.put(ir, new VReg(ir.getType(), ir.getType().getSize()));
+            }
+        }
         Map<Symbol, Integer> localOffsets = locals.getRight();
         for (Block block : vFunc.getBlocks()) {
             mFunc.addIR(new LabelMIR(block.getLabel()));

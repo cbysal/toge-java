@@ -45,7 +45,7 @@ public class StoreVIR extends VIR {
         StringBuilder builder = new StringBuilder();
         builder.append("STORE   ").append(symbol.getName());
         indexes.forEach(dimension -> builder.append('[').append(dimension).append(']'));
-        builder.append(", ").append(source);
+        builder.append(", ").append(source instanceof VIR ir ? ir.getTag() : source);
         return builder.toString();
     }
 }

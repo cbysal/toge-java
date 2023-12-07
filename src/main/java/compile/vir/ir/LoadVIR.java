@@ -40,11 +40,16 @@ public class LoadVIR extends VIR {
     }
 
     @Override
+    public String getTag() {
+        return target.toString();
+    }
+
+    @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("LOAD    ").append(target).append(", ");
         builder.append(symbol.getName());
-        indexes.forEach(dimension -> builder.append('[').append(dimension).append(']'));
+        indexes.forEach(dimension -> builder.append('[').append(dimension instanceof VIR ir ? ir.getTag() : dimension).append(']'));
         return builder.toString();
     }
 }

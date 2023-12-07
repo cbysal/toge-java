@@ -1,26 +1,29 @@
 package compile.vir.ir;
 
 import compile.vir.VReg;
+import compile.vir.type.BasicType;
 import compile.vir.value.Value;
 
 import java.util.List;
 
 public class BinaryVIR extends VIR {
     public final Type type;
-    public final VReg target;
     public final Value left, right;
 
-    public BinaryVIR(Type type, VReg target, Value left, Value right) {
-        super(target.getType());
+    public BinaryVIR(Type type, Value left, Value right) {
+        super(switch (type) {
+            case ADD, SUB, MUL, DIV, MOD ->
+                    left.getType() == BasicType.FLOAT || right.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
+            case EQ, NE, GE, GT, LE, LT -> BasicType.I32;
+        });
         this.type = type;
-        this.target = target;
         this.left = left;
         this.right = right;
     }
 
     @Override
     public VIR copy() {
-        return new BinaryVIR(type, target, left, right);
+        return new BinaryVIR(type, left, right);
     }
 
     @Override
@@ -35,16 +38,11 @@ public class BinaryVIR extends VIR {
     }
 
     @Override
-    public VReg getWrite() {
-        return target;
-    }
-
-    @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append(type);
         builder.append(" ".repeat(8 - builder.length()));
-        builder.append(target).append(", ").append(left).append(", ").append(right);
+        builder.append("%").append(id).append(", ").append(left instanceof VIR ir ? ir.getTag() : left).append(", ").append(right instanceof VIR ir ? ir.getTag() : right);
         return builder.toString();
     }
 

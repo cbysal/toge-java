@@ -39,7 +39,7 @@ public class BranchVIR extends VIR {
 
     @Override
     public String toString() {
-        return "B" + type + "     " + left + ", " + right + ", " + trueBlock + ", " + falseBlock;
+        return "B" + type + "     " + (left instanceof VIR ir ? ir.getTag() : left) + ", " + (right instanceof VIR ir ? ir.getTag() : right) + ", " + trueBlock + ", " + falseBlock;
     }
 
     public enum Type {

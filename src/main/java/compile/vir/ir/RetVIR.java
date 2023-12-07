@@ -30,6 +30,6 @@ public class RetVIR extends VIR {
     public String toString() {
         if (retVal == null)
             return "RET";
-        return "RET     " + retVal;
+        return "RET     " + (retVal instanceof VIR ir ? ir.getTag() : retVal);
     }
 }

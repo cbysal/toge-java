@@ -531,22 +531,24 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         Value lReg = visitBinaryExp(ctx.binaryExp(0));
         Value rReg = visitBinaryExp(ctx.binaryExp(1));
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
-        VReg result = new VReg(targetType, Integer.max(lReg.getType().getSize(), rReg.getType().getSize()));
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
         String op = ctx.getChild(1).getText();
-        switch (op) {
-            case "+", "-", "*", "/", "%" -> curBlock.add(new BinaryVIR(switch (op) {
-                case "+" -> BinaryVIR.Type.ADD;
-                case "-" -> BinaryVIR.Type.SUB;
-                case "*" -> BinaryVIR.Type.MUL;
-                case "/" -> BinaryVIR.Type.DIV;
-                case "%" -> BinaryVIR.Type.MOD;
-                default -> throw new IllegalStateException("Unexpected value: " + op);
-            }, result, lReg, rReg));
+        VIR result = switch (op) {
+            case "+", "-", "*", "/", "%" -> {
+                VIR ir = new BinaryVIR(switch (op) {
+                    case "+" -> BinaryVIR.Type.ADD;
+                    case "-" -> BinaryVIR.Type.SUB;
+                    case "*" -> BinaryVIR.Type.MUL;
+                    case "/" -> BinaryVIR.Type.DIV;
+                    case "%" -> BinaryVIR.Type.MOD;
+                    default -> throw new IllegalStateException("Unexpected value: " + op);
+                }, lReg, rReg);
+                curBlock.add(ir);
+                yield ir;
+            }
             case "==", "!=", ">=", ">", "<=", "<" -> {
-                result = new VReg(BasicType.I32, 4);
-                curBlock.add(calculatingCond ? new BranchVIR(switch (op) {
+                VIR ir = calculatingCond ? new BranchVIR(switch (op) {
                     case "==" -> BranchVIR.Type.EQ;
                     case "!=" -> BranchVIR.Type.NE;
                     case ">=" -> BranchVIR.Type.GE;
@@ -562,10 +564,12 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     case "<=" -> BinaryVIR.Type.LE;
                     case "<" -> BinaryVIR.Type.LT;
                     default -> throw new IllegalStateException("Unexpected value: " + op);
-                }, result, lReg, rReg));
+                }, lReg, rReg);
+                curBlock.add(ir);
+                yield ir;
             }
             default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
-        }
+        };
         this.calculatingCond = calculatingCond;
         return result;
     }

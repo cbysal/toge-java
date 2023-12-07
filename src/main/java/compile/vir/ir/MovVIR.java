@@ -33,7 +33,12 @@ public class MovVIR extends VIR {
     }
 
     @Override
+    public String getTag() {
+        return target.toString();
+    }
+
+    @Override
     public String toString() {
-        return "MOV     " + target + ", " + source;
+        return "MOV     " + target + ", " + (source instanceof VIR ir ? ir.getTag() : source);
     }
 }

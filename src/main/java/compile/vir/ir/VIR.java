@@ -39,4 +39,8 @@ public abstract class VIR extends User {
     public VReg getWrite() {
         return null;
     }
+
+    public String getTag() {
+        return "%" + id;
+    }
 }

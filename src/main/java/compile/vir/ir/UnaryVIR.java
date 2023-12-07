@@ -35,11 +35,16 @@ public class UnaryVIR extends VIR {
     }
 
     @Override
+    public String getTag() {
+        return target.toString();
+    }
+
+    @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append(type);
         builder.append(" ".repeat(8 - builder.length()));
-        builder.append(target).append(", ").append(source);
+        builder.append(target).append(", ").append(source instanceof VIR ir ? ir.getTag() : source);
         return builder.toString();
     }
 

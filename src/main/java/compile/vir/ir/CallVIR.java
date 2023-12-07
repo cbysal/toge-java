@@ -36,10 +36,17 @@ public class CallVIR extends VIR {
     }
 
     @Override
+    public String getTag() {
+        if (target != null)
+            return target.toString();
+        return super.getTag();
+    }
+
+    @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("CALL    ").append(func.getName()).append(", ").append(target == null ? "$void" : target);
-        params.forEach(param -> builder.append(", ").append(param));
+        params.forEach(param -> builder.append(", ").append(param instanceof VIR ir ? ir.getTag() : param));
         return builder.toString();
     }
 }

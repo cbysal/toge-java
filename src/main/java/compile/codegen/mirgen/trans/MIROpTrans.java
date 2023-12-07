@@ -126,15 +126,15 @@ public final class MIROpTrans {
             }
         }
         if (item1 instanceof VReg reg1 && item2 instanceof VReg reg2) {
-            MIRBinaryTrans.transBinaryRegReg(irs, binaryVIR, reg1, reg2);
+            MIRBinaryTrans.transBinaryRegReg(irs, virRegMap, binaryVIR, reg1, reg2);
             return;
         }
         if (item1 instanceof VReg reg1 && item2 instanceof InstantValue value2) {
-            MIRBinaryTrans.transBinaryRegImm(irs, binaryVIR, reg1, value2);
+            MIRBinaryTrans.transBinaryRegImm(irs, virRegMap, binaryVIR, reg1, value2);
             return;
         }
         if (item1 instanceof InstantValue value1 && item2 instanceof VReg reg2) {
-            MIRBinaryTrans.transBinaryImmReg(irs, binaryVIR, value1, reg2);
+            MIRBinaryTrans.transBinaryImmReg(irs, virRegMap, binaryVIR, value1, reg2);
             return;
         }
         throw new RuntimeException();
