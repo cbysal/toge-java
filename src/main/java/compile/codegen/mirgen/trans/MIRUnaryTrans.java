@@ -7,9 +7,11 @@ import compile.codegen.mirgen.mir.RriMIR;
 import compile.codegen.mirgen.mir.RrrMIR;
 import compile.vir.VReg;
 import compile.vir.ir.UnaryVIR;
+import compile.vir.ir.VIR;
 import compile.vir.type.BasicType;
 
 import java.util.List;
+import java.util.Map;
 
 public final class MIRUnaryTrans {
     private static void transF2IRegReg(List<MIR> irs, VReg target, VReg source) {
@@ -46,13 +48,14 @@ public final class MIRUnaryTrans {
         }
     }
 
-    static void transUnaryReg(List<MIR> irs, UnaryVIR unaryVIR, VReg reg) {
+    static void transUnaryReg(List<MIR> irs, Map<VIR, VReg> virRegMap, UnaryVIR unaryVIR, VReg reg) {
+        VReg target = virRegMap.get(unaryVIR);
         switch (unaryVIR.type) {
-            case ABS -> transAbsRegReg(irs, unaryVIR.target, reg);
-            case F2I -> transF2IRegReg(irs, unaryVIR.target, reg);
-            case I2F -> transI2FRegReg(irs, unaryVIR.target, reg);
-            case L_NOT -> transLNotRegReg(irs, unaryVIR.target, reg);
-            case NEG -> transNegRegReg(irs, unaryVIR.target, reg);
+            case ABS -> transAbsRegReg(irs, target, reg);
+            case F2I -> transF2IRegReg(irs, target, reg);
+            case I2F -> transI2FRegReg(irs, target, reg);
+            case L_NOT -> transLNotRegReg(irs, target, reg);
+            case NEG -> transNegRegReg(irs, target, reg);
             default -> throw new RuntimeException();
         }
     }

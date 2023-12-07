@@ -278,14 +278,14 @@ public final class MIROpTrans {
         switch (unaryVIR.source) {
             case VIR ir -> {
                 if (virRegMap.containsKey(ir))
-                    MIRUnaryTrans.transUnaryReg(irs, unaryVIR, virRegMap.get(ir));
+                    MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, virRegMap.get(ir));
                 else {
                     VReg reg = new VReg(ir.getType(), ir.getType().getSize());
                     virRegMap.put(ir, reg);
-                    MIRUnaryTrans.transUnaryReg(irs, unaryVIR, reg);
+                    MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, reg);
                 }
             }
-            case VReg reg -> MIRUnaryTrans.transUnaryReg(irs, unaryVIR, reg);
+            case VReg reg -> MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, reg);
             case InstantValue value -> {
                 VReg midReg = new VReg(value.getType(), value.getType().getSize());
                 switch (value.getType()) {
@@ -293,7 +293,7 @@ public final class MIROpTrans {
                     case BasicType.FLOAT -> MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
                     default -> throw new IllegalStateException("Unexpected value: " + value.getType());
                 }
-                MIRUnaryTrans.transUnaryReg(irs, unaryVIR, midReg);
+                MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, midReg);
             }
             default -> throw new IllegalStateException("Unexpected value: " + unaryVIR.source);
         }

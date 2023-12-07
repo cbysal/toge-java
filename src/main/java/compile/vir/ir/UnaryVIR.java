@@ -1,25 +1,28 @@
 package compile.vir.ir;
 
 import compile.vir.VReg;
+import compile.vir.type.BasicType;
 import compile.vir.value.Value;
 
 import java.util.List;
 
 public class UnaryVIR extends VIR {
     public final Type type;
-    public final VReg target;
     public final Value source;
 
-    public UnaryVIR(Type type, VReg target, Value source) {
-        super(target.getType());
+    public UnaryVIR(Type type, Value source) {
+        super(switch (type) {
+            case F2I, L_NOT -> BasicType.I32;
+            case I2F -> BasicType.FLOAT;
+            case NEG, ABS -> source.getType();
+        });
         this.type = type;
-        this.target = target;
         this.source = source;
     }
 
     @Override
     public VIR copy() {
-        return new UnaryVIR(type, target, source);
+        return new UnaryVIR(type, source);
     }
 
     @Override
@@ -30,21 +33,11 @@ public class UnaryVIR extends VIR {
     }
 
     @Override
-    public VReg getWrite() {
-        return target;
-    }
-
-    @Override
-    public String getTag() {
-        return target.toString();
-    }
-
-    @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append(type);
         builder.append(" ".repeat(8 - builder.length()));
-        builder.append(target).append(", ").append(source instanceof VIR ir ? ir.getTag() : source);
+        builder.append(getTag()).append(", ").append(source instanceof VIR ir ? ir.getTag() : source);
         return builder.toString();
     }
 

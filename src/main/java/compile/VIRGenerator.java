@@ -395,14 +395,14 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             return switch (ctx.getChild(0).getText()) {
                 case "+" -> reg;
                 case "-" -> {
-                    VReg result = new VReg(reg.getType(), reg.getType().getSize());
-                    curBlock.add(new UnaryVIR(UnaryVIR.Type.NEG, result, reg));
-                    yield result;
+                    VIR ir = new UnaryVIR(UnaryVIR.Type.NEG, reg);
+                    curBlock.add(ir);
+                    yield ir;
                 }
                 case "!" -> {
-                    VReg result = new VReg(BasicType.I32, 4);
-                    curBlock.add(new UnaryVIR(UnaryVIR.Type.L_NOT, result, reg));
-                    yield result;
+                    VIR ir = new UnaryVIR(UnaryVIR.Type.L_NOT, reg);
+                    curBlock.add(ir);
+                    yield ir;
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(0).getText());
             };
@@ -621,19 +621,19 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         return type1 == BasicType.FLOAT || type2 == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
     }
 
-    private Value typeConversion(Value reg, Type targetType) {
-        if (reg.getType() == targetType)
-            return reg;
-        if (reg.getType() == BasicType.FLOAT && targetType == BasicType.I32) {
-            VReg newReg = new VReg(BasicType.I32, 4);
-            curBlock.add(new UnaryVIR(UnaryVIR.Type.F2I, newReg, reg));
-            reg = newReg;
+    private Value typeConversion(Value value, Type targetType) {
+        if (value.getType() == targetType)
+            return value;
+        if (value.getType() == BasicType.FLOAT && targetType == BasicType.I32) {
+            VIR ir = new UnaryVIR(UnaryVIR.Type.F2I, value);
+            curBlock.add(ir);
+            value = ir;
         }
-        if (reg.getType() == BasicType.I32 && targetType == BasicType.FLOAT) {
-            VReg newReg = new VReg(BasicType.FLOAT, 4);
-            curBlock.add(new UnaryVIR(UnaryVIR.Type.I2F, newReg, reg));
-            reg = newReg;
+        if (value.getType() == BasicType.I32 && targetType == BasicType.FLOAT) {
+            VIR ir = new UnaryVIR(UnaryVIR.Type.I2F, value);
+            curBlock.add(ir);
+            value = ir;
         }
-        return reg;
+        return value;
     }
 }
