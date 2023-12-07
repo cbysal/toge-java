@@ -161,7 +161,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     allocInitVal(dimensions, exps, 0, initVal);
                     VReg symbolReg = new VReg(BasicType.I32, 8);
                     curBlock.add(new LoadVIR(symbolReg, localSymbol, List.of()));
-                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), null, List.of(symbolReg, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
+                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(symbolReg, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
                     int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
                     for (int i = 0; i < totalNum; i++) {
                         SysYParser.BinaryExpContext exp = exps.get(i);
@@ -434,9 +434,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.calculatingCond = calculatingCond;
             return ir;
         }
-        VReg reg = (VReg) visit(ctx.getChild(0));
+        Value result = (Value) visit(ctx.getChild(0));
         this.calculatingCond = calculatingCond;
-        return reg;
+        return result;
     }
 
     @Override
@@ -458,7 +458,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public VReg visitFuncCallExp(SysYParser.FuncCallExpContext ctx) {
+    public Value visitFuncCallExp(SysYParser.FuncCallExpContext ctx) {
         FuncSymbol symbol = symbolTable.getFunc(ctx.Ident().getSymbol().getText());
         List<Value> params = new ArrayList<>();
         for (int i = 0; i < ctx.binaryExp().size(); i++) {
@@ -468,14 +468,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             param = typeConversion(param, targetType);
             params.add(param);
         }
-        VReg retReg = switch (symbol.getType()) {
-            case BasicType.FLOAT -> new VReg(BasicType.FLOAT, 4);
-            case BasicType.I32 -> new VReg(BasicType.I32, 4);
-            case BasicType.VOID -> null;
-            default -> throw new IllegalStateException("Unexpected value: " + symbol.getType());
-        };
-        curBlock.add(new CallVIR(symbol, retReg, params));
-        return retReg;
+        VIR newIR = new CallVIR(symbol, params);
+        curBlock.add(newIR);
+        return newIR;
     }
 
     @Override

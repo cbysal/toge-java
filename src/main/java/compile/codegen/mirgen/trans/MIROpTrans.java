@@ -227,11 +227,13 @@ public final class MIROpTrans {
         }
         irs.addAll(saveCalleeIRs);
         irs.add(new CallMIR(callVIR.func));
-        if (callVIR.target != null) {
-            if (callVIR.target.getType() == BasicType.FLOAT)
-                irs.add(new RrMIR(RrMIR.Op.MV, callVIR.target, MReg.FA0));
-            else
-                irs.add(new RrMIR(RrMIR.Op.MV, callVIR.target, MReg.A0));
+        if (callVIR.getType() != BasicType.VOID) {
+            VReg target = virRegMap.get(callVIR);
+            irs.add(new RrMIR(RrMIR.Op.MV, target, switch (callVIR.getType()) {
+                case BasicType.I32 -> MReg.A0;
+                case BasicType.FLOAT -> MReg.FA0;
+                default -> throw new IllegalStateException("Unexpected value: " + callVIR.getType());
+            }));
         }
         return params.size();
     }
