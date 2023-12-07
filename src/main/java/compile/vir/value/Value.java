@@ -5,8 +5,8 @@ import compile.vir.type.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Value {
-    private final Type type;
+public abstract class Value {
+    protected final Type type;
     private final List<Use> useList = new ArrayList<>();
 
     public Value(Type type) {
@@ -15,6 +15,10 @@ public class Value {
 
     public Type getType() {
         return type;
+    }
+
+    public int getSize() {
+        return type.getSize();
     }
 
     public List<Use> getUseList() {

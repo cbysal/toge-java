@@ -114,7 +114,7 @@ public class MIRGenerator {
         Map<VIR, VReg> virRegMap = new HashMap<>();
         for (Block block : vFunc.getBlocks()) {
             for (VIR ir : block) {
-                virRegMap.put(ir, new VReg(ir.getType(), ir.getType().getSize()));
+                virRegMap.put(ir, new VReg(ir.getType()));
             }
         }
         Map<Symbol, Integer> localOffsets = locals.getRight();
@@ -141,7 +141,7 @@ public class MIRGenerator {
                             if (virRegMap.containsKey(ir)) {
                                 mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, virRegMap.get(ir)));
                             } else {
-                                VReg midReg = new VReg(retVIR.retVal.getType(), retVIR.retVal.getType().getSize());
+                                VReg midReg = new VReg(retVIR.retVal.getType());
                                 virRegMap.put(ir, midReg);
                                 mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, midReg));
                             }

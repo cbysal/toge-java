@@ -33,7 +33,7 @@ public class LlaMIR extends MIR {
     @Override
     public List<MIR> spill(Reg reg, int offset) {
         if (dest.equals(reg)) {
-            VReg target = new VReg(reg.getType(), reg.getSize());
+            VReg target = new VReg(reg.getType());
             MIR ir1 = new LlaMIR(target, symbol);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2);

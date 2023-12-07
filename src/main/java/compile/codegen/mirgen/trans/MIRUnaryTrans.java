@@ -24,7 +24,7 @@ public final class MIRUnaryTrans {
 
     private static void transLNotRegReg(List<MIR> irs, VReg target, VReg source) {
         if (source.getType() == BasicType.FLOAT) {
-            VReg midReg = new VReg(BasicType.FLOAT, 4);
+            VReg midReg = new VReg(BasicType.FLOAT);
             irs.add(new RrMIR(RrMIR.Op.CVT, midReg, MReg.ZERO));
             irs.add(new RrrMIR(RrrMIR.Op.EQ, target, source, midReg));
         } else {
@@ -40,8 +40,8 @@ public final class MIRUnaryTrans {
         if (target.getType() == BasicType.FLOAT)
             irs.add(new RrMIR(RrMIR.Op.FABS, target, source));
         else {
-            VReg midReg1 = new VReg(BasicType.I32, 4);
-            VReg midReg2 = new VReg(BasicType.I32, 4);
+            VReg midReg1 = new VReg(BasicType.I32);
+            VReg midReg2 = new VReg(BasicType.I32);
             irs.add(new RriMIR(RriMIR.Op.SRAIW, midReg1, source, 31));
             irs.add(new RrrMIR(RrrMIR.Op.XOR, midReg2, source, midReg1));
             irs.add(new RrrMIR(RrrMIR.Op.SUBW, target, midReg2, midReg1));

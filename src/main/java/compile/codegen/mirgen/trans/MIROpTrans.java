@@ -26,14 +26,14 @@ public final class MIROpTrans {
                 if (virRegMap.containsKey(ir))
                     yield virRegMap.get(ir);
                 else {
-                    VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                    VReg reg = new VReg(ir.getType());
                     virRegMap.put(ir, reg);
                     yield reg;
                 }
             }
             case VReg reg -> reg;
             case InstantValue value -> {
-                VReg reg = new VReg(value.getType(), value.getType().getSize());
+                VReg reg = new VReg(value.getType());
                 if (value.getType() == BasicType.FLOAT)
                     MIROpHelper.loadImmToReg(irs, reg, value.floatValue());
                 else
@@ -47,14 +47,14 @@ public final class MIROpTrans {
                 if (virRegMap.containsKey(ir))
                     yield virRegMap.get(ir);
                 else {
-                    VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                    VReg reg = new VReg(ir.getType());
                     virRegMap.put(ir, reg);
                     yield reg;
                 }
             }
             case VReg reg -> reg;
             case InstantValue value -> {
-                VReg reg = new VReg(value.getType(), value.getType().getSize());
+                VReg reg = new VReg(value.getType());
                 if (value.getType() == BasicType.FLOAT)
                     MIROpHelper.loadImmToReg(irs, reg, value.floatValue());
                 else
@@ -65,16 +65,16 @@ public final class MIROpTrans {
         };
         if (lReg.getType() == BasicType.FLOAT || rReg.getType() == BasicType.FLOAT) {
             if (lReg.getType() == BasicType.I32) {
-                VReg midReg = new VReg(BasicType.FLOAT, 4);
+                VReg midReg = new VReg(BasicType.FLOAT);
                 irs.add(new RrMIR(RrMIR.Op.MV, midReg, reg1));
                 reg1 = midReg;
             }
             if (rReg.getType() == BasicType.I32) {
-                VReg midReg = new VReg(BasicType.FLOAT, 4);
+                VReg midReg = new VReg(BasicType.FLOAT);
                 irs.add(new RrMIR(RrMIR.Op.MV, midReg, reg2));
                 reg2 = midReg;
             }
-            VReg midReg = new VReg(BasicType.I32, 4);
+            VReg midReg = new VReg(BasicType.I32);
             if (type == BranchVIR.Type.NE) {
                 irs.add(new RrrMIR(RrrMIR.Op.EQ, midReg, reg1, reg2));
                 irs.add(new BMIR(BMIR.Op.EQ, midReg, MReg.ZERO, trueBlock.getLabel()));
@@ -111,7 +111,7 @@ public final class MIROpTrans {
             if (virRegMap.containsKey(ir))
                 item1 = virRegMap.get(ir);
             else {
-                VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                VReg reg = new VReg(ir.getType());
                 virRegMap.put(ir, reg);
                 item1 = reg;
             }
@@ -120,7 +120,7 @@ public final class MIROpTrans {
             if (virRegMap.containsKey(ir))
                 item2 = virRegMap.get(ir);
             else {
-                VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                VReg reg = new VReg(ir.getType());
                 virRegMap.put(ir, reg);
                 item2 = reg;
             }
@@ -152,7 +152,7 @@ public final class MIROpTrans {
                             if (virRegMap.containsKey(ir))
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), virRegMap.get(ir)));
                             else {
-                                VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                                VReg reg = new VReg(ir.getType());
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
                                 virRegMap.put(ir, reg);
                             }
@@ -168,7 +168,7 @@ public final class MIROpTrans {
                             if (virRegMap.containsKey(ir))
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, virRegMap.get(ir), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                             else {
-                                VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                                VReg reg = new VReg(ir.getType());
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                                 virRegMap.put(ir, reg);
                             }
@@ -176,7 +176,7 @@ public final class MIROpTrans {
                         case VReg reg ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case InstantValue value -> {
-                            VReg midReg = new VReg(BasicType.I32, 4);
+                            VReg midReg = new VReg(BasicType.I32);
                             MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
                             irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         }
@@ -191,7 +191,7 @@ public final class MIROpTrans {
                             if (virRegMap.containsKey(ir))
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), virRegMap.get(ir)));
                             else {
-                                VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                                VReg reg = new VReg(ir.getType());
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), reg));
                                 virRegMap.put(ir, reg);
                             }
@@ -207,7 +207,7 @@ public final class MIROpTrans {
                             if (virRegMap.containsKey(ir))
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, virRegMap.get(ir), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                             else {
-                                VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                                VReg reg = new VReg(ir.getType());
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                                 virRegMap.put(ir, reg);
                             }
@@ -215,7 +215,7 @@ public final class MIROpTrans {
                         case VReg reg ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case InstantValue value -> {
-                            VReg midReg = new VReg(BasicType.I32, 4);
+                            VReg midReg = new VReg(BasicType.I32);
                             MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
                             irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         }
@@ -239,7 +239,7 @@ public final class MIROpTrans {
     }
 
     public static void transLI(List<MIR> irs, Map<VIR, VReg> virvRegMap, LiVIR liVIR) {
-        VReg reg = new VReg(liVIR.getType(), liVIR.getType().getSize());
+        VReg reg = new VReg(liVIR.getType());
         virvRegMap.put(liVIR, reg);
         if (reg.getType() == BasicType.I32)
             MIROpHelper.loadImmToReg(irs, reg, liVIR.value.intValue());
@@ -280,14 +280,14 @@ public final class MIROpTrans {
                 if (virRegMap.containsKey(ir))
                     MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, virRegMap.get(ir));
                 else {
-                    VReg reg = new VReg(ir.getType(), ir.getType().getSize());
+                    VReg reg = new VReg(ir.getType());
                     virRegMap.put(ir, reg);
                     MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, reg);
                 }
             }
             case VReg reg -> MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, reg);
             case InstantValue value -> {
-                VReg midReg = new VReg(value.getType(), value.getType().getSize());
+                VReg midReg = new VReg(value.getType());
                 switch (value.getType()) {
                     case BasicType.I32 -> MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
                     case BasicType.FLOAT -> MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());

@@ -42,21 +42,21 @@ public class RriMIR extends MIR {
     @Override
     public List<MIR> spill(Reg reg, int offset) {
         if (dest.equals(reg) && src.equals(reg)) {
-            VReg target = new VReg(reg.getType(), reg.getSize());
-            VReg source = new VReg(reg.getType(), reg.getSize());
+            VReg target = new VReg(reg.getType());
+            VReg source = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source, offset);
             MIR ir2 = new RriMIR(op, target, source, imm);
             MIR ir3 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2, ir3);
         }
         if (dest.equals(reg)) {
-            VReg target = new VReg(reg.getType(), reg.getSize());
+            VReg target = new VReg(reg.getType());
             MIR ir1 = new RriMIR(op, target, src, imm);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2);
         }
         if (src.equals(reg)) {
-            VReg source = new VReg(reg.getType(), reg.getSize());
+            VReg source = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source, offset);
             MIR ir2 = new RriMIR(op, dest, source, imm);
             return List.of(ir1, ir2);

@@ -44,9 +44,9 @@ public class RrrMIR extends MIR {
     @Override
     public List<MIR> spill(Reg reg, int offset) {
         if (dest.equals(reg) && src1.equals(reg) && src2.equals(reg)) {
-            VReg target = new VReg(reg.getType(), reg.getSize());
-            VReg source1 = new VReg(reg.getType(), reg.getSize());
-            VReg source2 = new VReg(reg.getType(), reg.getSize());
+            VReg target = new VReg(reg.getType());
+            VReg source1 = new VReg(reg.getType());
+            VReg source2 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir2 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir3 = new RrrMIR(op, target, source1, source2);
@@ -54,43 +54,43 @@ public class RrrMIR extends MIR {
             return List.of(ir1, ir2, ir3, ir4);
         }
         if (dest.equals(reg) && src1.equals(reg)) {
-            VReg target = new VReg(reg.getType(), reg.getSize());
-            VReg source1 = new VReg(reg.getType(), reg.getSize());
+            VReg target = new VReg(reg.getType());
+            VReg source1 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir2 = new RrrMIR(op, target, source1, src2);
             MIR ir3 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2, ir3);
         }
         if (dest.equals(reg) && src2.equals(reg)) {
-            VReg target = new VReg(reg.getType(), reg.getSize());
-            VReg source2 = new VReg(reg.getType(), reg.getSize());
+            VReg target = new VReg(reg.getType());
+            VReg source2 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source2, offset);
             MIR ir2 = new RrrMIR(op, target, src1, source2);
             MIR ir3 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2, ir3);
         }
         if (src1.equals(reg) && src2.equals(reg)) {
-            VReg source1 = new VReg(reg.getType(), reg.getSize());
-            VReg source2 = new VReg(reg.getType(), reg.getSize());
+            VReg source1 = new VReg(reg.getType());
+            VReg source2 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir2 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source2, offset);
             MIR ir3 = new RrrMIR(op, dest, source1, source2);
             return List.of(ir1, ir2, ir3);
         }
         if (dest.equals(reg)) {
-            VReg target = new VReg(reg.getType(), reg.getSize());
+            VReg target = new VReg(reg.getType());
             MIR ir1 = new RrrMIR(op, target, src1, src2);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2);
         }
         if (src1.equals(reg)) {
-            VReg source1 = new VReg(reg.getType(), reg.getSize());
+            VReg source1 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source1, offset);
             MIR ir2 = new RrrMIR(op, dest, source1, src2);
             return List.of(ir1, ir2);
         }
         if (src2.equals(reg)) {
-            VReg source2 = new VReg(reg.getType(), reg.getSize());
+            VReg source2 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source2, offset);
             MIR ir2 = new RrrMIR(op, dest, src1, source2);
             return List.of(ir1, ir2);

@@ -70,24 +70,16 @@ public class MReg extends Reg {
     public static final MReg FT9 = new MReg(BasicType.FLOAT, "ft9");
     public static final MReg FT10 = new MReg(BasicType.FLOAT, "ft10");
     public static final MReg FT11 = new MReg(BasicType.FLOAT, "ft11");
-    public static final List<MReg> I_REGS = List.of(MReg.A0, MReg.A1, MReg.A2, MReg.A3, MReg.A4, MReg.A5, MReg.A6,
-            MReg.A7, MReg.S0, MReg.S1, MReg.S2, MReg.S3, MReg.S4, MReg.S5, MReg.S6, MReg.S7, MReg.S8, MReg.S9,
-            MReg.S10, MReg.S11);
-    public static final List<MReg> F_REGS = List.of(MReg.FA0, MReg.FA1, MReg.FA2, MReg.FA3, MReg.FA4, MReg.FA5,
-            MReg.FA6, MReg.FA7, MReg.FS0, MReg.FS1, MReg.FS2, MReg.FS3, MReg.FS4, MReg.FS5, MReg.FS6, MReg.FS7,
-            MReg.FS8, MReg.FS9, MReg.FS10, MReg.FS11);
-    public static final List<MReg> I_CALLER_REGS = List.of(MReg.A0, MReg.A1, MReg.A2, MReg.A3, MReg.A4, MReg.A5,
-            MReg.A6, MReg.A7);
-    public static final List<MReg> F_CALLER_REGS = List.of(MReg.FA0, MReg.FA1, MReg.FA2, MReg.FA3, MReg.FA4, MReg.FA5
-            , MReg.FA6, MReg.FA7);
-    public static final List<MReg> I_CALLEE_REGS = List.of(MReg.S0, MReg.S1, MReg.S2, MReg.S3, MReg.S4, MReg.S5,
-            MReg.S6, MReg.S7, MReg.S8, MReg.S9, MReg.S10, MReg.S11);
-    public static final List<MReg> F_CALLEE_REGS = List.of(MReg.FS0, MReg.FS1, MReg.FS2, MReg.FS3, MReg.FS4, MReg.FS5
-            , MReg.FS6, MReg.FS7, MReg.FS8, MReg.FS9, MReg.FS10, MReg.FS11);
+    public static final List<MReg> I_REGS = List.of(MReg.A0, MReg.A1, MReg.A2, MReg.A3, MReg.A4, MReg.A5, MReg.A6, MReg.A7, MReg.S0, MReg.S1, MReg.S2, MReg.S3, MReg.S4, MReg.S5, MReg.S6, MReg.S7, MReg.S8, MReg.S9, MReg.S10, MReg.S11);
+    public static final List<MReg> F_REGS = List.of(MReg.FA0, MReg.FA1, MReg.FA2, MReg.FA3, MReg.FA4, MReg.FA5, MReg.FA6, MReg.FA7, MReg.FS0, MReg.FS1, MReg.FS2, MReg.FS3, MReg.FS4, MReg.FS5, MReg.FS6, MReg.FS7, MReg.FS8, MReg.FS9, MReg.FS10, MReg.FS11);
+    public static final List<MReg> I_CALLER_REGS = List.of(MReg.A0, MReg.A1, MReg.A2, MReg.A3, MReg.A4, MReg.A5, MReg.A6, MReg.A7);
+    public static final List<MReg> F_CALLER_REGS = List.of(MReg.FA0, MReg.FA1, MReg.FA2, MReg.FA3, MReg.FA4, MReg.FA5, MReg.FA6, MReg.FA7);
+    public static final List<MReg> I_CALLEE_REGS = List.of(MReg.S0, MReg.S1, MReg.S2, MReg.S3, MReg.S4, MReg.S5, MReg.S6, MReg.S7, MReg.S8, MReg.S9, MReg.S10, MReg.S11);
+    public static final List<MReg> F_CALLEE_REGS = List.of(MReg.FS0, MReg.FS1, MReg.FS2, MReg.FS3, MReg.FS4, MReg.FS5, MReg.FS6, MReg.FS7, MReg.FS8, MReg.FS9, MReg.FS10, MReg.FS11);
     private final String name;
 
     private MReg(Type type, String name) {
-        super(type, 8);
+        super(type);
         this.name = name;
     }
 

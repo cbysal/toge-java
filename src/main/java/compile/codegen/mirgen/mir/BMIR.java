@@ -12,6 +12,7 @@ public class BMIR extends MIR {
     public final Op op;
     public final Reg src1, src2;
     public final Label label;
+
     public BMIR(Op op, Reg src1, Reg src2, Label label) {
         this.op = op;
         this.src1 = src1;
@@ -43,21 +44,21 @@ public class BMIR extends MIR {
             return List.of(this);
         }
         if (src1.equals(reg) && src2.equals(reg)) {
-            VReg src1 = new VReg(reg.getType(), reg.getSize());
-            VReg src2 = new VReg(reg.getType(), reg.getSize());
+            VReg src1 = new VReg(reg.getType());
+            VReg src2 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src1, offset);
             MIR ir2 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src2, offset);
             MIR ir3 = new BMIR(op, src1, src2, label);
             return List.of(ir1, ir2, ir3);
         }
         if (src1.equals(reg)) {
-            VReg src1 = new VReg(reg.getType(), reg.getSize());
+            VReg src1 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src1, offset);
             MIR ir2 = new BMIR(op, src1, src2, label);
             return List.of(ir1, ir2);
         }
         if (src2.equals(reg)) {
-            VReg src2 = new VReg(reg.getType(), reg.getSize());
+            VReg src2 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src2, offset);
             MIR ir2 = new BMIR(op, src1, src2, label);
             return List.of(ir1, ir2);

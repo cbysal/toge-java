@@ -11,6 +11,7 @@ public class StoreItemMIR extends MIR {
     public final Item item;
     public final Reg src;
     public final int imm;
+
     public StoreItemMIR(Item item, Reg src, int imm) {
         this.item = item;
         this.src = src;
@@ -33,7 +34,7 @@ public class StoreItemMIR extends MIR {
     @Override
     public List<MIR> spill(Reg reg, int offset) {
         if (src.equals(reg)) {
-            VReg source = new VReg(reg.getType(), reg.getSize());
+            VReg source = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, source, offset);
             MIR ir2 = new StoreItemMIR(item, source, imm);
             return List.of(ir1, ir2);

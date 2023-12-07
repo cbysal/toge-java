@@ -20,15 +20,15 @@ public final class MIROpHelper {
     public static void addRegDimensionsToReg(List<MIR> irs, VReg target, List<Pair<VReg, Integer>> regDimensions, VReg source) {
         for (int i = 0; i < regDimensions.size() - 1; i++) {
             Pair<VReg, Integer> regDimension = regDimensions.get(i);
-            VReg midReg = new VReg(BasicType.I32, 8);
+            VReg midReg = new VReg(BasicType.I32);
             addRtRbRsImm(irs, midReg, source, regDimension.getLeft(), regDimension.getRight());
             source = midReg;
         }
-        addRtRbRsImm(irs, target, source, regDimensions.get(regDimensions.size() - 1).getLeft(), regDimensions.get(regDimensions.size() - 1).getRight());
+        addRtRbRsImm(irs, target, source, regDimensions.getLast().getLeft(), regDimensions.getLast().getRight());
     }
 
     public static void addRtRbRsImm(List<MIR> irs, VReg target, VReg source1, VReg source2, int imm) {
-        VReg midReg = new VReg(BasicType.I32, 4);
+        VReg midReg = new VReg(BasicType.I32);
         MIRBinaryTrans.transMulRegImmI(irs, midReg, source2, imm);
         irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg));
     }
@@ -42,7 +42,7 @@ public final class MIROpHelper {
                 if (virRegMap.containsKey(ir))
                     regDimensions.add(Pair.of(virRegMap.get(ir), sizes[i]));
                 else {
-                    VReg midReg = new VReg(ir.getType(), ir.getType().getSize());
+                    VReg midReg = new VReg(ir.getType());
                     virRegMap.put(ir, midReg);
                     regDimensions.add(Pair.of(midReg, sizes[i]));
                 }
@@ -75,7 +75,7 @@ public final class MIROpHelper {
     }
 
     private static void loadImmToFReg(List<MIR> irs, Reg reg, int imm) {
-        VReg midReg = new VReg(BasicType.I32, 4);
+        VReg midReg = new VReg(BasicType.I32);
         loadImmToIReg(irs, midReg, imm);
         irs.add(new RrMIR(RrMIR.Op.MV, reg, midReg));
     }
