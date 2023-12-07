@@ -6,6 +6,7 @@ import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.mir.RrrMIR;
 import compile.vir.VReg;
+import compile.vir.ir.VIR;
 import compile.vir.type.BasicType;
 import compile.symbol.InstantValue;
 import compile.vir.value.Value;
@@ -13,6 +14,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class MIROpHelper {
     public static void addRegDimensionsToReg(List<MIR> irs, VReg target, List<Pair<VReg, Integer>> regDimensions, VReg source) {
@@ -31,11 +33,21 @@ public final class MIROpHelper {
         irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, midReg));
     }
 
-    public static Pair<Integer, List<Pair<VReg, Integer>>> calcDimension(List<Value> dimensions, int[] sizes) {
+    public static Pair<Integer, List<Pair<VReg, Integer>>> calcDimension(Map<VIR, VReg> virRegMap, List<Value> dimensions, int[] sizes) {
         int offset = 0;
         List<Pair<VReg, Integer>> regDimensions = new ArrayList<>();
         for (int i = 0; i < dimensions.size(); i++) {
             Value dimension = dimensions.get(i);
+            if (dimension instanceof VIR ir) {
+                if (virRegMap.containsKey(ir))
+                    regDimensions.add(Pair.of(virRegMap.get(ir), sizes[i]));
+                else {
+                    VReg midReg = new VReg(ir.getType(), ir.getType().getSize());
+                    virRegMap.put(ir, midReg);
+                    regDimensions.add(Pair.of(midReg, sizes[i]));
+                }
+                continue;
+            }
             if (dimension instanceof VReg reg) {
                 regDimensions.add(Pair.of(reg, sizes[i]));
                 continue;

@@ -108,26 +108,27 @@ public class MIRGenerator {
         Pair<Integer, Integer> callerNums = getCallerNumbers(vFunc.getSymbol());
         MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
         Map<VReg, MReg> replaceMap = new HashMap<>();
+        Map<VIR, VReg> virRegMap = new HashMap<>();
         Map<Symbol, Integer> localOffsets = locals.getRight();
         for (Block block : vFunc.getBlocks()) {
             mFunc.addIR(new LabelMIR(block.getLabel()));
             for (VIR vir : block) {
                 if (vir instanceof BinaryVIR binaryVIR)
-                    MIROpTrans.transBinary(mFunc.getIrs(), binaryVIR);
+                    MIROpTrans.transBinary(mFunc.getIrs(), virRegMap, binaryVIR);
                 if (vir instanceof BranchVIR branchVIR)
-                    MIROpTrans.transBranch(mFunc.getIrs(), branchVIR);
+                    MIROpTrans.transBranch(mFunc.getIrs(), virRegMap, branchVIR);
                 if (vir instanceof CallVIR callVIR) {
-                    int paramNum = MIROpTrans.transCall(mFunc.getIrs(), callVIR);
+                    int paramNum = MIROpTrans.transCall(mFunc.getIrs(), virRegMap, callVIR);
                     mFunc.setMaxFuncParamNum(Integer.max(mFunc.getMaxFuncParamNum(), paramNum));
                 }
                 if (vir instanceof JumpVIR jumpVIR)
                     mFunc.getIrs().add(new BMIR(null, null, null, jumpVIR.target.getLabel()));
                 if (vir instanceof LiVIR liVIR)
-                    MIROpTrans.transLI(mFunc.getIrs(), liVIR);
+                    MIROpTrans.transLI(mFunc.getIrs(), virRegMap, liVIR);
                 if (vir instanceof LoadVIR loadVIR)
-                    MIROpTrans.transLoad(mFunc.getIrs(), loadVIR, localOffsets, paramOffsets);
+                    MIROpTrans.transLoad(mFunc.getIrs(), virRegMap, loadVIR, localOffsets, paramOffsets);
                 if (vir instanceof MovVIR movVIR)
-                    MIROpTrans.transMov(mFunc.getIrs(), movVIR);
+                    MIROpTrans.transMov(virRegMap, mFunc.getIrs(), movVIR);
                 if (vir instanceof RetVIR retVIR) {
                     if (retVIR.retVal instanceof VReg reg)
                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, reg));
@@ -141,9 +142,9 @@ public class MIRGenerator {
                     }
                 }
                 if (vir instanceof UnaryVIR unaryVIR)
-                    MIROpTrans.transUnary(mFunc.getIrs(), unaryVIR);
+                    MIROpTrans.transUnary(mFunc.getIrs(), virRegMap, unaryVIR);
                 if (vir instanceof StoreVIR storeVIR)
-                    MIROpTrans.transStore(mFunc.getIrs(), storeVIR, localOffsets, paramOffsets);
+                    MIROpTrans.transStore(mFunc.getIrs(), virRegMap, storeVIR, localOffsets, paramOffsets);
             }
         }
         mFunc.getIrs().replaceAll(ir -> ir.replaceReg(replaceMap));

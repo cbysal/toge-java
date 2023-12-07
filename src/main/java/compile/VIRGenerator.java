@@ -166,7 +166,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     for (int i = 0; i < totalNum; i++) {
                         SysYParser.BinaryExpContext exp = exps.get(i);
                         if (exp != null) {
-                            VReg reg = typeConversion(visitBinaryExp(exps.get(i)), curType);
+                            Value reg = typeConversion(visitBinaryExp(exps.get(i)), curType);
                             List<Value> items = new ArrayList<>();
                             int rest = i;
                             for (int j = 0; j < dimensions.size(); j++) {
@@ -209,7 +209,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 curFunc.addLocal(localSymbol);
                 SysYParser.InitValContext initVal = ctx.initVal();
                 if (initVal != null) {
-                    VReg reg = visitBinaryExp(initVal.binaryExp());
+                    Value reg = visitBinaryExp(initVal.binaryExp());
                     reg = typeConversion(reg, curType);
                     curBlock.add(new StoreVIR(localSymbol, List.of(), reg));
                 }
@@ -269,7 +269,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public Object visitAssignStmt(SysYParser.AssignStmtContext ctx) {
         Pair<DataSymbol, List<Value>> lValUnit = visitLVal(ctx.lVal());
-        VReg rReg = visitBinaryExp(ctx.binaryExp());
+        Value rReg = visitBinaryExp(ctx.binaryExp());
         rReg = typeConversion(rReg, lValUnit.getLeft().getType());
         curBlock.add(new StoreVIR(lValUnit.getLeft(), lValUnit.getRight(), rReg));
         return null;
@@ -287,11 +287,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             calculatingCond = true;
-            VReg reg = visitBinaryExp(ctx.binaryExp());
+            Value reg = visitBinaryExp(ctx.binaryExp());
             if (reg != null) {
-                VReg zero = new VReg(reg.getType(), reg.getSize());
-                curBlock.add(new LiVIR(zero, 0));
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, zero, this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new InstantValue(0), this.trueBlock, this.falseBlock));
             }
             calculatingCond = false;
             curBlock = trueBlock;
@@ -307,11 +305,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             calculatingCond = true;
-            VReg reg = visitBinaryExp(ctx.binaryExp());
+            Value reg = visitBinaryExp(ctx.binaryExp());
             if (reg != null) {
-                VReg zero = new VReg(reg.getType(), reg.getSize());
-                curBlock.add(new LiVIR(zero, 0));
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, zero, trueBlock, falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new InstantValue(0), trueBlock, falseBlock));
             }
             calculatingCond = false;
             curBlock = trueBlock;
@@ -337,11 +333,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         trueBlock = loopBlock;
         falseBlock = endBlock;
         calculatingCond = true;
-        VReg reg = visitBinaryExp(ctx.binaryExp());
+        Value reg = visitBinaryExp(ctx.binaryExp());
         if (reg != null) {
-            VReg zero = new VReg(reg.getType(), reg.getSize());
-            curBlock.add(new LiVIR(zero, 0));
-            curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, zero, this.trueBlock, this.falseBlock));
+            curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new InstantValue(0), this.trueBlock, this.falseBlock));
         }
         calculatingCond = false;
         curBlock = loopBlock;
@@ -371,8 +365,8 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             curBlock.add(new JumpVIR(retBlock));
             return null;
         }
-        VReg retReg = visitBinaryExp(ctx.binaryExp());
-        retReg = typeConversion(retReg, retVal.getType());
+        Value retReg = visitBinaryExp(ctx.binaryExp());
+        retReg = typeConversion(retReg, this.retVal.getType());
         curBlock.add(new MovVIR(retVal, retReg));
         curBlock.add(new JumpVIR(retBlock));
         return null;
@@ -388,7 +382,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public VReg visitUnaryExp(SysYParser.UnaryExpContext ctx) {
+    public Value visitUnaryExp(SysYParser.UnaryExpContext ctx) {
         boolean calculatingCond = this.calculatingCond;
         this.calculatingCond = false;
         if (ctx.getChildCount() == 2) {
@@ -400,20 +394,18 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     this.falseBlock = trueBlock;
                 }
                 this.calculatingCond = calculatingCond;
-                VReg reg = visitUnaryExp(ctx.unaryExp());
+                Value reg = visitUnaryExp(ctx.unaryExp());
                 if (reg != null) {
-                    VReg zero = new VReg(reg.getType(), reg.getSize());
-                    curBlock.add(new LiVIR(zero, 0));
-                    curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, zero, this.trueBlock, this.falseBlock));
+                    curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new InstantValue(0), this.trueBlock, this.falseBlock));
                 }
                 return null;
             }
-            VReg reg = visitUnaryExp(ctx.unaryExp());
+            Value reg = visitUnaryExp(ctx.unaryExp());
             this.calculatingCond = calculatingCond;
             return switch (ctx.getChild(0).getText()) {
                 case "+" -> reg;
                 case "-" -> {
-                    VReg result = new VReg(reg.getType(), reg.getSize());
+                    VReg result = new VReg(reg.getType(), reg.getType().getSize());
                     curBlock.add(new UnaryVIR(UnaryVIR.Type.NEG, result, reg));
                     yield result;
                 }
@@ -426,21 +418,21 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             };
         }
         if (ctx.getChildCount() == 3) {
-            VReg reg = visitBinaryExp(ctx.binaryExp());
+            Value reg = visitBinaryExp(ctx.binaryExp());
             this.calculatingCond = calculatingCond;
             return reg;
         }
         if (ctx.IntConst() != null) {
-            VReg reg = new VReg(BasicType.I32, 4);
-            curBlock.add(new LiVIR(reg, Integer.decode(ctx.IntConst().getSymbol().getText())));
+            VIR ir = new LiVIR(Integer.decode(ctx.IntConst().getSymbol().getText()));
+            curBlock.add(ir);
             this.calculatingCond = calculatingCond;
-            return reg;
+            return ir;
         }
         if (ctx.FloatConst() != null) {
-            VReg reg = new VReg(BasicType.FLOAT, 4);
-            curBlock.add(new LiVIR(reg, Float.parseFloat(ctx.FloatConst().getSymbol().getText())));
+            VIR ir = new LiVIR(Float.parseFloat(ctx.FloatConst().getSymbol().getText()));
+            curBlock.add(ir);
             this.calculatingCond = calculatingCond;
-            return reg;
+            return ir;
         }
         VReg reg = (VReg) visit(ctx.getChild(0));
         this.calculatingCond = calculatingCond;
@@ -457,7 +449,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
         List<Value> dimensions = new ArrayList<>();
         for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
-            VReg reg = visitBinaryExp(dimension);
+            Value reg = visitBinaryExp(dimension);
             reg = typeConversion(reg, BasicType.I32);
             dimensions.add(reg);
         }
@@ -471,7 +463,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         List<Value> params = new ArrayList<>();
         for (int i = 0; i < ctx.binaryExp().size(); i++) {
             SysYParser.BinaryExpContext exp = ctx.binaryExp().get(i);
-            VReg param = visitBinaryExp(exp);
+            Value param = visitBinaryExp(exp);
             Type targetType = symbol.getParams().get(i).isSingle() && symbol.getParams().get(i).getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
             param = typeConversion(param, targetType);
             params.add(param);
@@ -487,7 +479,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public VReg visitBinaryExp(SysYParser.BinaryExpContext ctx) {
+    public Value visitBinaryExp(SysYParser.BinaryExpContext ctx) {
         if (ctx.getChildCount() == 1)
             return visitUnaryExp(ctx.unaryExp());
         if (ctx.getChild(1).getText().equals("||")) {
@@ -499,20 +491,16 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.curBlock = lBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = rBlock;
-            VReg lVal = visitBinaryExp(ctx.binaryExp(0));
+            Value lVal = visitBinaryExp(ctx.binaryExp(0));
             if (lVal != null) {
-                VReg zero = new VReg(lVal.getType(), lVal.getSize());
-                curBlock.add(new LiVIR(zero, 0));
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, zero, this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, new InstantValue(0), this.trueBlock, this.falseBlock));
             }
             this.curBlock = rBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
-            VReg rVal = visitBinaryExp(ctx.binaryExp(1));
+            Value rVal = visitBinaryExp(ctx.binaryExp(1));
             if (rVal != null) {
-                VReg zero = new VReg(rVal.getType(), rVal.getSize());
-                curBlock.add(new LiVIR(zero, 0));
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, zero, this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, new InstantValue(0), this.trueBlock, this.falseBlock));
             }
             return null;
         }
@@ -525,29 +513,25 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.curBlock = lBlock;
             this.trueBlock = rBlock;
             this.falseBlock = falseBlock;
-            VReg lVal = visitBinaryExp(ctx.binaryExp(0));
+            Value lVal = visitBinaryExp(ctx.binaryExp(0));
             if (lVal != null) {
-                VReg zero = new VReg(lVal.getType(), lVal.getSize());
-                curBlock.add(new LiVIR(zero, 0));
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, zero, this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, new InstantValue(0), this.trueBlock, this.falseBlock));
             }
             this.curBlock = rBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
-            VReg rVal = visitBinaryExp(ctx.binaryExp(1));
+            Value rVal = visitBinaryExp(ctx.binaryExp(1));
             if (rVal != null) {
-                VReg zero = new VReg(rVal.getType(), rVal.getSize());
-                curBlock.add(new LiVIR(zero, 0));
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, zero, this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, new InstantValue(0), this.trueBlock, this.falseBlock));
             }
             return null;
         }
         boolean calculatingCond = this.calculatingCond;
         this.calculatingCond = false;
-        VReg lReg = visitBinaryExp(ctx.binaryExp(0));
-        VReg rReg = visitBinaryExp(ctx.binaryExp(1));
+        Value lReg = visitBinaryExp(ctx.binaryExp(0));
+        Value rReg = visitBinaryExp(ctx.binaryExp(1));
         Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
-        VReg result = new VReg(targetType, Integer.max(lReg.getSize(), rReg.getSize()));
+        VReg result = new VReg(targetType, Integer.max(lReg.getType().getSize(), rReg.getType().getSize()));
         lReg = typeConversion(lReg, targetType);
         rReg = typeConversion(rReg, targetType);
         String op = ctx.getChild(1).getText();
@@ -647,7 +631,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         return type1 == BasicType.FLOAT || type2 == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
     }
 
-    private VReg typeConversion(VReg reg, Type targetType) {
+    private Value typeConversion(Value reg, Type targetType) {
         if (reg.getType() == targetType)
             return reg;
         if (reg.getType() == BasicType.FLOAT && targetType == BasicType.I32) {

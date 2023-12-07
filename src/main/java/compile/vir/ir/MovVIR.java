@@ -1,14 +1,15 @@
 package compile.vir.ir;
 
 import compile.vir.VReg;
+import compile.vir.value.Value;
 
 import java.util.List;
 
 public class MovVIR extends VIR {
     public final VReg target;
-    public final VReg source;
+    public final Value source;
 
-    public MovVIR(VReg target, VReg source) {
+    public MovVIR(VReg target, Value source) {
         super(target.getType());
         this.target = target;
         this.source = source;
@@ -21,7 +22,9 @@ public class MovVIR extends VIR {
 
     @Override
     public List<VReg> getRead() {
-        return List.of(source);
+        if (source instanceof VReg reg)
+            return List.of(reg);
+        return List.of();
     }
 
     @Override

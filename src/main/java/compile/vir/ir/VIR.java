@@ -8,7 +8,7 @@ import java.util.List;
 
 public abstract class VIR extends User {
     private static int counter = 0;
-    private final int id;
+    protected final int id;
 
     protected VIR(Type type) {
         super(type);

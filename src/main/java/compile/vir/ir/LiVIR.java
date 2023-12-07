@@ -1,29 +1,26 @@
 package compile.vir.ir;
 
-import compile.vir.VReg;
+import compile.vir.type.BasicType;
 
 public class LiVIR extends VIR {
-    public final VReg target;
     public final Number value;
 
-    public LiVIR(VReg target, Number value) {
-        super(target.getType());
-        this.target = target;
+    public LiVIR(Number value) {
+        super(switch (value) {
+            case Integer iVal -> BasicType.I32;
+            case Float fVal -> BasicType.FLOAT;
+            default -> throw new IllegalStateException("Unexpected value: " + value);
+        });
         this.value = value;
     }
 
     @Override
     public VIR copy() {
-        return new LiVIR(target, value);
-    }
-
-    @Override
-    public VReg getWrite() {
-        return target;
+        return new LiVIR(value);
     }
 
     @Override
     public String toString() {
-        return "LI      " + target + ", #" + value;
+        return String.format("LI      %%%d, #%s", id, value);
     }
 }

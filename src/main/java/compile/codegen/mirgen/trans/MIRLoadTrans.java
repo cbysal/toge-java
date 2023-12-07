@@ -3,6 +3,7 @@ package compile.codegen.mirgen.trans;
 import compile.codegen.mirgen.mir.*;
 import compile.vir.VReg;
 import compile.vir.ir.LoadVIR;
+import compile.vir.ir.VIR;
 import compile.vir.type.BasicType;
 import compile.symbol.DataSymbol;
 import compile.symbol.Symbol;
@@ -33,7 +34,7 @@ public final class MIRLoadTrans {
         }
     }
 
-    static void transLoadGlobal(List<MIR> irs, LoadVIR loadVIR) {
+    static void transLoadGlobal(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR) {
         DataSymbol symbol = loadVIR.symbol;
         VReg target = loadVIR.target;
         if (symbol.isSingle()) {
@@ -41,14 +42,14 @@ public final class MIRLoadTrans {
             return;
         }
         if (loadVIR.indexes.size() != symbol.getDimensionSize()) {
-            transLoadGlobalArray(irs, target, loadVIR.indexes, symbol);
+            transLoadGlobalArray(irs, virRegMap, target, loadVIR.indexes, symbol);
             return;
         }
-        transLoadGlobalElement(irs, target, loadVIR.indexes, symbol);
+        transLoadGlobalElement(irs, virRegMap, target, loadVIR.indexes, symbol);
     }
 
-    private static void transLoadGlobalArray(List<MIR> irs, VReg target, List<Value> dimensions, DataSymbol symbol) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+    private static void transLoadGlobalArray(List<MIR> irs, Map<VIR, VReg> virRegMap, VReg target, List<Value> dimensions, DataSymbol symbol) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(virRegMap, dimensions, symbol.getSizes());
         int offset = offsetRegDimensions.getLeft();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         if (offset == 0 && regDimensions.isEmpty()) {
@@ -73,8 +74,8 @@ public final class MIRLoadTrans {
         MIRBinaryTrans.transAddRegImmI(irs, target, midReg2, offset);
     }
 
-    private static void transLoadGlobalElement(List<MIR> irs, VReg target, List<Value> dimensions, DataSymbol symbol) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+    private static void transLoadGlobalElement(List<MIR> irs, Map<VIR, VReg> virRegMap, VReg target, List<Value> dimensions, DataSymbol symbol) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(virRegMap, dimensions, symbol.getSizes());
         int offset = offsetRegDimensions.getLeft();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         if (regDimensions.isEmpty()) {
@@ -96,7 +97,7 @@ public final class MIRLoadTrans {
         ldrRtRsImm(irs, target, midReg, 0);
     }
 
-    static void transLoadLocal(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets) {
+    static void transLoadLocal(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets) {
         DataSymbol symbol = loadVIR.symbol;
         VReg target = loadVIR.target;
         int offset = localOffsets.get(symbol);
@@ -105,14 +106,14 @@ public final class MIRLoadTrans {
             return;
         }
         if (loadVIR.indexes.size() != symbol.getDimensionSize()) {
-            transLoadLocalArray(irs, target, loadVIR.indexes, symbol, offset);
+            transLoadLocalArray(irs, virRegMap, target, loadVIR.indexes, symbol, offset);
             return;
         }
-        transLoadLocalElement(irs, target, loadVIR.indexes, symbol, offset);
+        transLoadLocalElement(irs, virRegMap, target, loadVIR.indexes, symbol, offset);
     }
 
-    private static void transLoadLocalArray(List<MIR> irs, VReg target, List<Value> dimensions, DataSymbol symbol, int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+    private static void transLoadLocalArray(List<MIR> irs, Map<VIR, VReg> virRegMap, VReg target, List<Value> dimensions, DataSymbol symbol, int offset) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(virRegMap, dimensions, symbol.getSizes());
         offset += offsetRegDimensions.getLeft();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         if (regDimensions.isEmpty()) {
@@ -124,8 +125,8 @@ public final class MIRLoadTrans {
         MIROpHelper.addRegDimensionsToReg(irs, target, regDimensions, midReg);
     }
 
-    private static void transLoadLocalElement(List<MIR> irs, VReg target, List<Value> dimensions, DataSymbol symbol, int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+    private static void transLoadLocalElement(List<MIR> irs, Map<VIR, VReg> virRegMap, VReg target, List<Value> dimensions, DataSymbol symbol, int offset) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(virRegMap, dimensions, symbol.getSizes());
         offset += offsetRegDimensions.getLeft();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         if (regDimensions.isEmpty()) {
@@ -143,7 +144,7 @@ public final class MIRLoadTrans {
         irs.add(new LoadItemMIR(LoadItemMIR.Item.LOCAL, target, offset));
     }
 
-    static void transLoadParam(List<MIR> irs, LoadVIR loadVIR, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
+    static void transLoadParam(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
         DataSymbol symbol = loadVIR.symbol;
         VReg target = loadVIR.target;
         Pair<Boolean, Integer> rawOffset = paramOffsets.get(symbol);
@@ -152,14 +153,14 @@ public final class MIRLoadTrans {
             return;
         }
         if (loadVIR.indexes.size() != symbol.getDimensionSize()) {
-            transLoadParamArray(irs, target, loadVIR.indexes, symbol, rawOffset.getLeft(), rawOffset.getRight());
+            transLoadParamArray(irs, virRegMap, target, loadVIR.indexes, symbol, rawOffset.getLeft(), rawOffset.getRight());
             return;
         }
-        transLoadParamElement(irs, target, loadVIR.indexes, symbol, rawOffset.getLeft(), rawOffset.getRight());
+        transLoadParamElement(irs, virRegMap, target, loadVIR.indexes, symbol, rawOffset.getLeft(), rawOffset.getRight());
     }
 
-    private static void transLoadParamArray(List<MIR> irs, VReg target, List<Value> dimensions, DataSymbol symbol, boolean isInner, int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+    private static void transLoadParamArray(List<MIR> irs, Map<VIR, VReg> virRegMap, VReg target, List<Value> dimensions, DataSymbol symbol, boolean isInner, int offset) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(virRegMap, dimensions, symbol.getSizes());
         int innerOffset = offsetRegDimensions.getLeft();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         if (innerOffset == 0 && regDimensions.isEmpty()) {
@@ -184,8 +185,8 @@ public final class MIRLoadTrans {
         MIRBinaryTrans.transAddRegImmI(irs, target, midReg2, innerOffset);
     }
 
-    private static void transLoadParamElement(List<MIR> irs, VReg target, List<Value> dimensions, DataSymbol symbol, boolean isInner, int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(dimensions, symbol.getSizes());
+    private static void transLoadParamElement(List<MIR> irs, Map<VIR, VReg> virRegMap, VReg target, List<Value> dimensions, DataSymbol symbol, boolean isInner, int offset) {
+        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(virRegMap, dimensions, symbol.getSizes());
         int innerOffset = offsetRegDimensions.getLeft();
         List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
         if (regDimensions.isEmpty()) {

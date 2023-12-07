@@ -11,9 +11,9 @@ import java.util.List;
 public class StoreVIR extends VIR {
     public final DataSymbol symbol;
     public final List<Value> indexes;
-    public final VReg source;
+    public final Value source;
 
-    public StoreVIR(DataSymbol symbol, List<Value> indexes, VReg source) {
+    public StoreVIR(DataSymbol symbol, List<Value> indexes, Value source) {
         super(BasicType.VOID);
         this.symbol = symbol;
         this.indexes = indexes;
@@ -31,7 +31,8 @@ public class StoreVIR extends VIR {
         for (Value item : indexes)
             if (item instanceof VReg reg)
                 regs.add(reg);
-        regs.add(source);
+        if (source instanceof VReg reg)
+            regs.add(reg);
         return regs;
     }
 
