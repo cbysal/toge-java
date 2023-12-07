@@ -5,7 +5,7 @@ import compile.codegen.mirgen.mir.LiMIR;
 import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.mir.RrrMIR;
-import compile.vir.VReg;
+import compile.codegen.VReg;
 import compile.vir.ir.VIR;
 import compile.vir.type.BasicType;
 import compile.symbol.InstantValue;

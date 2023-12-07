@@ -1,9 +1,9 @@
 package compile.codegen.mirgen.trans;
 
-import compile.codegen.mirgen.MReg;
+import compile.codegen.MReg;
 import compile.codegen.mirgen.mir.*;
 import compile.vir.Block;
-import compile.vir.VReg;
+import compile.codegen.VReg;
 import compile.vir.ir.*;
 import compile.vir.type.BasicType;
 import compile.symbol.*;

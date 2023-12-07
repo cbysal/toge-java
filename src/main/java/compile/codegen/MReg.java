@@ -1,6 +1,5 @@
-package compile.codegen.mirgen;
+package compile.codegen;
 
-import compile.codegen.Reg;
 import compile.vir.type.BasicType;
 import compile.vir.type.Type;
 

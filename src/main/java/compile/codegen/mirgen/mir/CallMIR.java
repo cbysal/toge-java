@@ -1,7 +1,7 @@
 package compile.codegen.mirgen.mir;
 
 import compile.codegen.Reg;
-import compile.codegen.mirgen.MReg;
+import compile.codegen.MReg;
 import compile.vir.type.BasicType;
 import compile.symbol.FuncSymbol;
 import compile.symbol.ParamSymbol;

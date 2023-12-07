@@ -2,7 +2,7 @@ package compile.codegen.mirgen.trans;
 
 import compile.codegen.mirgen.mir.*;
 import compile.symbol.InstantValue;
-import compile.vir.VReg;
+import compile.codegen.VReg;
 import compile.vir.ir.StoreVIR;
 import compile.vir.ir.VIR;
 import compile.vir.type.BasicType;

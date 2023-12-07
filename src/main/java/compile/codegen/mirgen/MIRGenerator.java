@@ -1,13 +1,14 @@
 package compile.codegen.mirgen;
 
 import compile.codegen.Label;
+import compile.codegen.MReg;
 import compile.codegen.mirgen.mir.BMIR;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.LiMIR;
 import compile.codegen.mirgen.mir.RrMIR;
 import compile.codegen.mirgen.trans.MIROpTrans;
 import compile.vir.Block;
-import compile.vir.VReg;
+import compile.codegen.VReg;
 import compile.vir.VirtualFunction;
 import compile.vir.ir.*;
 import compile.vir.type.BasicType;

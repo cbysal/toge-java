@@ -1,8 +1,8 @@
 package compile.codegen.mirgen.mir;
 
 import compile.codegen.Reg;
-import compile.codegen.mirgen.MReg;
-import compile.vir.VReg;
+import compile.codegen.MReg;
+import compile.codegen.VReg;
 import compile.symbol.DataSymbol;
 
 import java.util.List;

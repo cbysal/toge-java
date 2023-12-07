@@ -2,7 +2,6 @@ package compile;
 
 import common.NumberUtils;
 import compile.vir.Block;
-import compile.vir.VReg;
 import compile.vir.VirtualFunction;
 import compile.vir.ir.*;
 import compile.vir.type.BasicType;

@@ -2,8 +2,8 @@ package compile.codegen.mirgen.mir;
 
 import compile.codegen.Label;
 import compile.codegen.Reg;
-import compile.codegen.mirgen.MReg;
-import compile.vir.VReg;
+import compile.codegen.MReg;
+import compile.codegen.VReg;
 
 import java.util.List;
 import java.util.Map;

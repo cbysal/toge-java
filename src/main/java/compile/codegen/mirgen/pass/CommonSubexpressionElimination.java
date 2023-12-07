@@ -1,7 +1,7 @@
 package compile.codegen.mirgen.pass;
 
 import compile.codegen.Reg;
-import compile.codegen.mirgen.MReg;
+import compile.codegen.MReg;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.*;
 import compile.symbol.GlobalSymbol;
