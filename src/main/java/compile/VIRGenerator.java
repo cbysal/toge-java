@@ -159,9 +159,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 if (initVal != null) {
                     Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
-                    VReg symbolReg = new VReg(BasicType.I32, 8);
-                    curBlock.add(new LoadVIR(symbolReg, localSymbol, List.of()));
-                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(symbolReg, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
+                    VIR loadIR = new LoadVIR(localSymbol, List.of());
+                    curBlock.add(loadIR);
+                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(loadIR, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
                     int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
                     for (int i = 0; i < totalNum; i++) {
                         SysYParser.BinaryExpContext exp = exps.get(i);
@@ -440,12 +440,12 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public VReg visitVarExp(SysYParser.VarExpContext ctx) {
+    public Value visitVarExp(SysYParser.VarExpContext ctx) {
         DataSymbol symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
-        VReg result = new VReg(ctx.binaryExp().size() == symbol.getDimensionSize() && symbol.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32, ctx.binaryExp().size() == symbol.getDimensionSize() || symbol.getType() == BasicType.FLOAT ? 4 : 8);
         if (ctx.binaryExp().isEmpty()) {
-            curBlock.add(new LoadVIR(result, symbol, List.of()));
-            return result;
+            VIR newIR = new LoadVIR(symbol, List.of());
+            curBlock.add(newIR);
+            return newIR;
         }
         List<Value> dimensions = new ArrayList<>();
         for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
@@ -453,8 +453,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             reg = typeConversion(reg, BasicType.I32);
             dimensions.add(reg);
         }
-        curBlock.add(new LoadVIR(result, symbol, dimensions));
-        return result;
+        VIR newIR = new LoadVIR(symbol, dimensions);
+        curBlock.add(newIR);
+        return newIR;
     }
 
     @Override

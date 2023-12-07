@@ -36,7 +36,7 @@ public final class MIRLoadTrans {
 
     static void transLoadGlobal(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR) {
         DataSymbol symbol = loadVIR.symbol;
-        VReg target = loadVIR.target;
+        VReg target = virRegMap.get(loadVIR);
         if (symbol.isSingle()) {
             transLoadGlobalSingle(irs, target, symbol);
             return;
@@ -99,7 +99,7 @@ public final class MIRLoadTrans {
 
     static void transLoadLocal(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets) {
         DataSymbol symbol = loadVIR.symbol;
-        VReg target = loadVIR.target;
+        VReg target = virRegMap.get(loadVIR);
         int offset = localOffsets.get(symbol);
         if (symbol.isSingle()) {
             transLoadLocalSingle(irs, target, offset);
@@ -146,7 +146,7 @@ public final class MIRLoadTrans {
 
     static void transLoadParam(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
         DataSymbol symbol = loadVIR.symbol;
-        VReg target = loadVIR.target;
+        VReg target = virRegMap.get(loadVIR);
         Pair<Boolean, Integer> rawOffset = paramOffsets.get(symbol);
         if (symbol.isSingle()) {
             transLoadParamSingle(irs, target, rawOffset.getLeft(), rawOffset.getRight());
