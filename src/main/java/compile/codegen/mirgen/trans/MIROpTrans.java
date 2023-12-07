@@ -257,29 +257,6 @@ public final class MIROpTrans {
             MIRLoadTrans.transLoadParam(irs, virRegMap, loadVIR, paramOffsets);
     }
 
-    public static void transMov(Map<VIR, VReg> virRegMap, List<MIR> irs, MovVIR movVIR) {
-        switch (movVIR.source) {
-            case VIR ir -> {
-                if (virRegMap.containsKey(ir))
-                    irs.add(new RrMIR(RrMIR.Op.MV, movVIR.target, virRegMap.get(ir)));
-                else {
-                    VReg reg = new VReg(ir.getType(), ir.getType().getSize());
-                    irs.add(new RrMIR(RrMIR.Op.MV, movVIR.target, reg));
-                    virRegMap.put(ir, reg);
-                }
-            }
-            case VReg reg -> irs.add(new RrMIR(RrMIR.Op.MV, movVIR.target, reg));
-            case InstantValue value -> {
-                switch (value.getType()) {
-                    case BasicType.I32 -> MIROpHelper.loadImmToReg(irs, movVIR.target, value.intValue());
-                    case BasicType.FLOAT -> MIROpHelper.loadImmToReg(irs, movVIR.target, value.floatValue());
-                    default -> throw new IllegalStateException("Unexpected value: " + value.getType());
-                }
-            }
-            default -> throw new IllegalStateException("Unexpected value: " + movVIR.source);
-        }
-    }
-
     public static void transStore(List<MIR> irs, Map<VIR, VReg> virRegMap, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
         DataSymbol symbol = storeVIR.symbol;
         if (symbol instanceof GlobalSymbol) {

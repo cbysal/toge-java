@@ -50,8 +50,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     private VirtualFunction curFunc;
     private boolean isConst;
     private Type curType;
-    private Block curBlock, trueBlock, falseBlock, retBlock;
-    private VReg retVal;
+    private Block curBlock, trueBlock, falseBlock;
     private boolean calculatingCond = false;
 
     public VIRGenerator(SysYParser.RootContext rootAST) {
@@ -226,17 +225,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         for (SysYParser.FuncFParamContext param : ctx.funcFParam())
             func.addParam(visitFuncFParam(param));
         curFunc = new VirtualFunction(func);
-        retBlock = new Block();
-        retVal = switch (func.getType()) {
-            case BasicType.FLOAT, BasicType.I32 -> new VReg(funcType, 4);
-            case BasicType.VOID -> null;
-            default -> throw new IllegalStateException("Unexpected value: " + func.getType());
-        };
-        retBlock.add(new RetVIR(retVal));
         curBlock = new Block();
         curFunc.addBlock(curBlock);
         visitBlockStmt(ctx.blockStmt());
-        curFunc.addBlock(retBlock);
         funcs.put(func.getName(), curFunc);
         symbolTable.out();
         return null;
@@ -362,13 +353,12 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public Object visitRetStmt(SysYParser.RetStmtContext ctx) {
         if (ctx.binaryExp() == null) {
-            curBlock.add(new JumpVIR(retBlock));
+            curBlock.add(new RetVIR(null));
             return null;
         }
         Value retReg = visitBinaryExp(ctx.binaryExp());
-        retReg = typeConversion(retReg, this.retVal.getType());
-        curBlock.add(new MovVIR(retVal, retReg));
-        curBlock.add(new JumpVIR(retBlock));
+        retReg = typeConversion(retReg, curFunc.getSymbol().getType());
+        curBlock.add(new RetVIR(retReg));
         return null;
     }
 

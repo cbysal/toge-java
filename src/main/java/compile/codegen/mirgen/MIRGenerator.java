@@ -1,5 +1,6 @@
 package compile.codegen.mirgen;
 
+import compile.codegen.Label;
 import compile.codegen.mirgen.mir.BMIR;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.LiMIR;
@@ -107,6 +108,7 @@ public class MIRGenerator {
         Pair<Integer, Map<Symbol, Integer>> locals = calcLocalOffsets(vFunc.getLocals());
         Pair<Integer, Integer> callerNums = getCallerNumbers(vFunc.getSymbol());
         MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
+        LabelMIR retLabelMIR = new LabelMIR(new Label());
         Map<VReg, MReg> replaceMap = new HashMap<>();
         Map<VIR, VReg> virRegMap = new HashMap<>();
         for (Block block : vFunc.getBlocks()) {
@@ -132,19 +134,32 @@ public class MIRGenerator {
                     MIROpTrans.transLI(mFunc.getIrs(), virRegMap, liVIR);
                 if (vir instanceof LoadVIR loadVIR)
                     MIROpTrans.transLoad(mFunc.getIrs(), virRegMap, loadVIR, localOffsets, paramOffsets);
-                if (vir instanceof MovVIR movVIR)
-                    MIROpTrans.transMov(virRegMap, mFunc.getIrs(), movVIR);
                 if (vir instanceof RetVIR retVIR) {
-                    if (retVIR.retVal instanceof VReg reg)
-                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, reg));
-                    else if (retVIR.retVal instanceof InstantValue value) {
-                        switch (value.getType()) {
-                            case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
-                            case BasicType.FLOAT ->
-                                    mFunc.getIrs().add(new LiMIR(MReg.FA0, Float.floatToIntBits(value.floatValue())));
-                            default -> throw new IllegalStateException("Unexpected value: " + value.getType());
+                    switch (retVIR.retVal) {
+                        case VIR ir -> {
+                            if (virRegMap.containsKey(ir)) {
+                                mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, virRegMap.get(ir)));
+                            } else {
+                                VReg midReg = new VReg(retVIR.retVal.getType(), retVIR.retVal.getType().getSize());
+                                virRegMap.put(ir, midReg);
+                                mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, midReg));
+                            }
                         }
+                        case VReg reg ->
+                                mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, reg));
+                        case InstantValue value -> {
+                            switch (value.getType()) {
+                                case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
+                                case BasicType.FLOAT ->
+                                        mFunc.getIrs().add(new LiMIR(MReg.FA0, Float.floatToIntBits(value.floatValue())));
+                                default -> throw new IllegalStateException("Unexpected value: " + value.getType());
+                            }
+                        }
+                        case null -> {
+                        }
+                        default -> throw new IllegalStateException("Unexpected value: " + retVIR.retVal);
                     }
+                    mFunc.getIrs().add(new BMIR(null, null, null, retLabelMIR.label));
                 }
                 if (vir instanceof UnaryVIR unaryVIR)
                     MIROpTrans.transUnary(mFunc.getIrs(), virRegMap, unaryVIR);
@@ -152,6 +167,7 @@ public class MIRGenerator {
                     MIROpTrans.transStore(mFunc.getIrs(), virRegMap, storeVIR, localOffsets, paramOffsets);
             }
         }
+        mFunc.getIrs().add(retLabelMIR);
         mFunc.getIrs().replaceAll(ir -> ir.replaceReg(replaceMap));
         return mFunc;
     }
