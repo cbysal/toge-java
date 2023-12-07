@@ -12,11 +12,6 @@ public class JumpVIR extends VIR {
     }
 
     @Override
-    public VIR copy() {
-        return new JumpVIR(target);
-    }
-
-    @Override
     public String toString() {
         return "B       " + target;
     }

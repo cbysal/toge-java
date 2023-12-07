@@ -15,11 +15,6 @@ public class LiVIR extends VIR {
     }
 
     @Override
-    public VIR copy() {
-        return new LiVIR(value);
-    }
-
-    @Override
     public String toString() {
         return String.format("LI      %%%d, #%s", id, value);
     }

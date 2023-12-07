@@ -1,10 +1,7 @@
 package compile.vir.ir;
 
-import compile.vir.VReg;
 import compile.vir.type.BasicType;
 import compile.vir.value.Value;
-
-import java.util.List;
 
 public class UnaryVIR extends VIR {
     public final Type type;
@@ -18,18 +15,6 @@ public class UnaryVIR extends VIR {
         });
         this.type = type;
         this.source = source;
-    }
-
-    @Override
-    public VIR copy() {
-        return new UnaryVIR(type, source);
-    }
-
-    @Override
-    public List<VReg> getRead() {
-        if (source instanceof VReg reg)
-            return List.of(reg);
-        return List.of();
     }
 
     @Override

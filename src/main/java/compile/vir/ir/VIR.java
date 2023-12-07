@@ -1,10 +1,7 @@
 package compile.vir.ir;
 
-import compile.vir.VReg;
 import compile.vir.type.Type;
 import compile.vir.value.User;
-
-import java.util.List;
 
 public abstract class VIR extends User {
     private static int counter = 0;
@@ -14,8 +11,6 @@ public abstract class VIR extends User {
         super(type);
         this.id = counter++;
     }
-
-    abstract public VIR copy();
 
     @Override
     public boolean equals(Object o) {
@@ -32,15 +27,7 @@ public abstract class VIR extends User {
         return id;
     }
 
-    public List<VReg> getRead() {
-        return List.of();
-    }
-
-    public VReg getWrite() {
-        return null;
-    }
-
-    public String getTag() {
+    public final String getTag() {
         return "%" + id;
     }
 }

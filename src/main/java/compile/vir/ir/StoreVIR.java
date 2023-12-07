@@ -1,11 +1,9 @@
 package compile.vir.ir;
 
-import compile.vir.VReg;
 import compile.symbol.DataSymbol;
 import compile.vir.type.BasicType;
 import compile.vir.value.Value;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class StoreVIR extends VIR {
@@ -18,22 +16,6 @@ public class StoreVIR extends VIR {
         this.symbol = symbol;
         this.indexes = indexes;
         this.source = source;
-    }
-
-    @Override
-    public VIR copy() {
-        return new StoreVIR(symbol, new ArrayList<>(indexes), source);
-    }
-
-    @Override
-    public List<VReg> getRead() {
-        List<VReg> regs = new ArrayList<>();
-        for (Value item : indexes)
-            if (item instanceof VReg reg)
-                regs.add(reg);
-        if (source instanceof VReg reg)
-            regs.add(reg);
-        return regs;
     }
 
     public boolean isSingle() {
