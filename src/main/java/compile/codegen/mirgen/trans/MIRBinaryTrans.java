@@ -4,7 +4,7 @@ import compile.codegen.mirgen.mir.*;
 import compile.vir.VReg;
 import compile.vir.ir.BinaryVIR;
 import compile.vir.type.BasicType;
-import compile.symbol.Value;
+import compile.symbol.InstantValue;
 
 import java.util.List;
 
@@ -36,7 +36,7 @@ public final class MIRBinaryTrans {
             irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, source2));
     }
 
-    static void transBinaryImmReg(List<MIR> irs, BinaryVIR binaryVIR, Value value, VReg reg) {
+    static void transBinaryImmReg(List<MIR> irs, BinaryVIR binaryVIR, InstantValue value, VReg reg) {
         switch (binaryVIR.type) {
             case ADD -> {
                 if (binaryVIR.target.getType() == BasicType.FLOAT)
@@ -82,7 +82,7 @@ public final class MIRBinaryTrans {
         }
     }
 
-    static void transBinaryRegImm(List<MIR> irs, BinaryVIR binaryVIR, VReg reg, Value value) {
+    static void transBinaryRegImm(List<MIR> irs, BinaryVIR binaryVIR, VReg reg, InstantValue value) {
         switch (binaryVIR.type) {
             case ADD -> {
                 if (binaryVIR.target.getType() == BasicType.FLOAT)

@@ -131,7 +131,7 @@ public class MIRGenerator {
                 if (vir instanceof RetVIR retVIR) {
                     if (retVIR.retVal instanceof VReg reg)
                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVIR.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, reg));
-                    else if (retVIR.retVal instanceof Value value) {
+                    else if (retVIR.retVal instanceof InstantValue value) {
                         switch (value.getType()) {
                             case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
                             case BasicType.FLOAT ->

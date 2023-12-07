@@ -160,7 +160,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     allocInitVal(dimensions, exps, 0, initVal);
                     VReg symbolReg = new VReg(BasicType.I32, 8);
                     curBlock.add(new LoadVIR(symbolReg, localSymbol, List.of()));
-                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), null, List.of(symbolReg, new Value(0), new Value(dimensions.stream().reduce(4, Math::multiplyExact)))));
+                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), null, List.of(symbolReg, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
                     int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
                     for (int i = 0; i < totalNum; i++) {
                         SysYParser.BinaryExpContext exp = exps.get(i);
@@ -169,7 +169,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                             List<VIRItem> items = new ArrayList<>();
                             int rest = i;
                             for (int j = 0; j < dimensions.size(); j++) {
-                                items.add(new Value(rest % dimensions.get(dimensions.size() - j - 1)));
+                                items.add(new InstantValue(rest % dimensions.get(dimensions.size() - j - 1)));
                                 rest /= dimensions.get(dimensions.size() - j - 1);
                             }
                             Collections.reverse(items);

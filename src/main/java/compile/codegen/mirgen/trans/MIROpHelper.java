@@ -8,7 +8,7 @@ import compile.codegen.mirgen.mir.RrrMIR;
 import compile.vir.VReg;
 import compile.vir.ir.VIRItem;
 import compile.vir.type.BasicType;
-import compile.symbol.Value;
+import compile.symbol.InstantValue;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -40,7 +40,7 @@ public final class MIROpHelper {
                 regDimensions.add(Pair.of(reg, sizes[i]));
                 continue;
             }
-            if (dimension instanceof Value value) {
+            if (dimension instanceof InstantValue value) {
                 offset += value.intValue() * sizes[i];
                 continue;
             }
