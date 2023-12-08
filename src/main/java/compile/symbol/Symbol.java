@@ -1,18 +1,14 @@
 package compile.symbol;
 
 import compile.vir.type.Type;
+import compile.vir.value.Value;
 
-public abstract class Symbol {
-    protected final Type type;
+public abstract class Symbol extends Value {
     protected final String name;
 
     Symbol(Type type, String name) {
-        this.type = type;
+        super(type);
         this.name = name;
-    }
-
-    public Type getType() {
-        return type;
     }
 
     public String getName() {
