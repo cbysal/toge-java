@@ -11,6 +11,14 @@ public class ArrayType implements Type {
         this.arraySize = arraySize;
     }
 
+    public Type getBaseType() {
+        return baseType;
+    }
+
+    public int getArraySize() {
+        return arraySize;
+    }
+
     @Override
     public int getSize() {
         return baseType.getSize() * arraySize;
@@ -29,5 +37,10 @@ public class ArrayType implements Type {
     @Override
     public int hashCode() {
         return Objects.hash(baseType, arraySize);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[%d x %s]", arraySize, baseType);
     }
 }

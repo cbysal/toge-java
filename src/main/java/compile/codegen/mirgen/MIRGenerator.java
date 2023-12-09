@@ -58,12 +58,14 @@ public class MIRGenerator {
         return globals;
     }
 
-    private Pair<Integer, Map<Symbol, Integer>> calcLocalOffsets(List<LocalSymbol> locals) {
+    private Pair<Integer, Map<AllocaVIR, Integer>> calcLocalOffsets(Block block) {
         int localSize = 0;
-        Map<Symbol, Integer> localOffsets = new HashMap<>();
-        for (LocalSymbol localSymbol : locals) {
-            int size = localSymbol.size();
-            localOffsets.put(localSymbol, localSize);
+        Map<AllocaVIR, Integer> localOffsets = new HashMap<>();
+        for (VIR ir : block) {
+            if (!(ir instanceof AllocaVIR allocaVIR))
+                break;
+            int size = allocaVIR.getType().getSize() / 8;
+            localOffsets.put(allocaVIR, localSize);
             localSize += size;
         }
         return Pair.of(localSize, localOffsets);
@@ -106,7 +108,7 @@ public class MIRGenerator {
 
     private MachineFunction vir2MirSingle(VirtualFunction vFunc) {
         Map<Symbol, Pair<Boolean, Integer>> paramOffsets = calcParamOffsets(vFunc.getSymbol().getParams());
-        Pair<Integer, Map<Symbol, Integer>> locals = calcLocalOffsets(vFunc.getLocals());
+        Pair<Integer, Map<AllocaVIR, Integer>> locals = calcLocalOffsets(vFunc.getBlocks().getFirst());
         Pair<Integer, Integer> callerNums = getCallerNumbers(vFunc.getSymbol());
         MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
         LabelMIR retLabelMIR = new LabelMIR(new Label());
@@ -117,7 +119,7 @@ public class MIRGenerator {
                 virRegMap.put(ir, new VReg(ir.getType()));
             }
         }
-        Map<Symbol, Integer> localOffsets = locals.getRight();
+        Map<AllocaVIR, Integer> localOffsets = locals.getRight();
         for (Block block : vFunc.getBlocks()) {
             mFunc.addIR(new LabelMIR(block.getLabel()));
             for (VIR vir : block) {

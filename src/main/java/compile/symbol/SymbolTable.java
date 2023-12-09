@@ -1,36 +1,36 @@
 package compile.symbol;
 
+import compile.vir.ir.AllocaVIR;
+import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
 import compile.vir.type.Type;
+import compile.vir.value.Value;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class SymbolTable extends LinkedList<Map<String, Symbol>> {
+public class SymbolTable extends LinkedList<Map<String, Value>> {
     public SymbolTable() {
         this.push(new HashMap<>());
         initBuiltInFuncs();
         initSyscalls();
     }
 
-    private Symbol get(String name) {
-        for (Map<String, Symbol> symbols : this)
+    private Value get(String name) {
+        for (Map<String, Value> symbols : this)
             if (symbols.containsKey(name))
                 return symbols.get(name);
         throw new RuntimeException("Undefined symbol: " + name);
     }
 
-    public DataSymbol getData(String name) {
-        Symbol symbol = get(name);
-        if (symbol instanceof DataSymbol dataSymbol)
-            return dataSymbol;
-        throw new RuntimeException("Undefined data symbol: " + name);
+    public Value getData(String name) {
+        return get(name);
     }
 
     public FuncSymbol getFunc(String name) {
-        Symbol symbol = get(name);
+        Value symbol = get(name);
         if (symbol instanceof FuncSymbol funcSymbol)
             return funcSymbol;
         throw new RuntimeException("Undefined function symbol: " + name);
@@ -142,14 +142,16 @@ public class SymbolTable extends LinkedList<Map<String, Symbol>> {
         return symbol;
     }
 
-    public LocalSymbol makeLocal(Type type, String name) {
-        LocalSymbol symbol = new LocalSymbol(type, name);
+    public AllocaVIR makeLocal(Type type, String name) {
+        AllocaVIR symbol = new AllocaVIR(type);
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
-    public LocalSymbol makeLocal(Type type, String name, List<Integer> dimensions) {
-        LocalSymbol symbol = new LocalSymbol(type, name, dimensions);
+    public AllocaVIR makeLocal(Type type, String name, List<Integer> dimensions) {
+        for (int i = dimensions.size() - 1; i >= 0; i--)
+            type = new ArrayType(type, dimensions.get(i));
+        AllocaVIR symbol = new AllocaVIR(type);
         this.getFirst().put(name, symbol);
         return symbol;
     }

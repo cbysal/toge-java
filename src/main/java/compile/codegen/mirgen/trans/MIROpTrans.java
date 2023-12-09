@@ -148,6 +148,15 @@ public final class MIROpTrans {
             if (param.getType() == BasicType.FLOAT) {
                 if (fSize < MReg.F_CALLER_REGS.size()) {
                     switch (param) {
+                        case AllocaVIR allocaVIR -> {
+                            if (virRegMap.containsKey(allocaVIR))
+                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), virRegMap.get(allocaVIR)));
+                            else {
+                                VReg reg = new VReg(allocaVIR.getType());
+                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
+                                virRegMap.put(allocaVIR, reg);
+                            }
+                        }
                         case VIR ir -> {
                             if (virRegMap.containsKey(ir))
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), virRegMap.get(ir)));
@@ -247,23 +256,23 @@ public final class MIROpTrans {
             MIROpHelper.loadImmToReg(irs, reg, Float.floatToIntBits(liVIR.value.floatValue()));
     }
 
-    public static void transLoad(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR, Map<Symbol, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
-        Symbol symbol = loadVIR.symbol;
+    public static void transLoad(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR, Map<AllocaVIR, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
+        Value symbol = loadVIR.symbol;
         if (symbol instanceof GlobalSymbol)
             MIRLoadTrans.transLoadGlobal(irs, virRegMap, loadVIR);
-        if (symbol instanceof LocalSymbol)
+        if (symbol instanceof AllocaVIR)
             MIRLoadTrans.transLoadLocal(irs, virRegMap, loadVIR, localOffsets);
         if (symbol instanceof ParamSymbol)
             MIRLoadTrans.transLoadParam(irs, virRegMap, loadVIR, paramOffsets);
     }
 
-    public static void transStore(List<MIR> irs, Map<VIR, VReg> virRegMap, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
-        DataSymbol symbol = storeVIR.symbol;
+    public static void transStore(List<MIR> irs, Map<VIR, VReg> virRegMap, StoreVIR storeVIR, Map<AllocaVIR, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
+        Value symbol = storeVIR.symbol;
         if (symbol instanceof GlobalSymbol) {
             MIRStoreTrans.transStoreGlobal(irs, virRegMap, storeVIR);
             return;
         }
-        if (symbol instanceof LocalSymbol) {
+        if (symbol instanceof AllocaVIR) {
             MIRStoreTrans.transStoreLocal(irs, virRegMap, storeVIR, localOffsets);
             return;
         }

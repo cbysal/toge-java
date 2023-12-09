@@ -1,14 +1,15 @@
 package compile;
 
 import common.NumberUtils;
-import compile.vir.Block;
-import compile.vir.VirtualFunction;
-import compile.vir.ir.*;
-import compile.vir.type.BasicType;
-import compile.vir.type.Type;
 import compile.symbol.*;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
+import compile.vir.Block;
+import compile.vir.VirtualFunction;
+import compile.vir.ir.*;
+import compile.vir.type.ArrayType;
+import compile.vir.type.BasicType;
+import compile.vir.type.Type;
 import compile.vir.value.Value;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.apache.commons.lang3.tuple.Pair;
@@ -50,6 +51,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     private boolean isConst;
     private Type curType;
     private Block curBlock, trueBlock, falseBlock;
+    private List<AllocaVIR> allocaVIRs;
     private boolean calculatingCond = false;
 
     public VIRGenerator(SysYParser.RootContext rootAST) {
@@ -152,12 +154,12 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else {
-                LocalSymbol localSymbol = symbolTable.makeLocal(curType, name, dimensions);
-                curFunc.addLocal(localSymbol);
+                AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name, dimensions);
+                allocaVIRs.add(allocaVIR);
                 if (initVal != null) {
                     Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
-                    VIR loadIR = new LoadVIR(localSymbol, List.of());
+                    VIR loadIR = new LoadVIR(allocaVIR, List.of());
                     curBlock.add(loadIR);
                     curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(loadIR, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
                     int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
@@ -172,7 +174,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                                 rest /= dimensions.get(dimensions.size() - j - 1);
                             }
                             Collections.reverse(items);
-                            curBlock.add(new StoreVIR(localSymbol, items, reg));
+                            curBlock.add(new StoreVIR(allocaVIR, items, reg));
                         }
                     }
                 }
@@ -199,17 +201,13 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else {
-                LocalSymbol localSymbol = symbolTable.makeLocal(switch (curType) {
-                    case BasicType.I32 -> BasicType.I32;
-                    case BasicType.FLOAT -> BasicType.FLOAT;
-                    default -> throw new IllegalStateException("Unexpected value: " + curType);
-                }, name);
-                curFunc.addLocal(localSymbol);
+                AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name);
+                allocaVIRs.add(allocaVIR);
                 SysYParser.InitValContext initVal = ctx.initVal();
                 if (initVal != null) {
                     Value reg = visitBinaryExp(initVal.binaryExp());
                     reg = typeConversion(reg, curType);
-                    curBlock.add(new StoreVIR(localSymbol, List.of(), reg));
+                    curBlock.add(new StoreVIR(allocaVIR, List.of(), reg));
                 }
             }
         }
@@ -226,7 +224,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         curFunc = new VirtualFunction(func);
         curBlock = new Block();
         curFunc.addBlock(curBlock);
+        allocaVIRs = new ArrayList<>();
         visitBlockStmt(ctx.blockStmt());
+        curFunc.getBlocks().getFirst().addAll(0, allocaVIRs);
         funcs.put(func.getName(), curFunc);
         symbolTable.out();
         return null;
@@ -258,9 +258,19 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Object visitAssignStmt(SysYParser.AssignStmtContext ctx) {
-        Pair<DataSymbol, List<Value>> lValUnit = visitLVal(ctx.lVal());
+        Pair<Value, List<Value>> lValUnit = visitLVal(ctx.lVal());
         Value rReg = visitBinaryExp(ctx.binaryExp());
-        rReg = typeConversion(rReg, lValUnit.getLeft().getType());
+        if (lValUnit.getLeft() instanceof AllocaVIR) {
+            Type targetType = lValUnit.getLeft().getType();
+            for (int i = 0; i < lValUnit.getRight().size(); i++) {
+                if (!(targetType instanceof ArrayType arrayType))
+                    throw new RuntimeException();
+                targetType = arrayType.getBaseType();
+            }
+            rReg = typeConversion(rReg, targetType);
+        } else {
+            rReg = typeConversion(rReg, lValUnit.getLeft().getType());
+        }
         curBlock.add(new StoreVIR(lValUnit.getLeft(), lValUnit.getRight(), rReg));
         return null;
     }
@@ -362,8 +372,8 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public Pair<DataSymbol, List<Value>> visitLVal(SysYParser.LValContext ctx) {
-        DataSymbol symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
+    public Pair<Value, List<Value>> visitLVal(SysYParser.LValContext ctx) {
+        Value symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
         if (ctx.binaryExp().isEmpty())
             return Pair.of(symbol, List.of());
         List<Value> dimensions = ctx.binaryExp().stream().map(this::visitBinaryExp).collect(Collectors.toList());
@@ -430,7 +440,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Value visitVarExp(SysYParser.VarExpContext ctx) {
-        DataSymbol symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
+        Value symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
         if (ctx.binaryExp().isEmpty()) {
             VIR newIR = new LoadVIR(symbol, List.of());
             curBlock.add(newIR);
@@ -594,7 +604,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
         if (ctx instanceof SysYParser.VarExpContext varExp) {
             String name = varExp.Ident().getSymbol().getText();
-            DataSymbol symbol = symbolTable.getData(name);
+            Value symbol = symbolTable.getData(name);
             if (symbol instanceof GlobalSymbol globalSymbol) {
                 if (varExp.binaryExp().isEmpty()) {
                     if (globalSymbol.getType() == BasicType.FLOAT)

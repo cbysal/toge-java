@@ -3,11 +3,15 @@ package compile.codegen.mirgen.trans;
 import compile.codegen.mirgen.mir.*;
 import compile.symbol.InstantValue;
 import compile.codegen.VReg;
+import compile.symbol.ParamSymbol;
+import compile.vir.ir.AllocaVIR;
 import compile.vir.ir.StoreVIR;
 import compile.vir.ir.VIR;
+import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
 import compile.symbol.DataSymbol;
 import compile.symbol.Symbol;
+import compile.vir.type.Type;
 import compile.vir.value.Value;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -26,7 +30,8 @@ public final class MIRStoreTrans {
     }
 
     static void transStoreGlobal(List<MIR> irs, Map<VIR, VReg> virRegMap, StoreVIR storeVIR) {
-        DataSymbol symbol = storeVIR.symbol;
+        if (!(storeVIR.symbol instanceof DataSymbol symbol))
+            throw new IllegalStateException("Unexpected value: " + storeVIR.symbol);
         Value source = storeVIR.source;
         if (symbol.isSingle()) {
             transStoreGlobalSingle(irs, virRegMap, source, symbol);
@@ -119,71 +124,48 @@ public final class MIRStoreTrans {
         }
     }
 
-    static void transStoreLocal(List<MIR> irs, Map<VIR, VReg> virRegMap, StoreVIR storeVIR, Map<Symbol, Integer> localOffsets) {
-        DataSymbol symbol = storeVIR.symbol;
+    static void transStoreLocal(List<MIR> irs, Map<VIR, VReg> virRegMap, StoreVIR storeVIR, Map<AllocaVIR, Integer> localOffsets) {
+        if (!(storeVIR.symbol instanceof AllocaVIR symbol))
+            throw new IllegalStateException("Unexpected value: " + storeVIR.symbol);
         Value source = storeVIR.source;
         int offset = localOffsets.get(symbol);
         if (storeVIR.isSingle()) {
             transStoreLocalSingle(irs, virRegMap, source, offset);
             return;
         }
-        transStoreLocalElement(irs, virRegMap, source, storeVIR.indexes, symbol, offset);
-    }
-
-    private static void transStoreLocalElement(List<MIR> irs, Map<VIR, VReg> virRegMap, Value source, List<Value> dimensions, DataSymbol symbol, int offset) {
-        Pair<Integer, List<Pair<VReg, Integer>>> offsetRegDimensions = MIROpHelper.calcDimension(virRegMap, dimensions, symbol.getSizes());
-        offset += offsetRegDimensions.getLeft();
-        List<Pair<VReg, Integer>> regDimensions = offsetRegDimensions.getRight();
-        if (regDimensions.isEmpty()) {
-            VReg sourceReg = switch (source) {
-                case VIR ir -> {
-                    if (virRegMap.containsKey(ir))
-                        yield virRegMap.get(ir);
-                    VReg reg = new VReg(ir.getType());
-                    virRegMap.put(ir, reg);
-                    yield reg;
-                }
-                case VReg reg -> reg;
-                case InstantValue value -> {
-                    VReg midReg = new VReg(BasicType.I32);
-                    if (source.getType() == BasicType.FLOAT) {
-                        MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
-                    } else {
-                        MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
-                    }
-                    yield midReg;
-                }
-                default -> throw new IllegalStateException("Unexpected value: " + source);
-            };
-            irs.add(new StoreItemMIR(StoreItemMIR.Item.LOCAL, sourceReg, offset));
-            return;
-        }
+        Type type = symbol.getType();
         VReg midReg1 = new VReg(BasicType.I32);
         irs.add(new AddRegLocalMIR(midReg1, offset));
-        VReg midReg2 = new VReg(BasicType.I32);
-        MIROpHelper.addRegDimensionsToReg(irs, midReg2, regDimensions, midReg1);
-        VReg sourceReg = switch (source) {
-            case VIR ir -> {
-                if (virRegMap.containsKey(ir)) {
-                    yield virRegMap.get(ir);
-                }
-                VReg reg = new VReg(ir.getType());
-                virRegMap.put(ir, reg);
-                yield reg;
+        for (Value index : storeVIR.indexes) {
+            if (!(type instanceof ArrayType arrayType)) {
+                throw new RuntimeException();
             }
-            case VReg reg -> reg;
-            case InstantValue value -> {
+            if (index instanceof InstantValue value) {
+                VReg midReg2 = new VReg(BasicType.I32);
                 VReg midReg3 = new VReg(BasicType.I32);
-                if (source.getType() == BasicType.FLOAT) {
-                    MIROpHelper.loadImmToReg(irs, midReg3, value.floatValue());
-                } else {
-                    MIROpHelper.loadImmToReg(irs, midReg3, value.intValue());
-                }
-                yield midReg3;
+                irs.add(new LiMIR(midReg2, arrayType.getBaseType().getSize() / 8 * value.intValue()));
+                irs.add(new RrrMIR(RrrMIR.Op.ADD, midReg3, midReg1, midReg2));
+                midReg1 = midReg3;
+            } else if (index instanceof VIR ir) {
+                VReg midReg2 = new VReg(BasicType.I32);
+                VReg midReg3 = new VReg(BasicType.I32);
+                VReg midReg4 = new VReg(BasicType.I32);
+                irs.add(new LiMIR(midReg2, arrayType.getBaseType().getSize() / 8));
+                irs.add(new RrrMIR(RrrMIR.Op.MUL, midReg3, virRegMap.get(ir), midReg2));
+                irs.add(new RrrMIR(RrrMIR.Op.ADD, midReg4, midReg1, midReg3));
+                midReg1 = midReg4;
+            } else {
+                throw new RuntimeException();
             }
-            default -> throw new IllegalStateException("Unexpected value: " + source);
-        };
-        strRsRtImm(irs, sourceReg, midReg2, 0);
+            type = arrayType.getBaseType();
+        }
+        if (source instanceof VIR ir) {
+            strRsRtImm(irs, virRegMap.get(ir), midReg1, 0);
+        } else if (source instanceof InstantValue value) {
+            VReg midReg2 = new VReg(value.getType());
+            irs.add(new LiMIR(midReg2, value.getType() == BasicType.I32 ? value.intValue() : Float.floatToIntBits(value.floatValue())));
+            strRsRtImm(irs, midReg2, midReg1, 0);
+        }
     }
 
     private static void transStoreLocalSingle(List<MIR> irs, Map<VIR, VReg> virRegMap, Value source, int offset) {
@@ -211,7 +193,8 @@ public final class MIRStoreTrans {
     }
 
     static void transStoreParam(List<MIR> irs, Map<VIR, VReg> virRegMap, StoreVIR storeVIR, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
-        DataSymbol symbol = storeVIR.symbol;
+        if (!(storeVIR.symbol instanceof ParamSymbol symbol))
+            throw new IllegalStateException("Unexpected value: " + storeVIR.symbol);
         Value source = storeVIR.source;
         Pair<Boolean, Integer> rawOffset = paramOffsets.get(symbol);
         if (symbol.isSingle()) {
