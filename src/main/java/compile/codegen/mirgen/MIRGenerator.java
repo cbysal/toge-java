@@ -2,17 +2,15 @@ package compile.codegen.mirgen;
 
 import compile.codegen.Label;
 import compile.codegen.MReg;
-import compile.codegen.mirgen.mir.BMIR;
-import compile.codegen.mirgen.mir.LabelMIR;
-import compile.codegen.mirgen.mir.LiMIR;
-import compile.codegen.mirgen.mir.RrMIR;
-import compile.codegen.mirgen.trans.MIROpTrans;
-import compile.vir.Block;
 import compile.codegen.VReg;
+import compile.codegen.mirgen.mir.*;
+import compile.codegen.mirgen.trans.MIROpTrans;
+import compile.symbol.*;
+import compile.vir.Block;
 import compile.vir.VirtualFunction;
 import compile.vir.ir.*;
 import compile.vir.type.BasicType;
-import compile.symbol.*;
+import compile.vir.value.Value;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.HashMap;
@@ -64,7 +62,7 @@ public class MIRGenerator {
         for (VIR ir : block) {
             if (!(ir instanceof AllocaVIR allocaVIR))
                 break;
-            int size = allocaVIR.getType().getSize() / 8;
+            int size = allocaVIR.getType().getBaseType().getSize() / 8;
             localOffsets.put(allocaVIR, localSize);
             localSize += size;
         }
@@ -128,15 +126,149 @@ public class MIRGenerator {
                 if (vir instanceof BranchVIR branchVIR)
                     MIROpTrans.transBranch(mFunc.getIrs(), virRegMap, branchVIR);
                 if (vir instanceof CallVIR callVIR) {
-                    int paramNum = MIROpTrans.transCall(mFunc.getIrs(), virRegMap, callVIR);
+                    int paramNum = MIROpTrans.transCall(mFunc.getIrs(), virRegMap, callVIR, localOffsets);
                     mFunc.setMaxFuncParamNum(Integer.max(mFunc.getMaxFuncParamNum(), paramNum));
                 }
                 if (vir instanceof JumpVIR jumpVIR)
                     mFunc.getIrs().add(new BMIR(null, null, null, jumpVIR.target.getLabel()));
                 if (vir instanceof LiVIR liVIR)
                     MIROpTrans.transLI(mFunc.getIrs(), virRegMap, liVIR);
-                if (vir instanceof LoadVIR loadVIR)
-                    MIROpTrans.transLoad(mFunc.getIrs(), virRegMap, loadVIR, localOffsets, paramOffsets);
+                if (vir instanceof GetElementPtrVIR getElementPtrVIR) {
+                    Value pointer = getElementPtrVIR.getPointer();
+                    if (pointer instanceof Symbol symbol) {
+                        if (symbol instanceof GlobalSymbol global) {
+                            VReg midReg1 = new VReg(BasicType.I32);
+                            VReg midReg2 = new VReg(BasicType.I32);
+                            VReg midReg3 = new VReg(BasicType.I32);
+                            VReg midReg4 = new VReg(BasicType.I32);
+                            mFunc.getIrs().add(new LlaMIR(midReg1, global));
+                            mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrVIR.getType().getBaseType().getSize() / 8));
+                            switch (getElementPtrVIR.getIndexes().getLast()) {
+                                case VIR ir -> mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, virRegMap.get(ir)));
+                                case InstantValue value ->
+                                        mFunc.getIrs().add(new LiMIR(midReg3, value.getType() == BasicType.I32 ? value.intValue() : Float.floatToIntBits(value.floatValue())));
+                                default ->
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().get(0));
+                            }
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), midReg1, midReg4));
+                            continue;
+                        }
+                        if (symbol instanceof ParamSymbol param) {
+                            Pair<Boolean, Integer> innerOffset = paramOffsets.get(param);
+                            VReg midReg1 = new VReg(BasicType.I32);
+                            VReg midReg2 = new VReg(BasicType.I32);
+                            VReg midReg3 = new VReg(BasicType.I32);
+                            VReg midReg4 = new VReg(BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(innerOffset.getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1, innerOffset.getRight()));
+                            mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrVIR.getType().getBaseType().getSize() / 8));
+                            switch (getElementPtrVIR.getIndexes().getLast()) {
+                                case VIR ir -> mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, virRegMap.get(ir)));
+                                case InstantValue value ->
+                                        mFunc.getIrs().add(new LiMIR(midReg3, value.getType() == BasicType.I32 ? value.intValue() : Float.floatToIntBits(value.floatValue())));
+                                default ->
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
+                            }
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), midReg1, midReg4));
+                        }
+                    }
+                    if (pointer instanceof AllocaVIR allocaVIR) {
+                        if (getElementPtrVIR.getIndexes().size() == 2) {
+                            VReg midReg1 = new VReg(BasicType.I32);
+                            VReg midReg2 = new VReg(BasicType.I32);
+                            VReg midReg3 = new VReg(BasicType.I32);
+                            VReg midReg4 = new VReg(BasicType.I32);
+                            mFunc.getIrs().add(new AddRegLocalMIR(midReg1, localOffsets.get(allocaVIR)));
+                            switch (getElementPtrVIR.getIndexes().getLast()) {
+                                case VIR tempIR ->
+                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, virRegMap.get(tempIR)));
+                                case InstantValue value ->
+                                        mFunc.getIrs().add(new LiMIR(midReg2, value.getType() == BasicType.I32 ? value.intValue() : Float.floatToIntBits(value.floatValue())));
+                                default ->
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
+                            }
+                            mFunc.getIrs().add(new LiMIR(midReg3, pointer.getType().getBaseType().getBaseType().getSize() / 8));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), midReg1, midReg4));
+                        } else {
+                            VReg midReg1 = new VReg(BasicType.I32);
+                            VReg midReg2 = new VReg(BasicType.I32);
+                            VReg midReg3 = new VReg(BasicType.I32);
+                            VReg midReg4 = new VReg(BasicType.I32);
+                            mFunc.getIrs().add(new AddRegLocalMIR(midReg1, localOffsets.get(allocaVIR)));
+                            switch (getElementPtrVIR.getIndexes().getLast()) {
+                                case VIR tempIR ->
+                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, virRegMap.get(tempIR)));
+                                case InstantValue value ->
+                                        mFunc.getIrs().add(new LiMIR(midReg2, value.getType() == BasicType.I32 ? value.intValue() : Float.floatToIntBits(value.floatValue())));
+                                default ->
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
+                            }
+                            mFunc.getIrs().add(new LiMIR(midReg3, pointer.getType().getBaseType().getSize() / 8));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), midReg1, midReg4));
+                        }
+                        continue;
+                    }
+                    if (pointer instanceof VIR ir) {
+                        if (getElementPtrVIR.getIndexes().size() == 2) {
+                            VReg midReg1 = new VReg(BasicType.I32);
+                            VReg midReg2 = new VReg(BasicType.I32);
+                            VReg midReg3 = new VReg(BasicType.I32);
+                            switch (getElementPtrVIR.getIndexes().getLast()) {
+                                case VIR tempIR ->
+                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, virRegMap.get(tempIR)));
+                                case InstantValue value ->
+                                        mFunc.getIrs().add(new LiMIR(midReg1, value.getType() == BasicType.I32 ? value.intValue() : Float.floatToIntBits(value.floatValue())));
+                                default ->
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
+                            }
+                            mFunc.getIrs().add(new LiMIR(midReg2, pointer.getType().getBaseType().getBaseType().getSize() / 8));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg3, midReg1, midReg2));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), virRegMap.get(ir), midReg3));
+                        } else {
+                            VReg midReg1 = new VReg(BasicType.I32);
+                            VReg midReg2 = new VReg(BasicType.I32);
+                            VReg midReg3 = new VReg(BasicType.I32);
+                            switch (getElementPtrVIR.getIndexes().getLast()) {
+                                case VIR tempIR ->
+                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, virRegMap.get(tempIR)));
+                                case InstantValue value ->
+                                        mFunc.getIrs().add(new LiMIR(midReg1, value.getType() == BasicType.I32 ? value.intValue() : Float.floatToIntBits(value.floatValue())));
+                                default ->
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
+                            }
+                            mFunc.getIrs().add(new LiMIR(midReg2, pointer.getType().getBaseType().getSize() / 8));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg3, midReg1, midReg2));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), virRegMap.get(ir), midReg3));
+                        }
+                    }
+                }
+                if (vir instanceof LoadVIR loadVIR) {
+                    Value pointer = loadVIR.pointer;
+                    if (pointer instanceof Symbol symbol) {
+                        if (symbol instanceof GlobalSymbol global) {
+                            VReg midReg = new VReg(BasicType.I32);
+                            mFunc.getIrs().add(new LlaMIR(midReg, global));
+                            mFunc.getIrs().add(new LoadMIR(virRegMap.get(loadVIR), midReg, 0, 4));
+                            continue;
+                        }
+                        if (symbol instanceof ParamSymbol param) {
+                            Pair<Boolean, Integer> innerOffset = paramOffsets.get(param);
+                            mFunc.getIrs().add(new LoadItemMIR(innerOffset.getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, virRegMap.get(loadVIR), innerOffset.getRight()));
+                        }
+                    }
+                    if (pointer instanceof AllocaVIR allocaVIR) {
+                        VReg midReg = new VReg(BasicType.I32);
+                        mFunc.getIrs().add(new AddRegLocalMIR(midReg, localOffsets.get(allocaVIR)));
+                        mFunc.getIrs().add(new LoadMIR(virRegMap.get(loadVIR), midReg, 0, allocaVIR.getType().getBaseType().getSize() / 8));
+                        continue;
+                    }
+                    if (pointer instanceof VIR ir) {
+                        mFunc.getIrs().add(new LoadMIR(virRegMap.get(loadVIR), virRegMap.get(ir), 0, ir.getType().getBaseType().getSize() / 8));
+                    }
+                }
                 if (vir instanceof RetVIR retVIR) {
                     switch (retVIR.retVal) {
                         case VIR ir -> {
@@ -166,8 +298,65 @@ public class MIRGenerator {
                 }
                 if (vir instanceof UnaryVIR unaryVIR)
                     MIROpTrans.transUnary(mFunc.getIrs(), virRegMap, unaryVIR);
-                if (vir instanceof StoreVIR storeVIR)
-                    MIROpTrans.transStore(mFunc.getIrs(), virRegMap, storeVIR, localOffsets, paramOffsets);
+                if (vir instanceof StoreVIR storeVIR) {
+                    Value value = storeVIR.value;
+                    Value pointer = storeVIR.pointer;
+                    if (pointer instanceof Symbol symbol) {
+                        if (symbol instanceof GlobalSymbol global) {
+                            VReg midReg1 = new VReg(BasicType.I32);
+                            VReg midReg2 = new VReg(BasicType.I32);
+                            mFunc.getIrs().add(new LlaMIR(midReg1, global));
+                            switch (value) {
+                                case VIR ir -> mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, virRegMap.get(ir)));
+                                case InstantValue v ->
+                                        mFunc.getIrs().add(new LiMIR(midReg2, v.getType() == BasicType.I32 ? v.intValue() : Float.floatToIntBits(v.floatValue())));
+                                default -> throw new IllegalStateException("Unexpected value: " + value);
+                            }
+                            mFunc.getIrs().add(new StoreMIR(midReg2, midReg1, 0, 4));
+                            continue;
+                        }
+                        if (symbol instanceof ParamSymbol param) {
+                            Pair<Boolean, Integer> innerOffset = paramOffsets.get(param);
+                            VReg midReg1 = new VReg(BasicType.I32);
+                            VReg midReg2 = new VReg(BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(innerOffset.getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1, innerOffset.getRight()));
+                            switch (value) {
+                                case VIR ir -> mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, virRegMap.get(ir)));
+                                case InstantValue v ->
+                                        mFunc.getIrs().add(new LiMIR(midReg2, v.getType() == BasicType.I32 ? v.intValue() : Float.floatToIntBits(v.floatValue())));
+                                default -> throw new IllegalStateException("Unexpected value: " + value);
+                            }
+                            mFunc.getIrs().add(new StoreMIR(midReg2, midReg1, 0, 4));
+                        }
+                    }
+                    if (pointer instanceof AllocaVIR allocaVIR) {
+                        VReg midReg1 = new VReg(BasicType.I32);
+                        VReg midReg2 = new VReg(BasicType.I32);
+                        switch (value) {
+                            case VIR tempIR ->
+                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, virRegMap.get(tempIR)));
+                            case ParamSymbol param ->
+                                    mFunc.getIrs().add(new LoadItemMIR(paramOffsets.get(param).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1, paramOffsets.get(param).getRight()));
+                            case InstantValue v ->
+                                    mFunc.getIrs().add(new LiMIR(midReg1, v.getType() == BasicType.I32 ? v.intValue() : Float.floatToIntBits(v.floatValue())));
+                            default -> throw new IllegalStateException("Unexpected value: " + value);
+                        }
+                        mFunc.getIrs().add(new AddRegLocalMIR(midReg2, localOffsets.get(allocaVIR)));
+                        mFunc.getIrs().add(new StoreMIR(midReg1, midReg2, 0, allocaVIR.getType().getBaseType().getSize() / 8));
+                        continue;
+                    }
+                    if (pointer instanceof VIR ir) {
+                        VReg midReg = new VReg(BasicType.I32);
+                        switch (value) {
+                            case VIR tempIR ->
+                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg, virRegMap.get(tempIR)));
+                            case InstantValue v ->
+                                    mFunc.getIrs().add(new LiMIR(midReg, v.getType() == BasicType.I32 ? v.intValue() : Float.floatToIntBits(v.floatValue())));
+                            default -> throw new IllegalStateException("Unexpected value: " + value);
+                        }
+                        mFunc.getIrs().add(new StoreMIR(midReg, virRegMap.get(ir), 0, ir.getType().getBaseType().getSize() / 8));
+                    }
+                }
             }
         }
         mFunc.getIrs().add(retLabelMIR);

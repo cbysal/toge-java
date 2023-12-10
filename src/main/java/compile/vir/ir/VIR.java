@@ -27,7 +27,8 @@ public abstract class VIR extends User {
         return id;
     }
 
-    public final String getTag() {
+    @Override
+    public final String getName() {
         return "%" + id;
     }
 }

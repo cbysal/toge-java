@@ -1,14 +1,15 @@
 package compile.codegen.mirgen.trans;
 
 import compile.codegen.MReg;
-import compile.codegen.mirgen.mir.*;
-import compile.vir.Block;
 import compile.codegen.VReg;
+import compile.codegen.mirgen.mir.*;
+import compile.symbol.GlobalSymbol;
+import compile.symbol.InstantValue;
+import compile.vir.Block;
 import compile.vir.ir.*;
 import compile.vir.type.BasicType;
-import compile.symbol.*;
+import compile.vir.type.PointerType;
 import compile.vir.value.Value;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -140,7 +141,7 @@ public final class MIROpTrans {
         throw new RuntimeException();
     }
 
-    public static int transCall(List<MIR> irs, Map<VIR, VReg> virRegMap, CallVIR callVIR) {
+    public static int transCall(List<MIR> irs, Map<VIR, VReg> virRegMap, CallVIR callVIR, Map<AllocaVIR, Integer> localOffsets) {
         List<Value> params = callVIR.params;
         List<MIR> saveCalleeIRs = new ArrayList<>();
         int iSize = 0, fSize = 0;
@@ -196,6 +197,14 @@ public final class MIROpTrans {
             } else {
                 if (iSize < MReg.I_CALLER_REGS.size()) {
                     switch (param) {
+                        case GlobalSymbol global ->
+                                saveCalleeIRs.add(new LlaMIR(MReg.I_CALLER_REGS.get(iSize), global));
+                        case AllocaVIR allocaVIR -> {
+                            if (allocaVIR.getType() instanceof PointerType)
+                                saveCalleeIRs.add(new AddRegLocalMIR(MReg.I_CALLER_REGS.get(iSize), localOffsets.get(allocaVIR)));
+                            else
+                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), virRegMap.get(allocaVIR)));
+                        }
                         case VIR ir -> {
                             if (virRegMap.containsKey(ir))
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), virRegMap.get(ir)));
@@ -212,6 +221,11 @@ public final class MIROpTrans {
                     }
                 } else {
                     switch (param) {
+                        case AllocaVIR allocaVIR -> {
+                            VReg midReg = new VReg(BasicType.I32);
+                            irs.add(new AddRegLocalMIR(midReg, localOffsets.get(allocaVIR)));
+                            irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
+                        }
                         case VIR ir -> {
                             if (virRegMap.containsKey(ir))
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, virRegMap.get(ir), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
@@ -256,35 +270,13 @@ public final class MIROpTrans {
             MIROpHelper.loadImmToReg(irs, reg, Float.floatToIntBits(liVIR.value.floatValue()));
     }
 
-    public static void transLoad(List<MIR> irs, Map<VIR, VReg> virRegMap, LoadVIR loadVIR, Map<AllocaVIR, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
-        Value symbol = loadVIR.symbol;
-        if (symbol instanceof GlobalSymbol)
-            MIRLoadTrans.transLoadGlobal(irs, virRegMap, loadVIR);
-        if (symbol instanceof AllocaVIR)
-            MIRLoadTrans.transLoadLocal(irs, virRegMap, loadVIR, localOffsets);
-        if (symbol instanceof ParamSymbol)
-            MIRLoadTrans.transLoadParam(irs, virRegMap, loadVIR, paramOffsets);
-    }
-
-    public static void transStore(List<MIR> irs, Map<VIR, VReg> virRegMap, StoreVIR storeVIR, Map<AllocaVIR, Integer> localOffsets, Map<Symbol, Pair<Boolean, Integer>> paramOffsets) {
-        Value symbol = storeVIR.symbol;
-        if (symbol instanceof GlobalSymbol) {
-            MIRStoreTrans.transStoreGlobal(irs, virRegMap, storeVIR);
-            return;
-        }
-        if (symbol instanceof AllocaVIR) {
-            MIRStoreTrans.transStoreLocal(irs, virRegMap, storeVIR, localOffsets);
-            return;
-        }
-        if (symbol instanceof ParamSymbol) {
-            MIRStoreTrans.transStoreParam(irs, virRegMap, storeVIR, paramOffsets);
-            return;
-        }
-        throw new RuntimeException();
-    }
-
     public static void transUnary(List<MIR> irs, Map<VIR, VReg> virRegMap, UnaryVIR unaryVIR) {
         switch (unaryVIR.source) {
+            case GlobalSymbol global -> {
+                VReg midReg = new VReg(global.getType());
+                irs.add(new LlaMIR(midReg, global));
+                MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, midReg);
+            }
             case VIR ir -> {
                 if (virRegMap.containsKey(ir))
                     MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, virRegMap.get(ir));

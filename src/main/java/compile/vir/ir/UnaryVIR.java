@@ -22,7 +22,7 @@ public class UnaryVIR extends VIR {
         StringBuilder builder = new StringBuilder();
         builder.append(type);
         builder.append(" ".repeat(8 - builder.length()));
-        builder.append(getTag()).append(", ").append(source instanceof VIR ir ? ir.getTag() : source);
+        builder.append(getName()).append(", ").append(source instanceof VIR ir ? ir.getName() : source);
         return builder.toString();
     }
 

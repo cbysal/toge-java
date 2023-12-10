@@ -17,6 +17,8 @@ public abstract class Value {
         return type;
     }
 
+    abstract public String getName();
+
     public int getSize() {
         return type.getSize();
     }

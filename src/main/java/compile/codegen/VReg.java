@@ -17,6 +17,10 @@ public class VReg extends Reg {
         return id;
     }
 
+    @Override
+    public String getName() {
+        return toString();
+    }
 
     @Override
     public String toString() {

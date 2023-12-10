@@ -10,4 +10,14 @@ public enum BasicType implements Type {
             case VOID -> 0;
         };
     }
+
+    @Override
+    public Type getBaseType() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String toString() {
+        return super.toString().toLowerCase();
+    }
 }

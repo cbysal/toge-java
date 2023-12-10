@@ -9,6 +9,7 @@ import compile.vir.VirtualFunction;
 import compile.vir.ir.*;
 import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
+import compile.vir.type.PointerType;
 import compile.vir.type.Type;
 import compile.vir.value.Value;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -159,22 +160,26 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 if (initVal != null) {
                     Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
-                    VIR loadIR = new LoadVIR(allocaVIR, List.of());
-                    curBlock.add(loadIR);
-                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(loadIR, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
+                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(allocaVIR, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
                     int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
                     for (int i = 0; i < totalNum; i++) {
                         SysYParser.BinaryExpContext exp = exps.get(i);
                         if (exp != null) {
-                            Value reg = typeConversion(visitBinaryExp(exps.get(i)), curType);
-                            List<Value> items = new ArrayList<>();
+                            List<Integer> indexes = new ArrayList<>();
                             int rest = i;
                             for (int j = 0; j < dimensions.size(); j++) {
-                                items.add(new InstantValue(rest % dimensions.get(dimensions.size() - j - 1)));
+                                indexes.add(rest % dimensions.get(dimensions.size() - j - 1));
                                 rest /= dimensions.get(dimensions.size() - j - 1);
                             }
-                            Collections.reverse(items);
-                            curBlock.add(new StoreVIR(allocaVIR, items, reg));
+                            Collections.reverse(indexes);
+                            Value value = typeConversion(visitBinaryExp(exps.get(i)), curType);
+                            Value pointer = allocaVIR;
+                            for (int index : indexes) {
+                                VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), new InstantValue(index));
+                                curBlock.add(ir);
+                                pointer = ir;
+                            }
+                            curBlock.add(new StoreVIR(value, pointer));
                         }
                     }
                 }
@@ -205,9 +210,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 allocaVIRs.add(allocaVIR);
                 SysYParser.InitValContext initVal = ctx.initVal();
                 if (initVal != null) {
-                    Value reg = visitBinaryExp(initVal.binaryExp());
-                    reg = typeConversion(reg, curType);
-                    curBlock.add(new StoreVIR(allocaVIR, List.of(), reg));
+                    Value value = visitBinaryExp(initVal.binaryExp());
+                    value = typeConversion(value, curType);
+                    curBlock.add(new StoreVIR(value, allocaVIR));
                 }
             }
         }
@@ -225,6 +230,19 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         curBlock = new Block();
         curFunc.addBlock(curBlock);
         allocaVIRs = new ArrayList<>();
+        for (ParamSymbol param : curFunc.getSymbol().getParams()) {
+            Type type = param.getType();
+            for (int i = param.getDimensionSize() - 1; i >= 0; i--) {
+                if (i == 0) {
+                    type = new PointerType(type);
+                } else {
+                    type = new ArrayType(type, param.getDimensions().get(i));
+                }
+            }
+            AllocaVIR allocaVIR = symbolTable.makeLocal(type, param.getName());
+            allocaVIRs.add(allocaVIR);
+            curBlock.add(new StoreVIR(param, allocaVIR));
+        }
         visitBlockStmt(ctx.blockStmt());
         curFunc.getBlocks().getFirst().addAll(0, allocaVIRs);
         funcs.put(func.getName(), curFunc);
@@ -259,19 +277,66 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public Object visitAssignStmt(SysYParser.AssignStmtContext ctx) {
         Pair<Value, List<Value>> lValUnit = visitLVal(ctx.lVal());
-        Value rReg = visitBinaryExp(ctx.binaryExp());
+        Value value = visitBinaryExp(ctx.binaryExp());
         if (lValUnit.getLeft() instanceof AllocaVIR) {
             Type targetType = lValUnit.getLeft().getType();
             for (int i = 0; i < lValUnit.getRight().size(); i++) {
-                if (!(targetType instanceof ArrayType arrayType))
+                if (targetType instanceof BasicType)
                     throw new RuntimeException();
-                targetType = arrayType.getBaseType();
+                targetType = targetType.getBaseType();
             }
-            rReg = typeConversion(rReg, targetType);
+            value = typeConversion(value, targetType);
         } else {
-            rReg = typeConversion(rReg, lValUnit.getLeft().getType());
+            value = typeConversion(value, lValUnit.getLeft().getType());
         }
-        curBlock.add(new StoreVIR(lValUnit.getLeft(), lValUnit.getRight(), rReg));
+        Value pointer = lValUnit.getLeft();
+        Type type = pointer.getType();
+        if (pointer instanceof DataSymbol symbol) {
+            if (symbol instanceof GlobalSymbol) {
+                for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
+                    type = new ArrayType(type, symbol.getDimensions().get(i));
+                }
+                type = new PointerType(type);
+            }
+            if (symbol instanceof ParamSymbol) {
+                for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
+                    if (i == 0) {
+                        type = new PointerType(type);
+                    } else {
+                        type = new ArrayType(type, symbol.getDimensions().get(i));
+                    }
+                }
+            }
+        }
+        if (type.getBaseType() instanceof PointerType) {
+            boolean isFirst = true;
+            for (Value index : lValUnit.getRight()) {
+                if (isFirst) {
+                    VIR loadIR = new LoadVIR(pointer);
+                    curBlock.add(loadIR);
+                    pointer = loadIR;
+                    VIR ir = new GetElementPtrVIR(pointer, index);
+                    curBlock.add(ir);
+                    pointer = ir;
+                } else {
+                    VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), index);
+                    curBlock.add(ir);
+                    pointer = ir;
+                }
+                isFirst = false;
+            }
+        } else {
+            for (Value index : lValUnit.getRight()) {
+                VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), index);
+                curBlock.add(ir);
+                pointer = ir;
+            }
+        }
+        for (int i = 0; i < lValUnit.getRight().size(); i++) {
+            type = type.getBaseType();
+        }
+        value = typeConversion(value, type.getBaseType());
+        curBlock.add(new StoreVIR(value, pointer));
         return null;
     }
 
@@ -440,19 +505,73 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Value visitVarExp(SysYParser.VarExpContext ctx) {
-        Value symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
+        Value pointer = symbolTable.getData(ctx.Ident().getSymbol().getText());
+        Type type = pointer.getType();
+        if (pointer instanceof DataSymbol symbol) {
+            if (symbol instanceof GlobalSymbol) {
+                for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
+                    type = new ArrayType(type, symbol.getDimensions().get(i));
+                }
+                type = new PointerType(type);
+            }
+            if (symbol instanceof ParamSymbol) {
+                for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
+                    if (i == 0) {
+                        type = new PointerType(type);
+                    } else {
+                        type = new ArrayType(type, symbol.getDimensions().get(i));
+                    }
+                }
+            }
+        }
         if (ctx.binaryExp().isEmpty()) {
-            VIR newIR = new LoadVIR(symbol, List.of());
-            curBlock.add(newIR);
-            return newIR;
+            if (type instanceof BasicType) {
+                return pointer;
+            }
+            if (type instanceof PointerType && type.getBaseType() instanceof BasicType) {
+                VIR newIR = new LoadVIR(pointer);
+                curBlock.add(newIR);
+                return newIR;
+            }
+            if (type instanceof PointerType && type.getBaseType() instanceof PointerType) {
+                VIR newIR = new LoadVIR(pointer);
+                curBlock.add(newIR);
+                return newIR;
+            }
+            return pointer;
         }
-        List<Value> dimensions = new ArrayList<>();
-        for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
-            Value reg = visitBinaryExp(dimension);
-            reg = typeConversion(reg, BasicType.I32);
-            dimensions.add(reg);
+        if (type.getBaseType() instanceof PointerType) {
+            boolean isFirst = true;
+            for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
+                Value index = visitBinaryExp(dimension);
+                index = typeConversion(index, BasicType.I32);
+                if (isFirst) {
+                    VIR loadVIR = new LoadVIR(pointer);
+                    curBlock.add(loadVIR);
+                    pointer = loadVIR;
+                    VIR ir = new GetElementPtrVIR(pointer, index);
+                    curBlock.add(ir);
+                    pointer = ir;
+                } else {
+                    VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), index);
+                    curBlock.add(ir);
+                    pointer = ir;
+                }
+                isFirst = false;
+            }
+        } else {
+            for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
+                Value index = visitBinaryExp(dimension);
+                index = typeConversion(index, BasicType.I32);
+                VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), index);
+                curBlock.add(ir);
+                pointer = ir;
+            }
         }
-        VIR newIR = new LoadVIR(symbol, dimensions);
+        if (pointer.getType().getBaseType() instanceof ArrayType) {
+            return pointer;
+        }
+        VIR newIR = new LoadVIR(pointer);
         curBlock.add(newIR);
         return newIR;
     }

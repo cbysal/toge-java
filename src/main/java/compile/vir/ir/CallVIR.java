@@ -18,8 +18,8 @@ public class CallVIR extends VIR {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("CALL    ").append(func.getName()).append(", ").append(getTag());
-        params.forEach(param -> builder.append(", ").append(param instanceof VIR ir ? ir.getTag() : param));
+        builder.append("CALL    ").append(func.getName()).append(", ").append(getName());
+        params.forEach(param -> builder.append(", ").append(param.getName()));
         return builder.toString();
     }
 }

@@ -1,55 +1,28 @@
 package compile.vir.ir;
 
-import compile.symbol.DataSymbol;
-import compile.symbol.Symbol;
-import compile.vir.type.ArrayType;
-import compile.vir.type.BasicType;
-import compile.vir.type.Type;
+import compile.symbol.GlobalSymbol;
+import compile.symbol.ParamSymbol;
+import compile.vir.type.PointerType;
 import compile.vir.value.Value;
 
-import java.util.List;
-
 public class LoadVIR extends VIR {
-    public final Value symbol;
-    public final List<Value> indexes;
+    public final Value pointer;
 
-    private static Type calcType(Value value, List<Value> indexes) {
-        if (value instanceof AllocaVIR allocaVIR) {
-            Type type = allocaVIR.getType();
-            int indexSize = indexes.size();
-            while (type instanceof ArrayType arrayType) {
-                type = arrayType.getBaseType();
-                indexSize--;
-            }
-            if (indexSize != 0)
-                return BasicType.I32;
-            return type;
-        }
-        if (value instanceof DataSymbol symbol)
-            return symbol.getDimensionSize() != indexes.size() ? BasicType.I32 : symbol.getType();
-        throw new RuntimeException("Unexpected value: " + value);
-    }
-
-    public LoadVIR(Value symbol, List<Value> indexes) {
-        super(calcType(symbol, indexes));
-        this.symbol = symbol;
-        this.indexes = indexes;
-    }
-
-    public boolean isSingle() {
-        return indexes.isEmpty();
+    public LoadVIR(Value pointer) {
+        super(switch (pointer) {
+            case GlobalSymbol global -> global.getType();
+            case ParamSymbol param -> param.getType();
+            default -> pointer.getType().getBaseType();
+        });
+        this.pointer = pointer;
     }
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("LOAD    ").append(getTag()).append(", ");
-        builder.append(switch (symbol) {
-            case Symbol sym -> sym.getName();
-            case VIR ir -> ir.getTag();
-            default -> throw new IllegalStateException("Unexpected value: " + symbol);
-        });
-        indexes.forEach(dimension -> builder.append('[').append(dimension instanceof VIR ir ? ir.getTag() : dimension).append(']'));
-        return builder.toString();
+        return String.format("%s = load %s, %s %s", getName(), type, switch (pointer) {
+            case GlobalSymbol global -> new PointerType(global.getType());
+            case ParamSymbol param -> new PointerType(param.getType());
+            default -> pointer.getType();
+        }, pointer.getName());
     }
 }

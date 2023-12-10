@@ -11,6 +11,7 @@ public class ArrayType implements Type {
         this.arraySize = arraySize;
     }
 
+    @Override
     public Type getBaseType() {
         return baseType;
     }

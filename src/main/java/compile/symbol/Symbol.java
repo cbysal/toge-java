@@ -11,6 +11,7 @@ public abstract class Symbol extends Value {
         this.name = name;
     }
 
+    @Override
     public String getName() {
         return name;
     }

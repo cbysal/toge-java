@@ -23,7 +23,7 @@ public class BinaryVIR extends VIR {
         StringBuilder builder = new StringBuilder();
         builder.append(type);
         builder.append(" ".repeat(8 - builder.length()));
-        builder.append("%").append(id).append(", ").append(left instanceof VIR ir ? ir.getTag() : left).append(", ").append(right instanceof VIR ir ? ir.getTag() : right);
+        builder.append("%").append(id).append(", ").append(left instanceof VIR ir ? ir.getName() : left).append(", ").append(right instanceof VIR ir ? ir.getName() : right);
         return builder.toString();
     }
 

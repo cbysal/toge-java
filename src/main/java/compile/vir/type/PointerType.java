@@ -10,6 +10,11 @@ public class PointerType implements Type {
     }
 
     @Override
+    public Type getBaseType() {
+        return baseType;
+    }
+
+    @Override
     public int getSize() {
         return 64;
     }
@@ -27,5 +32,10 @@ public class PointerType implements Type {
     @Override
     public int hashCode() {
         return Objects.hash(baseType);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s*", baseType);
     }
 }
