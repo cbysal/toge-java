@@ -59,11 +59,11 @@ public interface SysYVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitFuncDef(SysYParser.FuncDefContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SysYParser#funcFParam}.
+	 * Visit a parse tree produced by {@link SysYParser#funcArg}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitFuncFParam(SysYParser.FuncFParamContext ctx);
+	T visitFuncArg(SysYParser.FuncArgContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link SysYParser#blockStmt}.
 	 * @param ctx the parse tree

@@ -5,6 +5,7 @@ import compile.symbol.*;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
 import compile.vir.Block;
+import compile.vir.Argument;
 import compile.vir.VirtualFunction;
 import compile.vir.ir.*;
 import compile.vir.type.ArrayType;
@@ -224,24 +225,16 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         Type funcType = visitType(ctx.type());
         FuncSymbol func = symbolTable.makeFunc(funcType, ctx.Ident().getSymbol().getText());
         symbolTable.in();
-        for (SysYParser.FuncFParamContext param : ctx.funcFParam())
-            func.addParam(visitFuncFParam(param));
+        for (SysYParser.FuncArgContext arg : ctx.funcArg())
+            func.addArg(visitFuncArg(arg));
         curFunc = new VirtualFunction(func);
         curBlock = new Block();
         curFunc.addBlock(curBlock);
         allocaVIRs = new ArrayList<>();
-        for (ParamSymbol param : curFunc.getSymbol().getParams()) {
-            Type type = param.getType();
-            for (int i = param.getDimensionSize() - 1; i >= 0; i--) {
-                if (i == 0) {
-                    type = new PointerType(type);
-                } else {
-                    type = new ArrayType(type, param.getDimensions().get(i));
-                }
-            }
-            AllocaVIR allocaVIR = symbolTable.makeLocal(type, param.getName());
+        for (Argument arg : curFunc.getSymbol().getArgs()) {
+            AllocaVIR allocaVIR = symbolTable.makeLocal(arg.getType(), arg.getName());
             allocaVIRs.add(allocaVIR);
-            curBlock.add(new StoreVIR(param, allocaVIR));
+            curBlock.add(new StoreVIR(arg, allocaVIR));
         }
         visitBlockStmt(ctx.blockStmt());
         curFunc.getBlocks().getFirst().addAll(0, allocaVIRs);
@@ -251,15 +244,15 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public ParamSymbol visitFuncFParam(SysYParser.FuncFParamContext ctx) {
+    public Argument visitFuncArg(SysYParser.FuncArgContext ctx) {
         visitType(ctx.type());
-        Type paramType = visitType(ctx.type());
-        List<Integer> dimensions = new ArrayList<>();
-        if (!ctx.LB().isEmpty())
-            dimensions.add(-1);
-        for (SysYParser.BinaryExpContext exp : ctx.binaryExp())
-            dimensions.add(calc(exp).intValue());
-        return symbolTable.makeParam(paramType, ctx.Ident().getSymbol().getText(), dimensions);
+        Type type = visitType(ctx.type());
+        if (!ctx.LB().isEmpty()) {
+            for (SysYParser.BinaryExpContext exp : ctx.binaryExp().reversed())
+                type = new ArrayType(type, calc(exp).intValue());
+            type = new PointerType(type);
+        }
+        return symbolTable.makeArg(type, ctx.Ident().getSymbol().getText());
     }
 
     @Override
@@ -297,15 +290,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     type = new ArrayType(type, symbol.getDimensions().get(i));
                 }
                 type = new PointerType(type);
-            }
-            if (symbol instanceof ParamSymbol) {
-                for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
-                    if (i == 0) {
-                        type = new PointerType(type);
-                    } else {
-                        type = new ArrayType(type, symbol.getDimensions().get(i));
-                    }
-                }
             }
         }
         if (type.getBaseType() instanceof PointerType) {
@@ -514,15 +498,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 }
                 type = new PointerType(type);
             }
-            if (symbol instanceof ParamSymbol) {
-                for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
-                    if (i == 0) {
-                        type = new PointerType(type);
-                    } else {
-                        type = new ArrayType(type, symbol.getDimensions().get(i));
-                    }
-                }
-            }
         }
         if (ctx.binaryExp().isEmpty()) {
             if (type instanceof BasicType) {
@@ -583,8 +558,8 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         for (int i = 0; i < ctx.binaryExp().size(); i++) {
             SysYParser.BinaryExpContext exp = ctx.binaryExp().get(i);
             Value param = visitBinaryExp(exp);
-            Type targetType = symbol.getParams().get(i).isSingle() && symbol.getParams().get(i).getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
-            param = typeConversion(param, targetType);
+            Type type = symbol.getArgs().get(i).getType() instanceof BasicType && symbol.getArgs().get(i).getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
+            param = typeConversion(param, type);
             params.add(param);
         }
         VIR newIR = new CallVIR(symbol, params);

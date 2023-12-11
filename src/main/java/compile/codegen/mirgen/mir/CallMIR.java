@@ -4,7 +4,7 @@ import compile.codegen.Reg;
 import compile.codegen.MReg;
 import compile.vir.type.BasicType;
 import compile.symbol.FuncSymbol;
-import compile.symbol.ParamSymbol;
+import compile.vir.Argument;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,8 +20,8 @@ public class CallMIR extends MIR {
     public List<Reg> getRead() {
         List<Reg> regs = new ArrayList<>();
         int iSize = 0, fSize = 0;
-        for (ParamSymbol param : func.getParams()) {
-            if (param.isSingle() && param.getType() == BasicType.FLOAT) {
+        for (Argument arg : func.getArgs()) {
+            if (arg.getType() == BasicType.FLOAT) {
                 if (fSize < MReg.F_CALLER_REGS.size())
                     regs.add(MReg.F_CALLER_REGS.get(fSize));
                 fSize++;

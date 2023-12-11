@@ -7,7 +7,7 @@ import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.VReg;
 import compile.vir.type.BasicType;
-import compile.symbol.ParamSymbol;
+import compile.vir.Argument;
 
 import java.util.*;
 
@@ -163,8 +163,8 @@ public class RegAllocatorForSingleFunc {
                 MIR ir = irs.get(i);
                 if (ir instanceof CallMIR callMIR) {
                     int iSize = 0, fSize = 0;
-                    for (ParamSymbol param : callMIR.func.getParams()) {
-                        if (param.isSingle() && param.getType() == BasicType.FLOAT && fSize < MReg.F_CALLER_REGS.size()) {
+                    for (Argument arg : callMIR.func.getArgs()) {
+                        if (arg.getType() == BasicType.FLOAT && fSize < MReg.F_CALLER_REGS.size()) {
                             if (!block.containsInDef(MReg.F_CALLER_REGS.get(fSize)))
                                 block.addUse(MReg.F_CALLER_REGS.get(fSize));
                             fSize++;

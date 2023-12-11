@@ -1,23 +1,24 @@
 package compile.symbol;
 
+import compile.vir.Argument;
 import compile.vir.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FuncSymbol extends Symbol {
-    private final List<ParamSymbol> params = new ArrayList<>();
+    private final List<Argument> args = new ArrayList<>();
 
     FuncSymbol(Type type, String name) {
         super(type, name);
     }
 
-    public void addParam(ParamSymbol param) {
-        params.add(param);
+    public void addArg(Argument arg) {
+        args.add(arg);
     }
 
-    public List<ParamSymbol> getParams() {
-        return params;
+    public List<Argument> getArgs() {
+        return args;
     }
 
     @Override
@@ -25,11 +26,11 @@ public class FuncSymbol extends Symbol {
         StringBuilder builder = new StringBuilder();
         builder.append(type.toString().toLowerCase()).append(' ').append(name).append('(');
         boolean isFirst = true;
-        for (ParamSymbol param : params) {
+        for (Argument arg : args) {
             if (!isFirst)
                 builder.append(", ");
             isFirst = false;
-            builder.append(param);
+            builder.append(arg);
         }
         builder.append(')');
         return builder.toString();

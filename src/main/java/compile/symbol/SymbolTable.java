@@ -1,8 +1,10 @@
 package compile.symbol;
 
+import compile.vir.Argument;
 import compile.vir.ir.AllocaVIR;
 import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
+import compile.vir.type.PointerType;
 import compile.vir.type.Type;
 import compile.vir.value.Value;
 
@@ -49,44 +51,44 @@ public class SymbolTable extends LinkedList<Map<String, Value>> {
         this.getFirst().put("getch", func);
         // getarray
         func = new FuncSymbol(BasicType.I32, "getarray");
-        func.addParam(new ParamSymbol(BasicType.I32, "a", List.of(-1)));
+        func.addArg(new Argument(new PointerType(BasicType.I32), "a"));
         this.getFirst().put("getarray", func);
         // getfloat
         func = new FuncSymbol(BasicType.FLOAT, "getfloat");
         this.getFirst().put("getfloat", func);
         // getfarray
         func = new FuncSymbol(BasicType.I32, "getfarray");
-        func.addParam(new ParamSymbol(BasicType.FLOAT, "a", List.of(-1)));
+        func.addArg(new Argument(new PointerType(BasicType.FLOAT), "a"));
         this.getFirst().put("getfarray", func);
         // putint
         func = new FuncSymbol(BasicType.VOID, "putint");
-        func.addParam(new ParamSymbol(BasicType.I32, "a"));
+        func.addArg(new Argument(BasicType.I32, "a"));
         this.getFirst().put("putint", func);
         // putch
         func = new FuncSymbol(BasicType.VOID, "putch");
-        func.addParam(new ParamSymbol(BasicType.I32, "a"));
+        func.addArg(new Argument(BasicType.I32, "a"));
         this.getFirst().put("putch", func);
         // putarray
         func = new FuncSymbol(BasicType.VOID, "putarray");
-        func.addParam(new ParamSymbol(BasicType.I32, "n"));
-        func.addParam(new ParamSymbol(BasicType.I32, "a", List.of(-1)));
+        func.addArg(new Argument(BasicType.I32, "n"));
+        func.addArg(new Argument(new PointerType(BasicType.I32), "a"));
         this.getFirst().put("putarray", func);
         // putfloat
         func = new FuncSymbol(BasicType.VOID, "putfloat");
-        func.addParam(new ParamSymbol(BasicType.FLOAT, "a"));
+        func.addArg(new Argument(BasicType.FLOAT, "a"));
         this.getFirst().put("putfloat", func);
         // putfarray
         func = new FuncSymbol(BasicType.VOID, "putfarray");
-        func.addParam(new ParamSymbol(BasicType.I32, "n"));
-        func.addParam(new ParamSymbol(BasicType.FLOAT, "a", List.of(-1)));
+        func.addArg(new Argument(BasicType.I32, "n"));
+        func.addArg(new Argument(new PointerType(BasicType.FLOAT), "a"));
         this.getFirst().put("putfarray", func);
         // _sysy_starttime
         func = new FuncSymbol(BasicType.VOID, "_sysy_starttime");
-        func.addParam(new ParamSymbol(BasicType.I32, "lineno"));
+        func.addArg(new Argument(BasicType.I32, "lineno"));
         this.getFirst().put("_sysy_starttime", func);
         // _sysy_stoptime
         func = new FuncSymbol(BasicType.VOID, "_sysy_stoptime");
-        func.addParam(new ParamSymbol(BasicType.I32, "lineno"));
+        func.addArg(new Argument(BasicType.I32, "lineno"));
         this.getFirst().put("_sysy_stoptime", func);
     }
 
@@ -94,9 +96,9 @@ public class SymbolTable extends LinkedList<Map<String, Value>> {
         FuncSymbol func;
         // memset
         func = new FuncSymbol(BasicType.VOID, "memset");
-        func.addParam(new ParamSymbol(BasicType.I32, "addr"));
-        func.addParam(new ParamSymbol(BasicType.I32, "size"));
-        func.addParam(new ParamSymbol(BasicType.I32, "value"));
+        func.addArg(new Argument(BasicType.I32, "addr"));
+        func.addArg(new Argument(BasicType.I32, "size"));
+        func.addArg(new Argument(BasicType.I32, "value"));
         this.getFirst().put("memset", func);
     }
 
@@ -156,16 +158,10 @@ public class SymbolTable extends LinkedList<Map<String, Value>> {
         return symbol;
     }
 
-    public ParamSymbol makeParam(Type type, String name) {
-        ParamSymbol symbol = new ParamSymbol(type, name);
-        this.getFirst().put(name, symbol);
-        return symbol;
-    }
-
-    public ParamSymbol makeParam(Type type, String name, List<Integer> dimensions) {
-        ParamSymbol symbol = new ParamSymbol(type, name, dimensions);
-        this.getFirst().put(name, symbol);
-        return symbol;
+    public Argument makeArg(Type type, String name) {
+        Argument arg = new Argument(type, name);
+        this.getFirst().put(name, arg);
+        return arg;
     }
 
     public void out() {

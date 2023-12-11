@@ -25,14 +25,14 @@ public class SysYParser extends Parser {
 	public static final int
 		RULE_root = 0, RULE_compUnit = 1, RULE_type = 2, RULE_dimensions = 3, 
 		RULE_varDecl = 4, RULE_varDef = 5, RULE_initVal = 6, RULE_funcDef = 7, 
-		RULE_funcFParam = 8, RULE_blockStmt = 9, RULE_stmt = 10, RULE_assignStmt = 11, 
+		RULE_funcArg = 8, RULE_blockStmt = 9, RULE_stmt = 10, RULE_assignStmt = 11, 
 		RULE_blankStmt = 12, RULE_expStmt = 13, RULE_ifStmt = 14, RULE_whileStmt = 15, 
 		RULE_breakStmt = 16, RULE_continueStmt = 17, RULE_retStmt = 18, RULE_lVal = 19, 
 		RULE_unaryExp = 20, RULE_varExp = 21, RULE_funcCallExp = 22, RULE_binaryExp = 23;
 	private static String[] makeRuleNames() {
 		return new String[] {
 			"root", "compUnit", "type", "dimensions", "varDecl", "varDef", "initVal", 
-			"funcDef", "funcFParam", "blockStmt", "stmt", "assignStmt", "blankStmt", 
+			"funcDef", "funcArg", "blockStmt", "stmt", "assignStmt", "blankStmt", 
 			"expStmt", "ifStmt", "whileStmt", "breakStmt", "continueStmt", "retStmt", 
 			"lVal", "unaryExp", "varExp", "funcCallExp", "binaryExp"
 		};
@@ -581,11 +581,11 @@ public class SysYParser extends Parser {
 		public BlockStmtContext blockStmt() {
 			return getRuleContext(BlockStmtContext.class,0);
 		}
-		public List<FuncFParamContext> funcFParam() {
-			return getRuleContexts(FuncFParamContext.class);
+		public List<FuncArgContext> funcArg() {
+			return getRuleContexts(FuncArgContext.class);
 		}
-		public FuncFParamContext funcFParam(int i) {
-			return getRuleContext(FuncFParamContext.class,i);
+		public FuncArgContext funcArg(int i) {
+			return getRuleContext(FuncArgContext.class,i);
 		}
 		public List<TerminalNode> COMMA() { return getTokens(SysYParser.COMMA); }
 		public TerminalNode COMMA(int i) {
@@ -621,7 +621,7 @@ public class SysYParser extends Parser {
 			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 672L) != 0)) {
 				{
 				setState(108);
-				funcFParam();
+				funcArg();
 				setState(113);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
@@ -631,7 +631,7 @@ public class SysYParser extends Parser {
 					setState(109);
 					match(COMMA);
 					setState(110);
-					funcFParam();
+					funcArg();
 					}
 					}
 					setState(115);
@@ -659,7 +659,7 @@ public class SysYParser extends Parser {
 	}
 
 	@SuppressWarnings("CheckReturnValue")
-	public static class FuncFParamContext extends ParserRuleContext {
+	public static class FuncArgContext extends ParserRuleContext {
 		public TypeContext type() {
 			return getRuleContext(TypeContext.class,0);
 		}
@@ -678,20 +678,20 @@ public class SysYParser extends Parser {
 		public BinaryExpContext binaryExp(int i) {
 			return getRuleContext(BinaryExpContext.class,i);
 		}
-		public FuncFParamContext(ParserRuleContext parent, int invokingState) {
+		public FuncArgContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
-		@Override public int getRuleIndex() { return RULE_funcFParam; }
+		@Override public int getRuleIndex() { return RULE_funcArg; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SysYVisitor ) return ((SysYVisitor<? extends T>)visitor).visitFuncFParam(this);
+			if ( visitor instanceof SysYVisitor ) return ((SysYVisitor<? extends T>)visitor).visitFuncArg(this);
 			else return visitor.visitChildren(this);
 		}
 	}
 
-	public final FuncFParamContext funcFParam() throws RecognitionException {
-		FuncFParamContext _localctx = new FuncFParamContext(_ctx, getState());
-		enterRule(_localctx, 16, RULE_funcFParam);
+	public final FuncArgContext funcArg() throws RecognitionException {
+		FuncArgContext _localctx = new FuncArgContext(_ctx, getState());
+		enterRule(_localctx, 16, RULE_funcArg);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);

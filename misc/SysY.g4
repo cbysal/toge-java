@@ -18,9 +18,9 @@ initVal:
 	binaryExp
 	| LC (initVal (COMMA initVal)*)? RC;
 
-funcDef: type Ident LP (funcFParam (COMMA funcFParam)*)? RP blockStmt;
+funcDef: type Ident LP (funcArg (COMMA funcArg)*)? RP blockStmt;
 
-funcFParam: type Ident (LB RB (LB binaryExp RB)*)?;
+funcArg: type Ident (LB RB (LB binaryExp RB)*)?;
 
 blockStmt: LC stmt* RC;
 
