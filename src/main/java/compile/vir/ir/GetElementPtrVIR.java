@@ -1,6 +1,6 @@
 package compile.vir.ir;
 
-import compile.symbol.DataSymbol;
+import compile.symbol.GlobalSymbol;
 import compile.vir.type.ArrayType;
 import compile.vir.type.PointerType;
 import compile.vir.type.Type;
@@ -16,7 +16,7 @@ public class GetElementPtrVIR extends VIR {
 
     private static Type calcType(Value value, int indexSize) {
         Type type = value.getType();
-        if (value instanceof DataSymbol symbol) {
+        if (value instanceof GlobalSymbol symbol) {
             for (int i = symbol.getDimensionSize() - 1; i >= 0; i--)
                 type = new ArrayType(type, symbol.getDimensions().get(i));
             type = new PointerType(type);

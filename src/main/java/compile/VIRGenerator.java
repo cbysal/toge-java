@@ -284,13 +284,11 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
         Value pointer = lValUnit.getLeft();
         Type type = pointer.getType();
-        if (pointer instanceof DataSymbol symbol) {
-            if (symbol instanceof GlobalSymbol) {
-                for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
-                    type = new ArrayType(type, symbol.getDimensions().get(i));
-                }
-                type = new PointerType(type);
+        if (pointer instanceof GlobalSymbol symbol) {
+            for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
+                type = new ArrayType(type, symbol.getDimensions().get(i));
             }
+            type = new PointerType(type);
         }
         if (type.getBaseType() instanceof PointerType) {
             boolean isFirst = true;
@@ -491,13 +489,11 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     public Value visitVarExp(SysYParser.VarExpContext ctx) {
         Value pointer = symbolTable.getData(ctx.Ident().getSymbol().getText());
         Type type = pointer.getType();
-        if (pointer instanceof DataSymbol symbol) {
-            if (symbol instanceof GlobalSymbol) {
-                for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
-                    type = new ArrayType(type, symbol.getDimensions().get(i));
-                }
-                type = new PointerType(type);
+        if (pointer instanceof GlobalSymbol symbol) {
+            for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
+                type = new ArrayType(type, symbol.getDimensions().get(i));
             }
+            type = new PointerType(type);
         }
         if (ctx.binaryExp().isEmpty()) {
             if (type instanceof BasicType) {

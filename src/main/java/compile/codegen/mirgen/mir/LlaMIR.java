@@ -1,18 +1,18 @@
 package compile.codegen.mirgen.mir;
 
-import compile.codegen.Reg;
 import compile.codegen.MReg;
+import compile.codegen.Reg;
 import compile.codegen.VReg;
-import compile.symbol.DataSymbol;
+import compile.symbol.GlobalSymbol;
 
 import java.util.List;
 import java.util.Map;
 
 public class LlaMIR extends MIR {
     public final Reg dest;
-    public final DataSymbol symbol;
+    public final GlobalSymbol symbol;
 
-    public LlaMIR(Reg dest, DataSymbol symbol) {
+    public LlaMIR(Reg dest, GlobalSymbol symbol) {
         this.dest = dest;
         this.symbol = symbol;
     }

@@ -6,14 +6,20 @@ import compile.vir.type.Type;
 import java.util.List;
 import java.util.Map;
 
-public class GlobalSymbol extends DataSymbol {
+public class GlobalSymbol extends Symbol {
     private final boolean isConst;
+    private final List<Integer> dimensions;
+    private final int size;
+    private final int[] sizes;
     private final int value;
     private final Map<Integer, Integer> values;
 
     public GlobalSymbol(boolean isConst, Type type, String name, float value) {
         super(type, name);
         this.isConst = isConst;
+        this.dimensions = List.of();
+        this.size = 4;
+        this.sizes = new int[0];
         this.value = Float.floatToIntBits(value);
         this.values = null;
     }
@@ -21,13 +27,26 @@ public class GlobalSymbol extends DataSymbol {
     public GlobalSymbol(boolean isConst, Type type, String name, int value) {
         super(type, name);
         this.isConst = isConst;
+        this.dimensions = List.of();
+        this.sizes = new int[0];
+        this.size = 4;
         this.value = value;
         this.values = null;
     }
 
     public GlobalSymbol(boolean isConst, Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
-        super(type, name, dimensions);
+        super(type, name);
         this.isConst = isConst;
+        this.dimensions = dimensions;
+        this.sizes = new int[dimensions.size()];
+        if (sizes.length == 0) {
+            this.size = 4;
+        } else {
+            sizes[sizes.length - 1] = 4;
+            for (int i = dimensions.size() - 1; i > 0; i--)
+                sizes[i - 1] = sizes[i] * dimensions.get(i);
+            this.size = dimensions.getFirst() < 0 ? -1 : sizes[0] * dimensions.getFirst();
+        }
         this.value = 0;
         this.values = values;
     }
@@ -36,30 +55,50 @@ public class GlobalSymbol extends DataSymbol {
         return isConst;
     }
 
+    public List<Integer> getDimensions() {
+        return dimensions;
+    }
+
+    public int getDimensionSize() {
+        return dimensions.size();
+    }
+
+    public int size() {
+        return size;
+    }
+
+    public int[] getSizes() {
+        return sizes;
+    }
+
+    public boolean isSingle() {
+        return dimensions.isEmpty();
+    }
+
     public boolean isInBss() {
         return values.isEmpty();
     }
 
     public float getFloat() {
-        if (!isSingle())
+        if (!dimensions.isEmpty())
             throw new RuntimeException();
         return Float.intBitsToFloat(value);
     }
 
     public float getFloat(int index) {
-        if (isSingle())
+        if (dimensions.isEmpty())
             throw new RuntimeException();
         return Float.intBitsToFloat(values.getOrDefault(index, 0));
     }
 
     public int getInt() {
-        if (!isSingle())
+        if (!dimensions.isEmpty())
             throw new RuntimeException();
         return value;
     }
 
     public int getInt(int index) {
-        if (isSingle())
+        if (dimensions.isEmpty())
             throw new RuntimeException();
         return values.getOrDefault(index, 0);
     }
