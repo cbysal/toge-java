@@ -1,6 +1,9 @@
 package compile.symbol;
 
 import compile.vir.Argument;
+import compile.vir.contant.Constant;
+import compile.vir.contant.ConstantArray;
+import compile.vir.contant.ConstantNumber;
 import compile.vir.ir.AllocaVIR;
 import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
@@ -8,10 +11,7 @@ import compile.vir.type.PointerType;
 import compile.vir.type.Type;
 import compile.vir.value.Value;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SymbolTable extends LinkedList<Map<String, Value>> {
     public SymbolTable() {
@@ -102,20 +102,50 @@ public class SymbolTable extends LinkedList<Map<String, Value>> {
         this.getFirst().put("memset", func);
     }
 
-    public GlobalSymbol makeConst(Type type, String name, float value) {
-        GlobalSymbol symbol = new GlobalSymbol(true, type, name, value);
+    public GlobalVariable makeConst(Type type, String name, float value) {
+        GlobalVariable symbol = new GlobalVariable(true, type, name, new ConstantNumber(value));
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
-    public GlobalSymbol makeConst(Type type, String name, int value) {
-        GlobalSymbol symbol = new GlobalSymbol(true, type, name, value);
+    public GlobalVariable makeConst(Type type, String name, int value) {
+        GlobalVariable symbol = new GlobalVariable(true, type, name, new ConstantNumber(value));
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
-    public GlobalSymbol makeConst(Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
-        GlobalSymbol symbol = new GlobalSymbol(true, type, name, dimensions, values);
+    private Constant fuseConst(Type type, Map<Integer, Integer> values) {
+        List<ArrayType> arrayTypes = new ArrayList<>();
+        while (type instanceof ArrayType arrayType) {
+            arrayTypes.add(arrayType);
+            type = arrayType.getBaseType();
+        }
+        Collections.reverse(arrayTypes);
+        int totalSize = arrayTypes.stream().mapToInt(ArrayType::getArraySize).reduce(1, Math::multiplyExact);
+        List<Constant> constants = new ArrayList<>();
+        for (int i = 0; i < totalSize; i++) {
+            ConstantNumber number = switch (type) {
+                case BasicType.I32 -> new ConstantNumber(values.getOrDefault(i, 0));
+                case BasicType.FLOAT -> new ConstantNumber(Float.intBitsToFloat(values.getOrDefault(i, 0)));
+                default -> throw new IllegalStateException("Unexpected value: " + type);
+            };
+            constants.add(number);
+        }
+        for (ArrayType arrayType : arrayTypes) {
+            List<Constant> newConstants = new ArrayList<>();
+            for (int i = 0; i < constants.size(); i += arrayType.getArraySize()) {
+                List<Constant> subConstants = constants.subList(i, i + arrayType.getArraySize());
+                ConstantArray constantArray = new ConstantArray(arrayType, subConstants);
+                newConstants.add(constantArray);
+            }
+            constants = newConstants;
+        }
+        return constants.getFirst();
+    }
+
+    public GlobalVariable makeConst(Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
+
+        GlobalVariable symbol = new GlobalVariable(true, type, name, fuseConst(type, values));
         this.getFirst().put(name, symbol);
         return symbol;
     }
@@ -126,20 +156,20 @@ public class SymbolTable extends LinkedList<Map<String, Value>> {
         return symbol;
     }
 
-    public GlobalSymbol makeGlobal(Type type, String name, float value) {
-        GlobalSymbol symbol = new GlobalSymbol(false, type, name, value);
+    public GlobalVariable makeGlobal(Type type, String name, float value) {
+        GlobalVariable symbol = new GlobalVariable(false, type, name, new ConstantNumber(value));
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
-    public GlobalSymbol makeGlobal(Type type, String name, int value) {
-        GlobalSymbol symbol = new GlobalSymbol(false, type, name, value);
+    public GlobalVariable makeGlobal(Type type, String name, int value) {
+        GlobalVariable symbol = new GlobalVariable(false, type, name, new ConstantNumber(value));
         this.getFirst().put(name, symbol);
         return symbol;
     }
 
-    public GlobalSymbol makeGlobal(Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
-        GlobalSymbol symbol = new GlobalSymbol(false, type, name, dimensions, values);
+    public GlobalVariable makeGlobal(Type type, String name, List<Integer> dimensions, Map<Integer, Integer> values) {
+        GlobalVariable symbol = new GlobalVariable(false, type, name, fuseConst(type, values));
         this.getFirst().put(name, symbol);
         return symbol;
     }

@@ -5,7 +5,7 @@ import compile.codegen.mirgen.MIRGenerator;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.regalloc.RegAllocator;
 import compile.vir.VirtualFunction;
-import compile.symbol.GlobalSymbol;
+import compile.symbol.GlobalVariable;
 import compile.sysy.SysYLexer;
 import compile.sysy.SysYParser;
 import execute.Executor;
@@ -34,7 +34,7 @@ public class Compiler {
         SysYParser parser = new SysYParser(commonTokenStream);
         SysYParser.RootContext rootContext = parser.root();
         VIRGenerator virGenerator = new VIRGenerator(rootContext);
-        Set<GlobalSymbol> globals = virGenerator.getGlobals();
+        Set<GlobalVariable> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
         if (options.containsKey("emit-vir"))
             emitVIR(options.get("emit-vir"), vFuncs);

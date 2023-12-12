@@ -7,6 +7,7 @@ import compile.sysy.SysYParser;
 import compile.vir.Block;
 import compile.vir.Argument;
 import compile.vir.VirtualFunction;
+import compile.vir.contant.ConstantNumber;
 import compile.vir.ir.*;
 import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
@@ -43,7 +44,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         put("||", NumberUtils::lor);
     }};
     private final SysYParser.RootContext rootAST;
-    private final Set<GlobalSymbol> globals = new HashSet<>();
+    private final Set<GlobalVariable> globals = new HashSet<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
     private final SymbolTable symbolTable = new SymbolTable();
     private final Deque<Block> continueStack = new ArrayDeque<>();
@@ -73,7 +74,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         return funcs;
     }
 
-    public Set<GlobalSymbol> getGlobals() {
+    public Set<GlobalVariable> getGlobals() {
         checkIfIsProcessed();
         return globals;
     }
@@ -137,22 +138,28 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             if (isConst) {
                 Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                 allocInitVal(dimensions, exps, 0, initVal);
+                Type type = curType;
+                for (int dimension : dimensions.reversed())
+                    type = new ArrayType(type, dimension);
                 globals.add(switch (curType) {
                     case BasicType.I32 ->
-                            symbolTable.makeConst(BasicType.I32, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
+                            symbolTable.makeConst(type, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
                     case BasicType.FLOAT ->
-                            symbolTable.makeConst(BasicType.FLOAT, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
+                            symbolTable.makeConst(type, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else if (symbolTable.size() == 1) {
                 Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                 if (initVal != null)
                     allocInitVal(dimensions, exps, 0, initVal);
+                Type type = curType;
+                for (int dimension : dimensions.reversed())
+                    type = new ArrayType(type, dimension);
                 globals.add(switch (curType) {
                     case BasicType.I32 ->
-                            symbolTable.makeGlobal(BasicType.I32, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
+                            symbolTable.makeGlobal(type, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
                     case BasicType.FLOAT ->
-                            symbolTable.makeGlobal(BasicType.FLOAT, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
+                            symbolTable.makeGlobal(type, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else {
@@ -161,7 +168,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 if (initVal != null) {
                     Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
-                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(allocaVIR, new InstantValue(0), new InstantValue(dimensions.stream().reduce(4, Math::multiplyExact)))));
+                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(allocaVIR, new ConstantNumber(0), new ConstantNumber(dimensions.stream().reduce(4, Math::multiplyExact)))));
                     int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
                     for (int i = 0; i < totalNum; i++) {
                         SysYParser.BinaryExpContext exp = exps.get(i);
@@ -176,7 +183,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                             Value value = typeConversion(visitBinaryExp(exps.get(i)), curType);
                             Value pointer = allocaVIR;
                             for (int index : indexes) {
-                                VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), new InstantValue(index));
+                                VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), new ConstantNumber(index));
                                 curBlock.add(ir);
                                 pointer = ir;
                             }
@@ -284,9 +291,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
         Value pointer = lValUnit.getLeft();
         Type type = pointer.getType();
-        if (pointer instanceof GlobalSymbol symbol) {
-            for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
-                type = new ArrayType(type, symbol.getDimensions().get(i));
+        if (pointer instanceof GlobalVariable global) {
+            for (int i = global.getDimensions().size() - 1; i >= 0; i--) {
+                type = new ArrayType(type, global.getDimensions().get(i));
             }
             type = new PointerType(type);
         }
@@ -301,7 +308,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     curBlock.add(ir);
                     pointer = ir;
                 } else {
-                    VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), index);
+                    VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
                     curBlock.add(ir);
                     pointer = ir;
                 }
@@ -309,7 +316,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             }
         } else {
             for (Value index : lValUnit.getRight()) {
-                VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), index);
+                VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
                 curBlock.add(ir);
                 pointer = ir;
             }
@@ -336,7 +343,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             calculatingCond = true;
             Value reg = visitBinaryExp(ctx.binaryExp());
             if (reg != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new InstantValue(0), this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new ConstantNumber(0), this.trueBlock, this.falseBlock));
             }
             calculatingCond = false;
             curBlock = trueBlock;
@@ -354,7 +361,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             calculatingCond = true;
             Value reg = visitBinaryExp(ctx.binaryExp());
             if (reg != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new InstantValue(0), trueBlock, falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new ConstantNumber(0), trueBlock, falseBlock));
             }
             calculatingCond = false;
             curBlock = trueBlock;
@@ -382,7 +389,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         calculatingCond = true;
         Value reg = visitBinaryExp(ctx.binaryExp());
         if (reg != null) {
-            curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new InstantValue(0), this.trueBlock, this.falseBlock));
+            curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new ConstantNumber(0), this.trueBlock, this.falseBlock));
         }
         calculatingCond = false;
         curBlock = loopBlock;
@@ -442,7 +449,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 this.calculatingCond = calculatingCond;
                 Value reg = visitUnaryExp(ctx.unaryExp());
                 if (reg != null) {
-                    curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new InstantValue(0), this.trueBlock, this.falseBlock));
+                    curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new ConstantNumber(0), this.trueBlock, this.falseBlock));
                 }
                 return null;
             }
@@ -489,9 +496,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     public Value visitVarExp(SysYParser.VarExpContext ctx) {
         Value pointer = symbolTable.getData(ctx.Ident().getSymbol().getText());
         Type type = pointer.getType();
-        if (pointer instanceof GlobalSymbol symbol) {
-            for (int i = symbol.getDimensionSize() - 1; i >= 0; i--) {
-                type = new ArrayType(type, symbol.getDimensions().get(i));
+        if (pointer instanceof GlobalVariable global) {
+            for (int i = global.getDimensions().size() - 1; i >= 0; i--) {
+                type = new ArrayType(type, global.getDimensions().get(i));
             }
             type = new PointerType(type);
         }
@@ -524,7 +531,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     curBlock.add(ir);
                     pointer = ir;
                 } else {
-                    VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), index);
+                    VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
                     curBlock.add(ir);
                     pointer = ir;
                 }
@@ -534,7 +541,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
                 Value index = visitBinaryExp(dimension);
                 index = typeConversion(index, BasicType.I32);
-                VIR ir = new GetElementPtrVIR(pointer, new InstantValue(0), index);
+                VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
                 curBlock.add(ir);
                 pointer = ir;
             }
@@ -578,14 +585,14 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.falseBlock = rBlock;
             Value lVal = visitBinaryExp(ctx.binaryExp(0));
             if (lVal != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, new InstantValue(0), this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, new ConstantNumber(0), this.trueBlock, this.falseBlock));
             }
             this.curBlock = rBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             Value rVal = visitBinaryExp(ctx.binaryExp(1));
             if (rVal != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, new InstantValue(0), this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, new ConstantNumber(0), this.trueBlock, this.falseBlock));
             }
             return null;
         }
@@ -600,14 +607,14 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.falseBlock = falseBlock;
             Value lVal = visitBinaryExp(ctx.binaryExp(0));
             if (lVal != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, new InstantValue(0), this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, new ConstantNumber(0), this.trueBlock, this.falseBlock));
             }
             this.curBlock = rBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             Value rVal = visitBinaryExp(ctx.binaryExp(1));
             if (rVal != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, new InstantValue(0), this.trueBlock, this.falseBlock));
+                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, new ConstantNumber(0), this.trueBlock, this.falseBlock));
             }
             return null;
         }
@@ -695,21 +702,21 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         if (ctx instanceof SysYParser.VarExpContext varExp) {
             String name = varExp.Ident().getSymbol().getText();
             Value symbol = symbolTable.getData(name);
-            if (symbol instanceof GlobalSymbol globalSymbol) {
+            if (symbol instanceof GlobalVariable global) {
                 if (varExp.binaryExp().isEmpty()) {
-                    if (globalSymbol.getType() == BasicType.FLOAT)
-                        return globalSymbol.getFloat();
-                    return globalSymbol.getInt();
+                    if (global.getType() == BasicType.FLOAT)
+                        return global.getFloat();
+                    return global.getInt();
                 }
-                if (globalSymbol.getDimensionSize() != varExp.binaryExp().size())
+                if (global.getDimensions().size() != varExp.binaryExp().size())
                     throw new RuntimeException();
                 int offset = 0;
-                int[] sizes = globalSymbol.getSizes();
+                int[] sizes = global.getSizes();
                 for (int i = 0; i < varExp.binaryExp().size(); i++)
                     offset += sizes[i] * calc(varExp.binaryExp().get(i)).intValue();
-                if (globalSymbol.getType() == BasicType.FLOAT)
-                    return globalSymbol.getFloat(offset);
-                return globalSymbol.getInt(offset);
+                if (global.getType() == BasicType.FLOAT)
+                    return global.getFloat(offset);
+                return global.getInt(offset);
             }
             throw new RuntimeException();
         }

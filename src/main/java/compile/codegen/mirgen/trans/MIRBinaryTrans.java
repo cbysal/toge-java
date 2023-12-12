@@ -2,10 +2,10 @@ package compile.codegen.mirgen.trans;
 
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.VReg;
+import compile.vir.contant.ConstantNumber;
 import compile.vir.ir.BinaryVIR;
 import compile.vir.ir.VIR;
 import compile.vir.type.BasicType;
-import compile.symbol.InstantValue;
 
 import java.util.List;
 import java.util.Map;
@@ -38,7 +38,7 @@ public final class MIRBinaryTrans {
             irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, source2));
     }
 
-    static void transBinaryImmReg(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, InstantValue value, VReg reg) {
+    static void transBinaryImmReg(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, ConstantNumber value, VReg reg) {
         VReg target = virRegMap.get(binaryVIR);
         switch (binaryVIR.type) {
             case ADD -> {
@@ -85,7 +85,7 @@ public final class MIRBinaryTrans {
         }
     }
 
-    static void transBinaryRegImm(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, VReg reg, InstantValue value) {
+    static void transBinaryRegImm(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, VReg reg, ConstantNumber value) {
         VReg target = virRegMap.get(binaryVIR);
         switch (binaryVIR.type) {
             case ADD -> {

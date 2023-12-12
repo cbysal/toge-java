@@ -3,9 +3,9 @@ package compile.codegen.mirgen.trans;
 import compile.codegen.MReg;
 import compile.codegen.VReg;
 import compile.codegen.mirgen.mir.*;
-import compile.symbol.GlobalSymbol;
-import compile.symbol.InstantValue;
+import compile.symbol.GlobalVariable;
 import compile.vir.Block;
+import compile.vir.contant.ConstantNumber;
 import compile.vir.ir.*;
 import compile.vir.type.BasicType;
 import compile.vir.type.PointerType;
@@ -33,7 +33,7 @@ public final class MIROpTrans {
                 }
             }
             case VReg reg -> reg;
-            case InstantValue value -> {
+            case ConstantNumber value -> {
                 VReg reg = new VReg(value.getType());
                 if (value.getType() == BasicType.FLOAT)
                     MIROpHelper.loadImmToReg(irs, reg, value.floatValue());
@@ -54,7 +54,7 @@ public final class MIROpTrans {
                 }
             }
             case VReg reg -> reg;
-            case InstantValue value -> {
+            case ConstantNumber value -> {
                 VReg reg = new VReg(value.getType());
                 if (value.getType() == BasicType.FLOAT)
                     MIROpHelper.loadImmToReg(irs, reg, value.floatValue());
@@ -130,11 +130,11 @@ public final class MIROpTrans {
             MIRBinaryTrans.transBinaryRegReg(irs, virRegMap, binaryVIR, reg1, reg2);
             return;
         }
-        if (item1 instanceof VReg reg1 && item2 instanceof InstantValue value2) {
+        if (item1 instanceof VReg reg1 && item2 instanceof ConstantNumber value2) {
             MIRBinaryTrans.transBinaryRegImm(irs, virRegMap, binaryVIR, reg1, value2);
             return;
         }
-        if (item1 instanceof InstantValue value1 && item2 instanceof VReg reg2) {
+        if (item1 instanceof ConstantNumber value1 && item2 instanceof VReg reg2) {
             MIRBinaryTrans.transBinaryImmReg(irs, virRegMap, binaryVIR, value1, reg2);
             return;
         }
@@ -168,7 +168,7 @@ public final class MIROpTrans {
                             }
                         }
                         case VReg reg -> saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
-                        case InstantValue value ->
+                        case ConstantNumber value ->
                                 MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.F_CALLER_REGS.get(fSize), value.floatValue());
                         default -> throw new IllegalStateException("Unexpected value: " + param);
                     }
@@ -185,7 +185,7 @@ public final class MIROpTrans {
                         }
                         case VReg reg ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
-                        case InstantValue value -> {
+                        case ConstantNumber value -> {
                             VReg midReg = new VReg(BasicType.I32);
                             MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
                             irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
@@ -197,7 +197,7 @@ public final class MIROpTrans {
             } else {
                 if (iSize < MReg.I_CALLER_REGS.size()) {
                     switch (param) {
-                        case GlobalSymbol global ->
+                        case GlobalVariable global ->
                                 saveCalleeIRs.add(new LlaMIR(MReg.I_CALLER_REGS.get(iSize), global));
                         case AllocaVIR allocaVIR -> {
                             if (allocaVIR.getType() instanceof PointerType)
@@ -215,7 +215,7 @@ public final class MIROpTrans {
                             }
                         }
                         case VReg reg -> saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), reg));
-                        case InstantValue value ->
+                        case ConstantNumber value ->
                                 MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.I_CALLER_REGS.get(iSize), value.intValue());
                         default -> throw new IllegalStateException("Unexpected value: " + param);
                     }
@@ -237,7 +237,7 @@ public final class MIROpTrans {
                         }
                         case VReg reg ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
-                        case InstantValue value -> {
+                        case ConstantNumber value -> {
                             VReg midReg = new VReg(BasicType.I32);
                             MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
                             irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
@@ -272,7 +272,7 @@ public final class MIROpTrans {
 
     public static void transUnary(List<MIR> irs, Map<VIR, VReg> virRegMap, UnaryVIR unaryVIR) {
         switch (unaryVIR.source) {
-            case GlobalSymbol global -> {
+            case GlobalVariable global -> {
                 VReg midReg = new VReg(global.getType());
                 irs.add(new LlaMIR(midReg, global));
                 MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, midReg);
@@ -287,7 +287,7 @@ public final class MIROpTrans {
                 }
             }
             case VReg reg -> MIRUnaryTrans.transUnaryReg(irs, virRegMap, unaryVIR, reg);
-            case InstantValue value -> {
+            case ConstantNumber value -> {
                 VReg midReg = new VReg(value.getType());
                 switch (value.getType()) {
                     case BasicType.I32 -> MIROpHelper.loadImmToReg(irs, midReg, value.intValue());

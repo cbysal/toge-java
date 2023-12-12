@@ -3,18 +3,18 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.MReg;
 import compile.codegen.Reg;
 import compile.codegen.VReg;
-import compile.symbol.GlobalSymbol;
+import compile.symbol.GlobalVariable;
 
 import java.util.List;
 import java.util.Map;
 
 public class LlaMIR extends MIR {
     public final Reg dest;
-    public final GlobalSymbol symbol;
+    public final GlobalVariable global;
 
-    public LlaMIR(Reg dest, GlobalSymbol symbol) {
+    public LlaMIR(Reg dest, GlobalVariable global) {
         this.dest = dest;
-        this.symbol = symbol;
+        this.global = global;
     }
 
     @Override
@@ -27,14 +27,14 @@ public class LlaMIR extends MIR {
         Reg newDest = dest;
         if (dest instanceof VReg && replaceMap.containsKey(dest))
             newDest = replaceMap.get(dest);
-        return new LlaMIR(newDest, symbol);
+        return new LlaMIR(newDest, global);
     }
 
     @Override
     public List<MIR> spill(Reg reg, int offset) {
         if (dest.equals(reg)) {
             VReg target = new VReg(reg.getType());
-            MIR ir1 = new LlaMIR(target, symbol);
+            MIR ir1 = new LlaMIR(target, global);
             MIR ir2 = new StoreItemMIR(StoreItemMIR.Item.SPILL, target, offset);
             return List.of(ir1, ir2);
         }
@@ -43,6 +43,6 @@ public class LlaMIR extends MIR {
 
     @Override
     public String toString() {
-        return String.format("lla\t%s,%s", dest, symbol.getName());
+        return String.format("lla\t%s,%s", dest, global.getName());
     }
 }

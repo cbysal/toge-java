@@ -3,7 +3,10 @@ package compile.codegen;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.MIR;
-import compile.symbol.GlobalSymbol;
+import compile.symbol.GlobalVariable;
+import compile.vir.type.ArrayType;
+import compile.vir.type.BasicType;
+import compile.vir.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,44 +14,56 @@ import java.util.Map;
 import java.util.Set;
 
 public class CodeGenerator {
-    private final Set<GlobalSymbol> globals;
+    private final Set<GlobalVariable> globals;
     private final Map<String, MachineFunction> funcs;
 
-    public CodeGenerator(Set<GlobalSymbol> globals, Map<String, MachineFunction> funcs) {
+    public CodeGenerator(Set<GlobalVariable> globals, Map<String, MachineFunction> funcs) {
         this.globals = globals;
         this.funcs = funcs;
     }
 
     private void buildGlobals(StringBuilder builder) {
-        List<GlobalSymbol> symbolsInData = new ArrayList<>();
-        List<GlobalSymbol> symbolsInBss = new ArrayList<>();
-        for (GlobalSymbol globalSymbol : globals)
-            if (!globalSymbol.isSingle() && globalSymbol.isInBss())
-                symbolsInBss.add(globalSymbol);
+        List<GlobalVariable> symbolsInData = new ArrayList<>();
+        List<GlobalVariable> symbolsInBss = new ArrayList<>();
+        for (GlobalVariable global : globals)
+            if (!global.isSingle() && global.isInBss())
+                symbolsInBss.add(global);
             else
-                symbolsInData.add(globalSymbol);
+                symbolsInData.add(global);
         if (!symbolsInBss.isEmpty())
             builder.append("\t.bss\n");
-        for (GlobalSymbol globalSymbol : symbolsInBss) {
-            int size = globalSymbol.size();
+        for (GlobalVariable global : symbolsInBss) {
+            int size = global.getSize() / 8;
             builder.append("\t.align 8\n");
-            builder.append("\t.size ").append(globalSymbol.getName()).append(", ").append(size).append('\n');
-            builder.append(globalSymbol.getName()).append(":\n");
+            builder.append("\t.size ").append(global.getName()).append(", ").append(size).append('\n');
+            builder.append(global.getName()).append(":\n");
             builder.append("\t.space ").append(size).append('\n');
         }
         if (!symbolsInData.isEmpty())
             builder.append("\t.data\n");
-        for (GlobalSymbol globalSymbol : symbolsInData) {
-            int size = globalSymbol.size();
+        for (GlobalVariable global : symbolsInData) {
+            int size = global.getSize() / 8;
             builder.append("\t.align 8\n");
-            builder.append("\t.size ").append(globalSymbol.getName()).append(", ").append(size).append('\n');
-            builder.append(globalSymbol.getName()).append(":\n");
+            builder.append("\t.size ").append(global.getName()).append(", ").append(size).append('\n');
+            builder.append(global.getName()).append(":\n");
             int num = size / 4;
-            if (globalSymbol.isSingle()) {
-                builder.append("\t.word ").append(globalSymbol.getInt()).append('\n');
+            if (global.isSingle()) {
+                builder.append("\t.word ").append(switch (global.getType()) {
+                    case BasicType.I32 -> global.getInt();
+                    case BasicType.FLOAT -> Float.floatToIntBits(global.getFloat());
+                    default -> throw new IllegalStateException("Unexpected value: " + global.getType());
+                }).append('\n');
             } else {
-                for (int i = 0; i < num; i++)
-                    builder.append("\t.word ").append(globalSymbol.getInt(i)).append('\n');
+                Type type = global.getType();
+                while (type instanceof ArrayType arrayType)
+                    type = arrayType.getBaseType();
+                for (int i = 0; i < num; i++) {
+                    builder.append("\t.word ").append(switch (type) {
+                        case BasicType.I32 -> global.getInt(i);
+                        case BasicType.FLOAT -> Float.floatToIntBits(global.getFloat(i));
+                        default -> throw new IllegalStateException("Unexpected value: " + type);
+                    }).append('\n');
+                }
             }
         }
     }
