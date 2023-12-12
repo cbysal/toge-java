@@ -10,6 +10,7 @@ import compile.vir.VirtualFunction;
 import compile.vir.contant.Constant;
 import compile.vir.contant.ConstantArray;
 import compile.vir.contant.ConstantNumber;
+import compile.vir.contant.ConstantZero;
 import compile.vir.ir.*;
 import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
@@ -23,6 +24,7 @@ import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class VIRGenerator extends SysYBaseVisitor<Object> {
     private static class SymbolTable extends LinkedList<Map<String, Value>> {
@@ -115,6 +117,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
 
         private Constant fuseConst(Type type, Map<Integer, Integer> values) {
+            if (values.isEmpty()) {
+                return new ConstantZero(type);
+            }
             List<ArrayType> arrayTypes = new ArrayList<>();
             while (type instanceof ArrayType arrayType) {
                 arrayTypes.add(arrayType);
@@ -122,21 +127,35 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             }
             Collections.reverse(arrayTypes);
             int totalSize = arrayTypes.stream().mapToInt(ArrayType::getArraySize).reduce(1, Math::multiplyExact);
-            List<Constant> constants = new ArrayList<>();
-            for (int i = 0; i < totalSize; i++) {
-                ConstantNumber number = switch (type) {
-                    case BasicType.I32 -> new ConstantNumber(values.getOrDefault(i, 0));
-                    case BasicType.FLOAT -> new ConstantNumber(Float.intBitsToFloat(values.getOrDefault(i, 0)));
-                    default -> throw new IllegalStateException("Unexpected value: " + type);
-                };
-                constants.add(number);
+            List<Constant> constants = new ArrayList<>(totalSize / arrayTypes.getFirst().getArraySize());
+            for (int i = 0; i < totalSize; i += arrayTypes.getFirst().getArraySize()) {
+                int arraySize = arrayTypes.getFirst().getArraySize();
+                boolean isEmpty = IntStream.range(i, i + arraySize).noneMatch(values::containsKey);
+                if (isEmpty) {
+                    constants.add(new ConstantZero(arrayTypes.getFirst()));
+                    continue;
+                }
+                List<Constant> array = new ArrayList<>(arraySize);
+                for (int j = 0; j < arraySize; j++) {
+                    int index = i + j;
+                    ConstantNumber number = switch (type) {
+                        case BasicType.I32 -> new ConstantNumber(values.getOrDefault(index, 0));
+                        case BasicType.FLOAT -> new ConstantNumber(Float.intBitsToFloat(values.getOrDefault(index, 0)));
+                        default -> throw new IllegalStateException("Unexpected value: " + type);
+                    };
+                    array.add(number);
+                }
+                constants.add(new ConstantArray(arrayTypes.getFirst(), array));
             }
-            for (ArrayType arrayType : arrayTypes) {
-                List<Constant> newConstants = new ArrayList<>();
-                for (int i = 0; i < constants.size(); i += arrayType.getArraySize()) {
-                    List<Constant> subConstants = constants.subList(i, i + arrayType.getArraySize());
-                    ConstantArray constantArray = new ConstantArray(arrayType, subConstants);
-                    newConstants.add(constantArray);
+            for (ArrayType arrayType : arrayTypes.stream().skip(1).toList()) {
+                int arraySize = arrayType.getArraySize();
+                List<Constant> newConstants = new ArrayList<>(constants.size() / arraySize);
+                for (int i = 0; i < constants.size(); i += arraySize) {
+                    boolean isEmpty = constants.stream().skip(i).limit(arraySize).allMatch(ConstantZero.class::isInstance);
+                    if (isEmpty)
+                        newConstants.add(new ConstantZero(arrayType));
+                    else
+                        newConstants.add(new ConstantArray(arrayType, constants.subList(i, i + arraySize)));
                 }
                 constants = newConstants;
             }

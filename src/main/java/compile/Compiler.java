@@ -37,9 +37,9 @@ public class Compiler {
         Set<GlobalVariable> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
         if (options.containsKey("emit-vir"))
-            emitVIR(options.get("emit-vir"), vFuncs);
+            emitVIR(options.get("emit-vir"), globals, vFuncs);
         if (options.containsKey("emit-opt-vir"))
-            emitVIR(options.get("emit-opt-vir"), vFuncs);
+            emitVIR(options.get("emit-opt-vir"), globals, vFuncs);
         MIRGenerator mirGenerator = new MIRGenerator(globals, vFuncs);
         globals = mirGenerator.getGlobals();
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
@@ -69,8 +69,12 @@ public class Compiler {
         }
     }
 
-    private void emitVIR(String filePath, Map<String, VirtualFunction> funcs) {
+    private void emitVIR(String filePath, Set<GlobalVariable> globals, Map<String, VirtualFunction> funcs) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            for (GlobalVariable global : globals) {
+                writer.write(global.toString());
+                writer.newLine();
+            }
             for (VirtualFunction func : funcs.values()) {
                 writer.write(func.toString());
                 writer.newLine();

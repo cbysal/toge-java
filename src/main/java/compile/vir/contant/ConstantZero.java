@@ -11,4 +11,9 @@ public class ConstantZero extends Constant {
     public String getName() {
         return "zeroinitializer";
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s zeroinitializer", type);
+    }
 }

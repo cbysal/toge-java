@@ -46,6 +46,6 @@ public final class ConstantNumber extends Constant {
 
     @Override
     public String toString() {
-        return "#" + value;
+        return String.format("%s %s", type, value);
     }
 }

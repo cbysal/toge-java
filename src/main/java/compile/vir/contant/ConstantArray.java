@@ -20,4 +20,9 @@ public class ConstantArray extends Constant {
     public String getName() {
         return String.format("%s %s", type, values);
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s %s", type, values);
+    }
 }
