@@ -2,17 +2,17 @@ package compile.codegen.mirgen.mir;
 
 import compile.codegen.Reg;
 import compile.codegen.MReg;
+import compile.vir.VirtualFunction;
 import compile.vir.type.BasicType;
-import compile.symbol.FuncSymbol;
 import compile.vir.Argument;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class CallMIR extends MIR {
-    public final FuncSymbol func;
+    public final VirtualFunction func;
 
-    public CallMIR(FuncSymbol func) {
+    public CallMIR(VirtualFunction func) {
         this.func = func;
     }
 

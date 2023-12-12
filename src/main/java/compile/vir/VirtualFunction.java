@@ -1,18 +1,25 @@
 package compile.vir;
 
 import compile.vir.ir.VIR;
-import compile.symbol.FuncSymbol;
+import compile.vir.type.Type;
+import compile.vir.value.User;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class VirtualFunction {
-    private final FuncSymbol symbol;
+public class VirtualFunction extends User {
+    private final String name;
+    private final List<Argument> args = new ArrayList<>();
     private final List<Block> blocks = new ArrayList<>();
 
-    public VirtualFunction(FuncSymbol symbol) {
-        this.symbol = symbol;
+    public VirtualFunction(Type type, String name) {
+        super(type);
+        this.name = name;
+    }
+
+    public void addArg(Argument arg) {
+        args.add(arg);
     }
 
     public void addBlock(Block block) {
@@ -32,6 +39,10 @@ public class VirtualFunction {
         blocks.add(index + 1, block);
     }
 
+    public List<Argument> getArgs() {
+        return args;
+    }
+
     public List<Block> getBlocks() {
         return blocks;
     }
@@ -41,14 +52,15 @@ public class VirtualFunction {
         this.blocks.addAll(blocks);
     }
 
-    public FuncSymbol getSymbol() {
-        return symbol;
+    @Override
+    public String getName() {
+        return name;
     }
 
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(symbol).append('\n');
+        builder.append(type).append(' ').append(name).append('(').append(args).append(")\n");
         for (Block block : blocks) {
             builder.append(block).append(":\n");
             for (VIR ir : block)

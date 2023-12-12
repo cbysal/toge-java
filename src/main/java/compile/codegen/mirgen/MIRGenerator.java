@@ -5,9 +5,8 @@ import compile.codegen.MReg;
 import compile.codegen.VReg;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.mirgen.trans.MIROpTrans;
-import compile.symbol.*;
-import compile.vir.Block;
 import compile.vir.Argument;
+import compile.vir.Block;
 import compile.vir.GlobalVariable;
 import compile.vir.VirtualFunction;
 import compile.vir.contant.ConstantNumber;
@@ -39,7 +38,7 @@ public class MIRGenerator {
         vir2Mir();
     }
 
-    private Pair<Integer, Integer> getCallerNumbers(FuncSymbol func) {
+    private Pair<Integer, Integer> getCallerNumbers(VirtualFunction func) {
         int iSize = 0, fSize = 0;
         for (Argument arg : func.getArgs())
             if (arg.getType() == BasicType.FLOAT)
@@ -108,10 +107,10 @@ public class MIRGenerator {
     }
 
     private MachineFunction vir2MirSingle(VirtualFunction vFunc) {
-        Map<Argument, Pair<Boolean, Integer>> argOffsets = calcArgOffsets(vFunc.getSymbol().getArgs());
+        Map<Argument, Pair<Boolean, Integer>> argOffsets = calcArgOffsets(vFunc.getArgs());
         Pair<Integer, Map<AllocaVIR, Integer>> locals = calcLocalOffsets(vFunc.getBlocks().getFirst());
-        Pair<Integer, Integer> callerNums = getCallerNumbers(vFunc.getSymbol());
-        MachineFunction mFunc = new MachineFunction(vFunc.getSymbol(), locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
+        Pair<Integer, Integer> callerNums = getCallerNumbers(vFunc);
+        MachineFunction mFunc = new MachineFunction(vFunc, locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
         LabelMIR retLabelMIR = new LabelMIR(new Label());
         Map<VReg, MReg> replaceMap = new HashMap<>();
         Map<VIR, VReg> virRegMap = new HashMap<>();

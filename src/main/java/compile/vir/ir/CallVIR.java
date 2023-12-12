@@ -1,15 +1,15 @@
 package compile.vir.ir;
 
-import compile.symbol.FuncSymbol;
+import compile.vir.VirtualFunction;
 import compile.vir.value.Value;
 
 import java.util.List;
 
 public class CallVIR extends VIR {
-    public final FuncSymbol func;
+    public final VirtualFunction func;
     public final List<Value> params;
 
-    public CallVIR(FuncSymbol func, List<Value> params) {
+    public CallVIR(VirtualFunction func, List<Value> params) {
         super(func.getType());
         this.func = func;
         this.params = params;

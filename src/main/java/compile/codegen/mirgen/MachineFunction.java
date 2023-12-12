@@ -1,19 +1,19 @@
 package compile.codegen.mirgen;
 
 import compile.codegen.mirgen.mir.MIR;
-import compile.symbol.Symbol;
+import compile.vir.VirtualFunction;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MachineFunction {
-    private final Symbol symbol;
+    private final VirtualFunction vFunc;
     private final List<MIR> irs = new ArrayList<>();
     private final int localSize, iCallerNum, fCallerNum;
     private int maxFuncParamNum = 0;
 
-    public MachineFunction(Symbol symbol, int localSize, int iCallerNum, int fCallerNum) {
-        this.symbol = symbol;
+    public MachineFunction(VirtualFunction vFunc, int localSize, int iCallerNum, int fCallerNum) {
+        this.vFunc = vFunc;
         this.localSize = localSize;
         this.iCallerNum = iCallerNum;
         this.fCallerNum = fCallerNum;
@@ -48,15 +48,11 @@ public class MachineFunction {
     }
 
     public String getName() {
-        return symbol.getName();
-    }
-
-    public Symbol getSymbol() {
-        return symbol;
+        return vFunc.getName();
     }
 
     public void print() {
-        System.out.println(symbol);
+        System.out.println(vFunc);
         System.out.println("-------- mir --------");
         irs.forEach(System.out::println);
     }
@@ -64,7 +60,7 @@ public class MachineFunction {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(symbol).append('\n');
+        builder.append(vFunc).append('\n');
         builder.append("-------- mir --------\n");
         irs.forEach(ir -> builder.append(ir).append('\n'));
         return builder.toString();

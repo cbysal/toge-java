@@ -1,13 +1,14 @@
 package compile;
 
 import common.NumberUtils;
-import compile.symbol.*;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
 import compile.vir.Block;
 import compile.vir.Argument;
 import compile.vir.GlobalVariable;
 import compile.vir.VirtualFunction;
+import compile.vir.contant.Constant;
+import compile.vir.contant.ConstantArray;
 import compile.vir.contant.ConstantNumber;
 import compile.vir.ir.*;
 import compile.vir.type.ArrayType;
@@ -24,6 +25,180 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class VIRGenerator extends SysYBaseVisitor<Object> {
+    private static class SymbolTable extends LinkedList<Map<String, Value>> {
+        public SymbolTable() {
+            this.push(new HashMap<>());
+            initBuiltInFuncs();
+            initSyscalls();
+        }
+
+        private Value get(String name) {
+            for (Map<String, Value> symbols : this)
+                if (symbols.containsKey(name))
+                    return symbols.get(name);
+            throw new RuntimeException("Undefined symbol: " + name);
+        }
+
+        public Value getData(String name) {
+            return get(name);
+        }
+
+        public VirtualFunction getFunc(String name) {
+            Value symbol = get(name);
+            if (symbol instanceof VirtualFunction function)
+                return function;
+            throw new RuntimeException("Undefined function symbol: " + name);
+        }
+
+        public void in() {
+            this.addFirst(new HashMap<>());
+        }
+
+        private void initBuiltInFuncs() {
+            VirtualFunction func;
+            func = new VirtualFunction(BasicType.I32, "getint");
+            this.getFirst().put("getint", func);
+            // getch
+            func = new VirtualFunction(BasicType.I32, "getch");
+            this.getFirst().put("getch", func);
+            // getarray
+            func = new VirtualFunction(BasicType.I32, "getarray");
+            func.addArg(new Argument(new PointerType(BasicType.I32), "a"));
+            this.getFirst().put("getarray", func);
+            // getfloat
+            func = new VirtualFunction(BasicType.FLOAT, "getfloat");
+            this.getFirst().put("getfloat", func);
+            // getfarray
+            func = new VirtualFunction(BasicType.I32, "getfarray");
+            func.addArg(new Argument(new PointerType(BasicType.FLOAT), "a"));
+            this.getFirst().put("getfarray", func);
+            // putint
+            func = new VirtualFunction(BasicType.VOID, "putint");
+            func.addArg(new Argument(BasicType.I32, "a"));
+            this.getFirst().put("putint", func);
+            // putch
+            func = new VirtualFunction(BasicType.VOID, "putch");
+            func.addArg(new Argument(BasicType.I32, "a"));
+            this.getFirst().put("putch", func);
+            // putarray
+            func = new VirtualFunction(BasicType.VOID, "putarray");
+            func.addArg(new Argument(BasicType.I32, "n"));
+            func.addArg(new Argument(new PointerType(BasicType.I32), "a"));
+            this.getFirst().put("putarray", func);
+            // putfloat
+            func = new VirtualFunction(BasicType.VOID, "putfloat");
+            func.addArg(new Argument(BasicType.FLOAT, "a"));
+            this.getFirst().put("putfloat", func);
+            // putfarray
+            func = new VirtualFunction(BasicType.VOID, "putfarray");
+            func.addArg(new Argument(BasicType.I32, "n"));
+            func.addArg(new Argument(new PointerType(BasicType.FLOAT), "a"));
+            this.getFirst().put("putfarray", func);
+            // _sysy_starttime
+            func = new VirtualFunction(BasicType.VOID, "_sysy_starttime");
+            func.addArg(new Argument(BasicType.I32, "lineno"));
+            this.getFirst().put("_sysy_starttime", func);
+            // _sysy_stoptime
+            func = new VirtualFunction(BasicType.VOID, "_sysy_stoptime");
+            func.addArg(new Argument(BasicType.I32, "lineno"));
+            this.getFirst().put("_sysy_stoptime", func);
+        }
+
+        private void initSyscalls() {
+            VirtualFunction func;
+            // memset
+            func = new VirtualFunction(BasicType.VOID, "memset");
+            func.addArg(new Argument(BasicType.I32, "addr"));
+            func.addArg(new Argument(BasicType.I32, "size"));
+            func.addArg(new Argument(BasicType.I32, "value"));
+            this.getFirst().put("memset", func);
+        }
+
+        private Constant fuseConst(Type type, Map<Integer, Integer> values) {
+            List<ArrayType> arrayTypes = new ArrayList<>();
+            while (type instanceof ArrayType arrayType) {
+                arrayTypes.add(arrayType);
+                type = arrayType.getBaseType();
+            }
+            Collections.reverse(arrayTypes);
+            int totalSize = arrayTypes.stream().mapToInt(ArrayType::getArraySize).reduce(1, Math::multiplyExact);
+            List<Constant> constants = new ArrayList<>();
+            for (int i = 0; i < totalSize; i++) {
+                ConstantNumber number = switch (type) {
+                    case BasicType.I32 -> new ConstantNumber(values.getOrDefault(i, 0));
+                    case BasicType.FLOAT -> new ConstantNumber(Float.intBitsToFloat(values.getOrDefault(i, 0)));
+                    default -> throw new IllegalStateException("Unexpected value: " + type);
+                };
+                constants.add(number);
+            }
+            for (ArrayType arrayType : arrayTypes) {
+                List<Constant> newConstants = new ArrayList<>();
+                for (int i = 0; i < constants.size(); i += arrayType.getArraySize()) {
+                    List<Constant> subConstants = constants.subList(i, i + arrayType.getArraySize());
+                    ConstantArray constantArray = new ConstantArray(arrayType, subConstants);
+                    newConstants.add(constantArray);
+                }
+                constants = newConstants;
+            }
+            return constants.getFirst();
+        }
+
+        public GlobalVariable makeConst(Type type, String name, Number value) {
+            GlobalVariable symbol = new GlobalVariable(true, type, name, new ConstantNumber(value));
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public GlobalVariable makeConst(Type type, String name, Map<Integer, Integer> values) {
+
+            GlobalVariable symbol = new GlobalVariable(true, type, name, fuseConst(type, values));
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public VirtualFunction makeFunc(Type type, String name) {
+            VirtualFunction symbol = new VirtualFunction(type, name);
+            this.getLast().put(name, symbol);
+            return symbol;
+        }
+
+        public GlobalVariable makeGlobal(Type type, String name, Number value) {
+            GlobalVariable symbol = new GlobalVariable(false, type, name, new ConstantNumber(value));
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public GlobalVariable makeGlobal(Type type, String name, Map<Integer, Integer> values) {
+            GlobalVariable symbol = new GlobalVariable(false, type, name, fuseConst(type, values));
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public AllocaVIR makeLocal(Type type, String name) {
+            AllocaVIR symbol = new AllocaVIR(type);
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public AllocaVIR makeLocal(Type type, String name, List<Integer> dimensions) {
+            for (int i = dimensions.size() - 1; i >= 0; i--)
+                type = new ArrayType(type, dimensions.get(i));
+            AllocaVIR symbol = new AllocaVIR(type);
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public Argument makeArg(Type type, String name) {
+            Argument arg = new Argument(type, name);
+            this.getFirst().put(name, arg);
+            return arg;
+        }
+
+        public void out() {
+            this.removeFirst();
+        }
+    }
+
     private static final Map<String, UnaryOperator<Number>> UOP_MAP = new HashMap<>() {{
         put("+", NumberUtils::self);
         put("-", NumberUtils::neg);
@@ -144,9 +319,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     type = new ArrayType(type, dimension);
                 globals.add(switch (curType) {
                     case BasicType.I32 ->
-                            symbolTable.makeConst(type, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
+                            symbolTable.makeConst(type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
                     case BasicType.FLOAT ->
-                            symbolTable.makeConst(type, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
+                            symbolTable.makeConst(type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else if (symbolTable.size() == 1) {
@@ -158,9 +333,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     type = new ArrayType(type, dimension);
                 globals.add(switch (curType) {
                     case BasicType.I32 ->
-                            symbolTable.makeGlobal(type, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
+                            symbolTable.makeGlobal(type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
                     case BasicType.FLOAT ->
-                            symbolTable.makeGlobal(type, name, dimensions, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
+                            symbolTable.makeGlobal(type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
                     default -> throw new IllegalStateException("Unexpected value: " + curType);
                 });
             } else {
@@ -231,22 +406,21 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public Object visitFuncDef(SysYParser.FuncDefContext ctx) {
         Type funcType = visitType(ctx.type());
-        FuncSymbol func = symbolTable.makeFunc(funcType, ctx.Ident().getSymbol().getText());
+        curFunc = symbolTable.makeFunc(funcType, ctx.Ident().getSymbol().getText());
         symbolTable.in();
         for (SysYParser.FuncArgContext arg : ctx.funcArg())
-            func.addArg(visitFuncArg(arg));
-        curFunc = new VirtualFunction(func);
+            curFunc.addArg(visitFuncArg(arg));
         curBlock = new Block();
         curFunc.addBlock(curBlock);
         allocaVIRs = new ArrayList<>();
-        for (Argument arg : curFunc.getSymbol().getArgs()) {
+        for (Argument arg : curFunc.getArgs()) {
             AllocaVIR allocaVIR = symbolTable.makeLocal(arg.getType(), arg.getName());
             allocaVIRs.add(allocaVIR);
             curBlock.add(new StoreVIR(arg, allocaVIR));
         }
         visitBlockStmt(ctx.blockStmt());
         curFunc.getBlocks().getFirst().addAll(0, allocaVIRs);
-        funcs.put(func.getName(), curFunc);
+        funcs.put(curFunc.getName(), curFunc);
         symbolTable.out();
         return null;
     }
@@ -421,7 +595,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             return null;
         }
         Value retReg = visitBinaryExp(ctx.binaryExp());
-        retReg = typeConversion(retReg, curFunc.getSymbol().getType());
+        retReg = typeConversion(retReg, curFunc.getType());
         curBlock.add(new RetVIR(retReg));
         return null;
     }
@@ -557,16 +731,16 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Value visitFuncCallExp(SysYParser.FuncCallExpContext ctx) {
-        FuncSymbol symbol = symbolTable.getFunc(ctx.Ident().getSymbol().getText());
+        VirtualFunction func = symbolTable.getFunc(ctx.Ident().getSymbol().getText());
         List<Value> params = new ArrayList<>();
         for (int i = 0; i < ctx.binaryExp().size(); i++) {
             SysYParser.BinaryExpContext exp = ctx.binaryExp().get(i);
             Value param = visitBinaryExp(exp);
-            Type type = symbol.getArgs().get(i).getType() instanceof BasicType && symbol.getArgs().get(i).getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
+            Type type = func.getArgs().get(i).getType() instanceof BasicType && func.getArgs().get(i).getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
             param = typeConversion(param, type);
             params.add(param);
         }
-        VIR newIR = new CallVIR(symbol, params);
+        VIR newIR = new CallVIR(func, params);
         curBlock.add(newIR);
         return newIR;
     }
