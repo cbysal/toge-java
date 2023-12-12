@@ -2,7 +2,6 @@ package compile;
 
 import compile.codegen.CodeGenerator;
 import compile.codegen.mirgen.MIRGenerator;
-import compile.codegen.mirgen.MIRPassManager;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.regalloc.RegAllocator;
 import compile.vir.VirtualFunction;
@@ -46,8 +45,6 @@ public class Compiler {
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
         if (options.containsKey("emit-mir"))
             emitMIR(options.get("emit-mir"), mFuncs);
-        MIRPassManager mirPassManager = new MIRPassManager(globals, mFuncs);
-        mirPassManager.run();
         if (options.containsKey("emit-opt-mir"))
             emitMIR(options.get("emit-opt-mir"), mFuncs);
         RegAllocator regAllocator = new RegAllocator(mFuncs);
