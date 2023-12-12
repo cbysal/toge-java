@@ -36,10 +36,10 @@ public class Compiler {
         VIRGenerator virGenerator = new VIRGenerator(rootContext);
         Set<GlobalVariable> globals = virGenerator.getGlobals();
         Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
-        if (options.containsKey("emit-vir"))
-            emitVIR(options.get("emit-vir"), globals, vFuncs);
-        if (options.containsKey("emit-opt-vir"))
-            emitVIR(options.get("emit-opt-vir"), globals, vFuncs);
+        if (options.containsKey("emit-llvm"))
+            emitLLVM(options.get("emit-llvm"), globals, vFuncs);
+        if (options.containsKey("emit-opt-llvm"))
+            emitLLVM(options.get("emit-opt-llvm"), globals, vFuncs);
         MIRGenerator mirGenerator = new MIRGenerator(globals, vFuncs);
         globals = mirGenerator.getGlobals();
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
@@ -58,9 +58,13 @@ public class Compiler {
         }
     }
 
-    private void emitMIR(String filePath, Map<String, MachineFunction> funcs) {
+    private void emitLLVM(String filePath, Set<GlobalVariable> globals, Map<String, VirtualFunction> funcs) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-            for (MachineFunction func : funcs.values()) {
+            for (GlobalVariable global : globals) {
+                writer.write(global.toString());
+                writer.newLine();
+            }
+            for (VirtualFunction func : funcs.values()) {
                 writer.write(func.toString());
                 writer.newLine();
             }
@@ -69,13 +73,9 @@ public class Compiler {
         }
     }
 
-    private void emitVIR(String filePath, Set<GlobalVariable> globals, Map<String, VirtualFunction> funcs) {
+    private void emitMIR(String filePath, Map<String, MachineFunction> funcs) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-            for (GlobalVariable global : globals) {
-                writer.write(global.toString());
-                writer.newLine();
-            }
-            for (VirtualFunction func : funcs.values()) {
+            for (MachineFunction func : funcs.values()) {
                 writer.write(func.toString());
                 writer.newLine();
             }

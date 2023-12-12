@@ -19,8 +19,8 @@ public class Executor {
         options.addOption(Option.builder("S").build());
         options.addOption(Option.builder("O").hasArg().type(Number.class).build());
         options.addOption(Option.builder("o").hasArg().type(File.class).build());
-        options.addOption(Option.builder().longOpt("emit-vir").hasArg().build());
-        options.addOption(Option.builder().longOpt("emit-opt-vir").hasArg().build());
+        options.addOption(Option.builder().longOpt("emit-llvm").hasArg().build());
+        options.addOption(Option.builder().longOpt("emit-opt-llvm").hasArg().build());
         options.addOption(Option.builder().longOpt("emit-mir").hasArg().build());
         options.addOption(Option.builder().longOpt("emit-opt-mir").hasArg().build());
         CommandLine commandLine;
@@ -29,11 +29,11 @@ public class Executor {
             if (commandLine.hasOption("o")) {
                 setTarget(((File) commandLine.getParsedOptionValue("o")).toPath());
             }
-            if (commandLine.hasOption("emit-vir")) {
-                this.options.put("emit-vir", commandLine.getOptionValue("emit-vir"));
+            if (commandLine.hasOption("emit-llvm")) {
+                this.options.put("emit-llvm", commandLine.getOptionValue("emit-llvm"));
             }
-            if (commandLine.hasOption("emit-opt-vir")) {
-                this.options.put("emit-opt-vir", commandLine.getOptionValue("emit-opt-vir"));
+            if (commandLine.hasOption("emit-opt-llvm")) {
+                this.options.put("emit-opt-llvm", commandLine.getOptionValue("emit-opt-llvm"));
             }
             for (String arg : commandLine.getArgList()) {
                 if (arg.startsWith("--")) {
