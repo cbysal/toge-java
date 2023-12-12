@@ -1,4 +1,4 @@
-package compile.symbol;
+package compile.vir;
 
 import compile.vir.contant.Constant;
 import compile.vir.contant.ConstantArray;

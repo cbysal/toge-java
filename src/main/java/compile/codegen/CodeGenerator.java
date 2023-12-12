@@ -3,7 +3,7 @@ package compile.codegen;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.MIR;
-import compile.symbol.GlobalVariable;
+import compile.vir.GlobalVariable;
 import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
 import compile.vir.type.Type;

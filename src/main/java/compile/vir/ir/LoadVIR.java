@@ -1,7 +1,7 @@
 package compile.vir.ir;
 
-import compile.symbol.GlobalVariable;
 import compile.vir.Argument;
+import compile.vir.GlobalVariable;
 import compile.vir.type.PointerType;
 import compile.vir.value.Value;
 

@@ -3,7 +3,7 @@ package compile.codegen.mirgen.mir;
 import compile.codegen.MReg;
 import compile.codegen.Reg;
 import compile.codegen.VReg;
-import compile.symbol.GlobalVariable;
+import compile.vir.GlobalVariable;
 
 import java.util.List;
 import java.util.Map;

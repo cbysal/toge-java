@@ -1,6 +1,7 @@
 package compile.symbol;
 
 import compile.vir.Argument;
+import compile.vir.GlobalVariable;
 import compile.vir.contant.Constant;
 import compile.vir.contant.ConstantArray;
 import compile.vir.contant.ConstantNumber;

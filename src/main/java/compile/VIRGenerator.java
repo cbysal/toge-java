@@ -6,6 +6,7 @@ import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
 import compile.vir.Block;
 import compile.vir.Argument;
+import compile.vir.GlobalVariable;
 import compile.vir.VirtualFunction;
 import compile.vir.contant.ConstantNumber;
 import compile.vir.ir.*;

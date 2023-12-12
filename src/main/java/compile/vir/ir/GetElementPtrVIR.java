@@ -1,6 +1,6 @@
 package compile.vir.ir;
 
-import compile.symbol.GlobalVariable;
+import compile.vir.GlobalVariable;
 import compile.vir.type.ArrayType;
 import compile.vir.type.PointerType;
 import compile.vir.type.Type;
