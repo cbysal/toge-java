@@ -219,12 +219,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             List<Block> blocks = func.getBlocks();
             for (int i = 0; i + 1 < blocks.size(); i++) {
                 Block block = blocks.get(i);
-                VIR lastIR = block.getLast();
-                if (!(lastIR instanceof BranchVIR || lastIR instanceof RetVIR))
-                    block.add(new BranchVIR(blocks.get(i + 1)));
-            }
-            for (int i = 0; i + 1 < blocks.size(); i++) {
-                Block block = blocks.get(i);
                 for (int j = 0; j + 1 < block.size(); j++) {
                     VIR ir = block.get(j);
                     if ((ir instanceof BranchVIR branchVIR && !branchVIR.conditional()) || ir instanceof RetVIR) {
@@ -567,8 +561,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             VIR ir;
             if (isArg && isFirst)
                 ir = new GetElementPtrVIR(pointer, dimension);
-            else if (pointer.getType() instanceof PointerType pointerType && pointerType.getBaseType() instanceof BasicType)
-                ir = new GetElementPtrVIR(pointer, dimension);
             else
                 ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), dimension);
             curBlock.add(ir);
@@ -672,9 +664,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     ir = new LoadVIR(pointer);
                 curBlock.add(ir);
                 return ir;
-            }
-            if (type instanceof BasicType) {
-                return pointer;
             }
             if (type instanceof PointerType && type.getBaseType() instanceof BasicType) {
                 VIR newIR = new LoadVIR(pointer);
