@@ -7,6 +7,11 @@ import java.util.Objects;
 public final class ConstantNumber extends Constant {
     private final Number value;
 
+    public ConstantNumber(boolean value) {
+        super(BasicType.I1);
+        this.value = value ? 1 : 0;
+    }
+
     public ConstantNumber(Number value) {
         super(switch (value) {
             case Integer iVal -> BasicType.I32;
@@ -42,6 +47,7 @@ public final class ConstantNumber extends Constant {
     @Override
     public String getName() {
         return switch (type) {
+            case BasicType.I1 -> value.intValue() == 1 ? "true" : "false";
             case BasicType.I32 -> value.toString();
             case BasicType.FLOAT -> String.format("0x%X", Double.doubleToLongBits(value.floatValue()));
             default -> throw new IllegalStateException("Unexpected value: " + type);
@@ -50,10 +56,6 @@ public final class ConstantNumber extends Constant {
 
     @Override
     public String toString() {
-        return String.format("%s %s", type, switch (type) {
-            case BasicType.I32 -> value;
-            case BasicType.FLOAT -> String.format("0x%X", Double.doubleToLongBits(value.floatValue()));
-            default -> throw new IllegalStateException("Unexpected value: " + type);
-        });
+        return String.format("%s %s", type, getName());
     }
 }

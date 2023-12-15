@@ -9,6 +9,7 @@ public class BinaryVIR extends VIR {
 
     public BinaryVIR(Type type, Value left, Value right) {
         super(switch (type) {
+            case XOR -> BasicType.I1;
             case ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM ->
                     left.getType() == BasicType.FLOAT || right.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
             case EQ, NE, GE, GT, LE, LT -> BasicType.I32;
@@ -24,6 +25,6 @@ public class BinaryVIR extends VIR {
     }
 
     public enum Type {
-        ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM, EQ, NE, GE, GT, LE, LT
+        ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM, XOR, EQ, NE, GE, GT, LE, LT
     }
 }

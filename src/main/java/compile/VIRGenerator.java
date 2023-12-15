@@ -429,54 +429,42 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     public Object visitIfStmt(SysYParser.IfStmtContext ctx) {
         Block trueBlock = new Block();
         Block falseBlock = new Block();
-        if (ctx.stmt().size() == 2) {
-            Block ifEndBlock = new Block();
-            curFunc.insertBlockAfter(curBlock, trueBlock);
-            curFunc.insertBlockAfter(trueBlock, falseBlock);
-            curFunc.insertBlockAfter(falseBlock, ifEndBlock);
-            this.trueBlock = trueBlock;
-            this.falseBlock = falseBlock;
-            calculatingCond = true;
-            Value reg = visitBinaryExp(ctx.binaryExp());
-            if (reg != null && reg.getType() != BasicType.VOID) {
-                VIR cmpVIR = switch (reg.getType()) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, reg, new ConstantNumber(0));
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, reg, new ConstantNumber(0.0f));
-                    default -> throw new IllegalStateException("Unexpected value: " + reg.getType());
-                };
-                curBlock.add(cmpVIR);
-                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
-            }
-            calculatingCond = false;
-            curBlock = trueBlock;
-            visitStmt(ctx.stmt(0));
-            curBlock.add(new BranchVIR(ifEndBlock));
-            curBlock = falseBlock;
-            visitStmt(ctx.stmt(1));
-            curBlock.add(new BranchVIR(ifEndBlock));
-            curBlock = ifEndBlock;
-        } else {
+        // if
+        if (ctx.stmt().size() == 1) {
             curFunc.insertBlockAfter(curBlock, trueBlock);
             curFunc.insertBlockAfter(trueBlock, falseBlock);
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             calculatingCond = true;
-            Value reg = visitBinaryExp(ctx.binaryExp());
-            if (reg != null && reg.getType() != BasicType.VOID) {
-                VIR cmpVIR = switch (reg.getType()) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, reg, new ConstantNumber(0));
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, reg, new ConstantNumber(0.0f));
-                    default -> throw new IllegalStateException("Unexpected value: " + reg.getType());
-                };
-                curBlock.add(cmpVIR);
-                curBlock.add(new BranchVIR(cmpVIR, trueBlock, falseBlock));
-            }
+            Value value = visitBinaryExp(ctx.binaryExp());
+            this.trueBlock = trueBlock;
+            this.falseBlock = falseBlock;
+            processValueCond(value);
             calculatingCond = false;
             curBlock = trueBlock;
             visitStmt(ctx.stmt(0));
             curBlock.add(new BranchVIR(falseBlock));
             curBlock = falseBlock;
+            return null;
         }
+        // if-else
+        Block ifEndBlock = new Block();
+        curFunc.insertBlockAfter(curBlock, trueBlock);
+        curFunc.insertBlockAfter(trueBlock, falseBlock);
+        curFunc.insertBlockAfter(falseBlock, ifEndBlock);
+        this.trueBlock = trueBlock;
+        this.falseBlock = falseBlock;
+        calculatingCond = true;
+        Value value = visitBinaryExp(ctx.binaryExp());
+        processValueCond(value);
+        calculatingCond = false;
+        curBlock = trueBlock;
+        visitStmt(ctx.stmt(0));
+        curBlock.add(new BranchVIR(ifEndBlock));
+        curBlock = falseBlock;
+        visitStmt(ctx.stmt(1));
+        curBlock.add(new BranchVIR(ifEndBlock));
+        curBlock = ifEndBlock;
         return null;
     }
 
@@ -495,16 +483,8 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         trueBlock = loopBlock;
         falseBlock = endBlock;
         calculatingCond = true;
-        Value reg = visitBinaryExp(ctx.binaryExp());
-        if (reg != null && reg.getType() != BasicType.VOID) {
-            VIR cmpVIR = switch (reg.getType()) {
-                case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, reg, new ConstantNumber(0));
-                case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, reg, new ConstantNumber(0.0f));
-                default -> throw new IllegalStateException("Unexpected value: " + reg.getType());
-            };
-            curBlock.add(cmpVIR);
-            curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
-        }
+        Value value = visitBinaryExp(ctx.binaryExp());
+        processValueCond(value);
         calculatingCond = false;
         curBlock = loopBlock;
         visitStmt(ctx.stmt());
@@ -533,9 +513,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             curBlock.add(new RetVIR(null));
             return null;
         }
-        Value retReg = visitBinaryExp(ctx.binaryExp());
-        retReg = typeConversion(retReg, curFunc.getType());
-        curBlock.add(new RetVIR(retReg));
+        Value retVal = visitBinaryExp(ctx.binaryExp());
+        retVal = typeConversion(retVal, curFunc.getType());
+        curBlock.add(new RetVIR(retVal));
         return null;
     }
 
@@ -575,26 +555,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         boolean calculatingCond = this.calculatingCond;
         this.calculatingCond = false;
         if (ctx.getChildCount() == 2) {
-            if (calculatingCond) {
-                if (ctx.getChild(0).getText().equals("!")) {
-                    Block trueBlock = this.trueBlock;
-                    Block falseBlock = this.falseBlock;
-                    this.trueBlock = falseBlock;
-                    this.falseBlock = trueBlock;
-                }
-                this.calculatingCond = calculatingCond;
-                Value reg = visitUnaryExp(ctx.unaryExp());
-                if (reg != null && reg.getType() != BasicType.VOID) {
-                    VIR cmpVIR = switch (reg.getType()) {
-                        case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, reg, new ConstantNumber(0));
-                        case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, reg, new ConstantNumber(0.0f));
-                        default -> throw new IllegalStateException("Unexpected value: " + reg.getType());
-                    };
-                    curBlock.add(cmpVIR);
-                    curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
-                }
-                return null;
-            }
             Value value = visitUnaryExp(ctx.unaryExp());
             this.calculatingCond = calculatingCond;
             return switch (ctx.getChild(0).getText()) {
@@ -611,6 +571,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 }
                 case "!" -> {
                     VIR ir = switch (value.getType()) {
+                        case BasicType.I1 -> new BinaryVIR(BinaryVIR.Type.XOR, value, new ConstantNumber(true));
                         case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.EQ, value, new ConstantNumber(0));
                         case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OEQ, value, new ConstantNumber(0.0f));
                         default -> throw new IllegalStateException("Unexpected value: " + value.getType());
@@ -622,9 +583,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             };
         }
         if (ctx.getChildCount() == 3) {
-            Value reg = visitBinaryExp(ctx.binaryExp());
+            Value value = visitBinaryExp(ctx.binaryExp());
             this.calculatingCond = calculatingCond;
-            return reg;
+            return value;
         }
         if (ctx.IntConst() != null) {
             this.calculatingCond = calculatingCond;
@@ -745,28 +706,12 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.trueBlock = trueBlock;
             this.falseBlock = rBlock;
             Value lVal = visitBinaryExp(ctx.binaryExp(0));
-            if (lVal != null && lVal.getType() != BasicType.VOID) {
-                VIR cmpVIR = switch (lVal.getType()) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, lVal, new ConstantNumber(0));
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, lVal, new ConstantNumber(0.0f));
-                    default -> throw new IllegalStateException("Unexpected value: " + lVal.getType());
-                };
-                curBlock.add(cmpVIR);
-                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
-            }
+            processValueCond(lVal);
             this.curBlock = rBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             Value rVal = visitBinaryExp(ctx.binaryExp(1));
-            if (rVal != null && rVal.getType() != BasicType.VOID) {
-                VIR cmpVIR = switch (rVal.getType()) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, rVal, new ConstantNumber(0));
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, rVal, new ConstantNumber(0.0f));
-                    default -> throw new IllegalStateException("Unexpected value: " + rVal.getType());
-                };
-                curBlock.add(cmpVIR);
-                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
-            }
+            processValueCond(rVal);
             return null;
         }
         if (ctx.getChild(1).getText().equals("&&")) {
@@ -779,100 +724,78 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.trueBlock = rBlock;
             this.falseBlock = falseBlock;
             Value lVal = visitBinaryExp(ctx.binaryExp(0));
-            if (lVal != null && lVal.getType() != BasicType.VOID) {
-                VIR cmpVIR = switch (lVal.getType()) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, lVal, new ConstantNumber(0));
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, lVal, new ConstantNumber(0.0f));
-                    default -> throw new IllegalStateException("Unexpected value: " + lVal.getType());
-                };
-                curBlock.add(cmpVIR);
-                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
-            }
+            processValueCond(lVal);
             this.curBlock = rBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             Value rVal = visitBinaryExp(ctx.binaryExp(1));
-            if (rVal != null && rVal.getType() != BasicType.VOID) {
-                VIR cmpVIR = switch (rVal.getType()) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, rVal, new ConstantNumber(0));
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, rVal, new ConstantNumber(0.0f));
-                    default -> throw new IllegalStateException("Unexpected value: " + rVal.getType());
-                };
-                curBlock.add(cmpVIR);
-                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
-            }
+            processValueCond(rVal);
             return null;
         }
         boolean calculatingCond = this.calculatingCond;
         this.calculatingCond = false;
-        Value lReg = visitBinaryExp(ctx.binaryExp(0));
-        Value rReg = visitBinaryExp(ctx.binaryExp(1));
-        Type targetType = automaticTypePromotion(lReg.getType(), rReg.getType());
-        lReg = typeConversion(lReg, targetType);
-        rReg = typeConversion(rReg, targetType);
-        String op = ctx.getChild(1).getText();
-        VIR result = switch (op) {
-            case "+", "-", "*", "/", "%" -> {
-                VIR ir = new BinaryVIR(switch (op) {
-                    case "+" -> switch (targetType) {
-                        case BasicType.I32 -> BinaryVIR.Type.ADD;
-                        case BasicType.FLOAT -> BinaryVIR.Type.FADD;
-                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                    };
-                    case "-" -> switch (targetType) {
-                        case BasicType.I32 -> BinaryVIR.Type.SUB;
-                        case BasicType.FLOAT -> BinaryVIR.Type.FSUB;
-                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                    };
-                    case "*" -> switch (targetType) {
-                        case BasicType.I32 -> BinaryVIR.Type.MUL;
-                        case BasicType.FLOAT -> BinaryVIR.Type.FMUL;
-                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                    };
-                    case "/" -> switch (targetType) {
-                        case BasicType.I32 -> BinaryVIR.Type.SDIV;
-                        case BasicType.FLOAT -> BinaryVIR.Type.FDIV;
-                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                    };
-                    case "%" -> BinaryVIR.Type.SREM;
-                    default -> throw new IllegalStateException("Unexpected value: " + op);
-                }, lReg, rReg);
-                curBlock.add(ir);
-                yield ir;
-            }
-            case "==", "!=", ">=", ">", "<=", "<" -> {
-                VIR ir = switch (targetType) {
-                    case BasicType.I32 -> new ICmpVIR(switch (op) {
-                        case "==" -> ICmpVIR.Cond.EQ;
-                        case "!=" -> ICmpVIR.Cond.NE;
-                        case ">=" -> ICmpVIR.Cond.SGE;
-                        case ">" -> ICmpVIR.Cond.SGT;
-                        case "<=" -> ICmpVIR.Cond.SLE;
-                        case "<" -> ICmpVIR.Cond.SLT;
-                        default -> throw new IllegalStateException("Unexpected value: " + op);
-                    }, lReg, rReg);
-                    case BasicType.FLOAT -> new FCmpVIR(switch (op) {
-                        case "==" -> FCmpVIR.Cond.OEQ;
-                        case "!=" -> FCmpVIR.Cond.UNE;
-                        case ">=" -> FCmpVIR.Cond.OGE;
-                        case ">" -> FCmpVIR.Cond.OGT;
-                        case "<=" -> FCmpVIR.Cond.OLE;
-                        case "<" -> FCmpVIR.Cond.OLT;
-                        default -> throw new IllegalStateException("Unexpected value: " + op);
-                    }, lReg, rReg);
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                curBlock.add(ir);
-                if (calculatingCond) {
-                    ir = new BranchVIR(ir, trueBlock, falseBlock);
-                    curBlock.add(ir);
-                }
-                yield ir;
-            }
+        Value lVal = visitBinaryExp(ctx.binaryExp(0));
+        Value rVal = visitBinaryExp(ctx.binaryExp(1));
+        Type targetType = automaticTypePromotion(lVal.getType(), rVal.getType());
+        lVal = typeConversion(lVal, targetType);
+        rVal = typeConversion(rVal, targetType);
+        VIR ir = switch (ctx.getChild(1).getText()) {
+            case "+" -> new BinaryVIR(switch (targetType) {
+                case BasicType.I32 -> BinaryVIR.Type.ADD;
+                case BasicType.FLOAT -> BinaryVIR.Type.FADD;
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            }, lVal, rVal);
+            case "-" -> new BinaryVIR(switch (targetType) {
+                case BasicType.I32 -> BinaryVIR.Type.SUB;
+                case BasicType.FLOAT -> BinaryVIR.Type.FSUB;
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            }, lVal, rVal);
+            case "*" -> new BinaryVIR(switch (targetType) {
+                case BasicType.I32 -> BinaryVIR.Type.MUL;
+                case BasicType.FLOAT -> BinaryVIR.Type.FMUL;
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            }, lVal, rVal);
+            case "/" -> new BinaryVIR(switch (targetType) {
+                case BasicType.I32 -> BinaryVIR.Type.SDIV;
+                case BasicType.FLOAT -> BinaryVIR.Type.FDIV;
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            }, lVal, rVal);
+            case "%" -> new BinaryVIR(BinaryVIR.Type.SREM, lVal, rVal);
+            case "==" -> switch (targetType) {
+                case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.EQ, lVal, rVal);
+                case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OEQ, lVal, rVal);
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            };
+            case "!=" -> switch (targetType) {
+                case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, lVal, rVal);
+                case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, lVal, rVal);
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            };
+            case ">=" -> switch (targetType) {
+                case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.SGE, lVal, rVal);
+                case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OGE, lVal, rVal);
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            };
+            case ">" -> switch (targetType) {
+                case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.SGT, lVal, rVal);
+                case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OGT, lVal, rVal);
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            };
+            case "<=" -> switch (targetType) {
+                case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.SLE, lVal, rVal);
+                case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OLE, lVal, rVal);
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            };
+            case "<" -> switch (targetType) {
+                case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.SLT, lVal, rVal);
+                case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OLT, lVal, rVal);
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            };
             default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
         };
+        curBlock.add(ir);
         this.calculatingCond = calculatingCond;
-        return result;
+        return ir;
     }
 
     private void allocInitVal(List<Integer> dimensions, Map<Integer, SysYParser.BinaryExpContext> exps, int base, SysYParser.InitValContext src) {
@@ -887,6 +810,26 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 exps.put(base + offset, exp.binaryExp());
                 offset++;
             }
+        }
+    }
+
+    private void processValueCond(Value value) {
+        if (value != null) {
+            Value cond = switch (value.getType()) {
+                case BasicType.I1 -> value;
+                case BasicType.I32 -> {
+                    VIR ir = new ICmpVIR(ICmpVIR.Cond.NE, value, new ConstantNumber(0));
+                    curBlock.add(ir);
+                    yield ir;
+                }
+                case BasicType.FLOAT -> {
+                    VIR ir = new FCmpVIR(FCmpVIR.Cond.UNE, value, new ConstantNumber(0.0f));
+                    curBlock.add(ir);
+                    yield ir;
+                }
+                default -> throw new IllegalStateException("Unexpected value: " + value.getType());
+            };
+            curBlock.add(new BranchVIR(cond, this.trueBlock, this.falseBlock));
         }
     }
 

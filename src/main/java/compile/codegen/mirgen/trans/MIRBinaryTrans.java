@@ -87,6 +87,11 @@ public final class MIRBinaryTrans {
             case FMUL -> transMulRegImmF(irs, target, reg, value.floatValue());
             case SUB -> transSubRegImmI(irs, target, reg, value.intValue());
             case FSUB -> transSubRegImmF(irs, target, reg, value.floatValue());
+            case XOR -> {
+                VReg midReg = new VReg(BasicType.I32);
+                MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
+                irs.add(new RrrMIR(RrrMIR.Op.XOR, target, reg, midReg));
+            }
             default -> throw new RuntimeException();
         }
     }
