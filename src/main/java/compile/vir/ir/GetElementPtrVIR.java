@@ -18,13 +18,8 @@ public class GetElementPtrVIR extends VIR {
         Type type = value.getType();
         if (value instanceof GlobalVariable)
             type = new PointerType(type);
-        for (int i = 0; i < indexSize; i++) {
-            type = switch (type) {
-                case PointerType pointerType -> pointerType.getBaseType();
-                case ArrayType arrayType -> arrayType.getBaseType();
-                default -> throw new IllegalStateException("Unexpected value: " + type);
-            };
-        }
+        for (int i = 0; i < indexSize; i++)
+            type = type.getBaseType();
         return new PointerType(type);
     }
 
@@ -45,7 +40,13 @@ public class GetElementPtrVIR extends VIR {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append(getName()).append(" = getelementptr ").append(getType()).append(", ").append(pointer.getType()).append(" ").append(pointer.getName());
+        builder.append(String.format("%s = getelementptr %s, %s %s", getName(), switch (pointer) {
+            case GlobalVariable global -> pointer.getType();
+            default -> pointer.getType().getBaseType();
+        }, switch (pointer) {
+            case GlobalVariable global -> new PointerType(pointer.getType());
+            default -> pointer.getType();
+        }, pointer.getName()));
         for (Value index : indexes)
             builder.append(", ").append(index.getType()).append(" ").append(index.getName());
         return builder.toString();

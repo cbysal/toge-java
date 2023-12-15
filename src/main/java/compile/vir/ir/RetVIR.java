@@ -1,5 +1,6 @@
 package compile.vir.ir;
 
+import compile.vir.contant.ConstantNumber;
 import compile.vir.type.BasicType;
 import compile.vir.value.Value;
 
@@ -14,7 +15,7 @@ public class RetVIR extends VIR {
     @Override
     public String toString() {
         if (retVal == null)
-            return "RET";
-        return "RET     " + (retVal instanceof VIR ir ? ir.getName() : retVal);
+            return "ret void";
+        return String.format("ret %s %s", retVal.getType(), retVal.getName());
     }
 }

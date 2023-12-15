@@ -64,9 +64,15 @@ public class Compiler {
                 writer.write(global.toString());
                 writer.newLine();
             }
-            for (VirtualFunction func : funcs.values()) {
+            if (!globals.isEmpty()) {
+                writer.newLine();
+            }
+            for (VirtualFunction func : funcs.values().stream().filter(func -> !func.getBlocks().isEmpty()).toList()) {
                 writer.write(func.toString());
                 writer.newLine();
+            }
+            for (VirtualFunction func : funcs.values().stream().filter(func -> func.getBlocks().isEmpty()).toList()) {
+                writer.write(func.toString());
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

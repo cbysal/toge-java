@@ -9,7 +9,7 @@ public class BinaryVIR extends VIR {
 
     public BinaryVIR(Type type, Value left, Value right) {
         super(switch (type) {
-            case ADD, SUB, MUL, DIV, MOD ->
+            case ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM ->
                     left.getType() == BasicType.FLOAT || right.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
             case EQ, NE, GE, GT, LE, LT -> BasicType.I32;
         });
@@ -20,14 +20,10 @@ public class BinaryVIR extends VIR {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append(type);
-        builder.append(" ".repeat(8 - builder.length()));
-        builder.append("%").append(id).append(", ").append(left instanceof VIR ir ? ir.getName() : left).append(", ").append(right instanceof VIR ir ? ir.getName() : right);
-        return builder.toString();
+        return String.format("%s = %s %s %s, %s", getName(), type.toString().toLowerCase(), left.getType(), left.getName(), right.getName());
     }
 
     public enum Type {
-        ADD, SUB, MUL, DIV, MOD, EQ, NE, GE, GT, LE, LT
+        ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM, EQ, NE, GE, GT, LE, LT
     }
 }

@@ -1,6 +1,5 @@
 package compile.vir.ir;
 
-import compile.vir.Argument;
 import compile.vir.GlobalVariable;
 import compile.vir.type.PointerType;
 import compile.vir.value.Value;
@@ -10,8 +9,7 @@ public class LoadVIR extends VIR {
 
     public LoadVIR(Value pointer) {
         super(switch (pointer) {
-            case GlobalVariable global -> global.getType();
-            case Argument arg -> arg.getType();
+            case GlobalVariable global -> pointer.getType();
             default -> pointer.getType().getBaseType();
         });
         this.pointer = pointer;
@@ -20,8 +18,7 @@ public class LoadVIR extends VIR {
     @Override
     public String toString() {
         return String.format("%s = load %s, %s %s", getName(), type, switch (pointer) {
-            case GlobalVariable global -> new PointerType(global.getType());
-            case Argument arg -> new PointerType(arg.getType());
+            case GlobalVariable global -> new PointerType(pointer.getType());
             default -> pointer.getType();
         }, pointer.getName());
     }

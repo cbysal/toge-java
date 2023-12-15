@@ -51,6 +51,10 @@ public class MachineFunction {
         return vFunc.getName();
     }
 
+    public String getRawName() {
+        return vFunc.getRawName();
+    }
+
     public void print() {
         System.out.println(vFunc);
         System.out.println("-------- mir --------");

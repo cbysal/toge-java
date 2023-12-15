@@ -5,25 +5,38 @@ import compile.vir.type.BasicType;
 import compile.vir.value.Value;
 
 public class BranchVIR extends VIR {
-    public final Type type;
-    public final Value left, right;
-    public final Block trueBlock, falseBlock;
+    private final Value cond;
+    public final Block ifTrue, ifFalse;
+    public final Block dest;
 
-    public BranchVIR(Type type, Value left, Value right, Block trueBlock, Block falseBlock) {
+    public BranchVIR(Value cond, Block ifTrue, Block ifFalse) {
         super(BasicType.VOID);
-        this.type = type;
-        this.left = left;
-        this.right = right;
-        this.trueBlock = trueBlock;
-        this.falseBlock = falseBlock;
+        this.cond = cond;
+        this.ifTrue = ifTrue;
+        this.ifFalse = ifFalse;
+        this.dest = null;
+    }
+
+    public BranchVIR(Block dest) {
+        super(BasicType.VOID);
+        this.cond = null;
+        this.ifTrue = null;
+        this.ifFalse = null;
+        this.dest = dest;
+    }
+
+    public Value getCond() {
+        return cond;
+    }
+
+    public boolean conditional() {
+        return cond != null;
     }
 
     @Override
     public String toString() {
-        return "B" + type + "     " + (left instanceof VIR ir ? ir.getName() : left) + ", " + (right instanceof VIR ir ? ir.getName() : right) + ", " + trueBlock + ", " + falseBlock;
-    }
-
-    public enum Type {
-        EQ, NE, GE, GT, LE, LT
+        if (conditional())
+            return String.format("br i1 %s, label %%%s, label %%%s", cond.getName(), ifTrue, ifFalse);
+        return String.format("br label %%%s", dest);
     }
 }

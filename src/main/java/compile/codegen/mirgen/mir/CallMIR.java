@@ -44,6 +44,6 @@ public class CallMIR extends MIR {
 
     @Override
     public String toString() {
-        return "call\t" + func.getName();
+        return "call\t" + func.getRawName();
     }
 }

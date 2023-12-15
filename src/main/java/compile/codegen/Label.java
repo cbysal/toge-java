@@ -16,6 +16,6 @@ public class Label {
 
     @Override
     public String toString() {
-        return "l" + id;
+        return "%l" + id;
     }
 }

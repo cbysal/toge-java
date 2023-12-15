@@ -1,11 +1,12 @@
 package compile.vir.type;
 
 public enum BasicType implements Type {
-    I32, FLOAT, VOID;
+    I1, I32, FLOAT, VOID;
 
     @Override
     public int getSize() {
         return switch (this) {
+            case I1 -> 1;
             case I32, FLOAT -> 32;
             case VOID -> 0;
         };

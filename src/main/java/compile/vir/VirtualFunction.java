@@ -7,6 +7,7 @@ import compile.vir.value.User;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.StringJoiner;
 
 public class VirtualFunction extends User {
     private final String name;
@@ -18,8 +19,13 @@ public class VirtualFunction extends User {
         this.name = name;
     }
 
-    public void addArg(Argument arg) {
+    public boolean isDeclare() {
+        return blocks.isEmpty();
+    }
+
+    public VirtualFunction addArg(Argument arg) {
         args.add(arg);
+        return this;
     }
 
     public void addBlock(Block block) {
@@ -54,18 +60,38 @@ public class VirtualFunction extends User {
 
     @Override
     public String getName() {
+        return "@" + name;
+    }
+
+    public String getRawName() {
         return name;
     }
 
     @Override
     public String toString() {
+        boolean isDeclare = blocks.isEmpty();
         StringBuilder builder = new StringBuilder();
-        builder.append(type).append(' ').append(name).append('(').append(args).append(")\n");
+        StringJoiner joiner = new StringJoiner(", ", "(", ")");
+        for (Argument arg : args) {
+            if (isDeclare)
+                joiner.add(arg.getType().toString());
+            else
+                joiner.add(arg.toString());
+        }
+        if (isDeclare)
+            builder.append("declare ");
+        else
+            builder.append("define ");
+        builder.append(String.format("%s %s", type, getName())).append(joiner);
+        if (isDeclare)
+            return builder.append('\n').toString();
+        builder.append(" {\n");
         for (Block block : blocks) {
             builder.append(block).append(":\n");
             for (VIR ir : block)
-                builder.append(ir).append('\n');
+                builder.append("  ").append(ir).append('\n');
         }
+        builder.append("}\n");
         return builder.toString();
     }
 }

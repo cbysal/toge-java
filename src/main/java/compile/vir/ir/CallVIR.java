@@ -1,9 +1,11 @@
 package compile.vir.ir;
 
 import compile.vir.VirtualFunction;
+import compile.vir.type.BasicType;
 import compile.vir.value.Value;
 
 import java.util.List;
+import java.util.StringJoiner;
 
 public class CallVIR extends VIR {
     public final VirtualFunction func;
@@ -17,9 +19,10 @@ public class CallVIR extends VIR {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("CALL    ").append(func.getName()).append(", ").append(getName());
-        params.forEach(param -> builder.append(", ").append(param.getName()));
-        return builder.toString();
+        StringJoiner joiner = new StringJoiner(", ", "(", ")");
+        params.forEach(param -> joiner.add(String.format("%s %s", param.getType(), param.getName())));
+        if (func.getType() == BasicType.VOID)
+            return String.format("call %s %s%s", func.getType(), func.getName(), joiner);
+        return String.format("%s = call %s %s%s", getName(), func.getType(), func.getName(), joiner);
     }
 }

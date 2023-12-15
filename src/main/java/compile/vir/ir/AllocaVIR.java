@@ -10,6 +10,6 @@ public class AllocaVIR extends VIR {
 
     @Override
     public String toString() {
-        return String.format("%s = alloca %s", getName(), type);
+        return String.format("%s = alloca %s", getName(), type.getBaseType());
     }
 }

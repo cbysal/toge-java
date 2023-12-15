@@ -29,6 +29,6 @@ public abstract class VIR extends User {
 
     @Override
     public final String getName() {
-        return "%" + id;
+        return "%v" + id;
     }
 }

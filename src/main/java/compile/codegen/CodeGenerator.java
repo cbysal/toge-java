@@ -35,8 +35,8 @@ public class CodeGenerator {
         for (GlobalVariable global : symbolsInBss) {
             int size = global.getSize() / 8;
             builder.append("\t.align 8\n");
-            builder.append("\t.size ").append(global.getName()).append(", ").append(size).append('\n');
-            builder.append(global.getName()).append(":\n");
+            builder.append("\t.size ").append(global.getRawName()).append(", ").append(size).append('\n');
+            builder.append(global.getRawName()).append(":\n");
             builder.append("\t.space ").append(size).append('\n');
         }
         if (!symbolsInData.isEmpty())
@@ -44,8 +44,8 @@ public class CodeGenerator {
         for (GlobalVariable global : symbolsInData) {
             int size = global.getSize() / 8;
             builder.append("\t.align 8\n");
-            builder.append("\t.size ").append(global.getName()).append(", ").append(size).append('\n');
-            builder.append(global.getName()).append(":\n");
+            builder.append("\t.size ").append(global.getRawName()).append(", ").append(size).append('\n');
+            builder.append(global.getRawName()).append(":\n");
             int num = size / 4;
             if (global.isSingle()) {
                 builder.append("\t.word ").append(switch (global.getType()) {
@@ -72,8 +72,8 @@ public class CodeGenerator {
         builder.append("\t.text\n");
         for (MachineFunction func : funcs.values()) {
             builder.append("\t.align 8\n");
-            builder.append("\t.global ").append(func.getName()).append('\n');
-            builder.append(func.getName()).append(":\n");
+            builder.append("\t.global ").append(func.getRawName()).append('\n');
+            builder.append(func.getRawName()).append(":\n");
             for (MIR ir : func.getIrs()) {
                 if (!(ir instanceof LabelMIR))
                     builder.append('\t');

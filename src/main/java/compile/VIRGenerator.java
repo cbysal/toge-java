@@ -3,8 +3,8 @@ package compile;
 import common.NumberUtils;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
-import compile.vir.Block;
 import compile.vir.Argument;
+import compile.vir.Block;
 import compile.vir.GlobalVariable;
 import compile.vir.VirtualFunction;
 import compile.vir.contant.Constant;
@@ -18,7 +18,6 @@ import compile.vir.type.PointerType;
 import compile.vir.type.Type;
 import compile.vir.value.Value;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
 import java.util.function.BinaryOperator;
@@ -28,12 +27,6 @@ import java.util.stream.IntStream;
 
 public class VIRGenerator extends SysYBaseVisitor<Object> {
     private static class SymbolTable extends LinkedList<Map<String, Value>> {
-        public SymbolTable() {
-            this.push(new HashMap<>());
-            initBuiltInFuncs();
-            initSyscalls();
-        }
-
         private Value get(String name) {
             for (Map<String, Value> symbols : this)
                 if (symbols.containsKey(name))
@@ -54,66 +47,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
         public void in() {
             this.addFirst(new HashMap<>());
-        }
-
-        private void initBuiltInFuncs() {
-            VirtualFunction func;
-            func = new VirtualFunction(BasicType.I32, "getint");
-            this.getFirst().put("getint", func);
-            // getch
-            func = new VirtualFunction(BasicType.I32, "getch");
-            this.getFirst().put("getch", func);
-            // getarray
-            func = new VirtualFunction(BasicType.I32, "getarray");
-            func.addArg(new Argument(new PointerType(BasicType.I32), "a"));
-            this.getFirst().put("getarray", func);
-            // getfloat
-            func = new VirtualFunction(BasicType.FLOAT, "getfloat");
-            this.getFirst().put("getfloat", func);
-            // getfarray
-            func = new VirtualFunction(BasicType.I32, "getfarray");
-            func.addArg(new Argument(new PointerType(BasicType.FLOAT), "a"));
-            this.getFirst().put("getfarray", func);
-            // putint
-            func = new VirtualFunction(BasicType.VOID, "putint");
-            func.addArg(new Argument(BasicType.I32, "a"));
-            this.getFirst().put("putint", func);
-            // putch
-            func = new VirtualFunction(BasicType.VOID, "putch");
-            func.addArg(new Argument(BasicType.I32, "a"));
-            this.getFirst().put("putch", func);
-            // putarray
-            func = new VirtualFunction(BasicType.VOID, "putarray");
-            func.addArg(new Argument(BasicType.I32, "n"));
-            func.addArg(new Argument(new PointerType(BasicType.I32), "a"));
-            this.getFirst().put("putarray", func);
-            // putfloat
-            func = new VirtualFunction(BasicType.VOID, "putfloat");
-            func.addArg(new Argument(BasicType.FLOAT, "a"));
-            this.getFirst().put("putfloat", func);
-            // putfarray
-            func = new VirtualFunction(BasicType.VOID, "putfarray");
-            func.addArg(new Argument(BasicType.I32, "n"));
-            func.addArg(new Argument(new PointerType(BasicType.FLOAT), "a"));
-            this.getFirst().put("putfarray", func);
-            // _sysy_starttime
-            func = new VirtualFunction(BasicType.VOID, "_sysy_starttime");
-            func.addArg(new Argument(BasicType.I32, "lineno"));
-            this.getFirst().put("_sysy_starttime", func);
-            // _sysy_stoptime
-            func = new VirtualFunction(BasicType.VOID, "_sysy_stoptime");
-            func.addArg(new Argument(BasicType.I32, "lineno"));
-            this.getFirst().put("_sysy_stoptime", func);
-        }
-
-        private void initSyscalls() {
-            VirtualFunction func;
-            // memset
-            func = new VirtualFunction(BasicType.VOID, "memset");
-            func.addArg(new Argument(BasicType.I32, "addr"));
-            func.addArg(new Argument(BasicType.I32, "size"));
-            func.addArg(new Argument(BasicType.I32, "value"));
-            this.getFirst().put("memset", func);
         }
 
         private Constant fuseConst(Type type, Map<Integer, Integer> values) {
@@ -242,6 +175,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     private final Set<GlobalVariable> globals = new HashSet<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
     private final SymbolTable symbolTable = new SymbolTable();
+    private final Map<Argument, AllocaVIR> argToAllocaMap = new HashMap<>();
     private final Deque<Block> continueStack = new ArrayDeque<>();
     private final Deque<Block> breakStack = new ArrayDeque<>();
     private boolean isProcessed = false;
@@ -254,6 +188,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     public VIRGenerator(SysYParser.RootContext rootAST) {
         this.rootAST = rootAST;
+        symbolTable.in();
+        initBuiltInFuncs();
+        initSyscalls();
     }
 
     private void checkIfIsProcessed() {
@@ -276,18 +213,20 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     private void formatVIRs() {
         for (VirtualFunction func : funcs.values()) {
+            if (func.isDeclare())
+                continue;
             List<Block> blocks = func.getBlocks();
             for (int i = 0; i + 1 < blocks.size(); i++) {
                 Block block = blocks.get(i);
                 VIR lastIR = block.getLast();
-                if (!(lastIR instanceof BranchVIR || lastIR instanceof JumpVIR || lastIR instanceof RetVIR))
-                    block.add(new JumpVIR(blocks.get(i + 1)));
+                if (!(lastIR instanceof BranchVIR || lastIR instanceof RetVIR))
+                    block.add(new BranchVIR(blocks.get(i + 1)));
             }
             for (int i = 0; i + 1 < blocks.size(); i++) {
                 Block block = blocks.get(i);
                 for (int j = 0; j + 1 < block.size(); j++) {
                     VIR ir = block.get(j);
-                    if (ir instanceof JumpVIR || ir instanceof RetVIR) {
+                    if ((ir instanceof BranchVIR branchVIR && !branchVIR.conditional()) || ir instanceof RetVIR) {
                         while (j + 1 < block.size()) {
                             block.remove(j + 1);
                         }
@@ -295,7 +234,41 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                     }
                 }
             }
+            Block lastBlock = blocks.getLast();
+            if (lastBlock.isEmpty() || !(lastBlock.getLast() instanceof RetVIR)) {
+                switch (func.getType()) {
+                    case BasicType.I32 -> lastBlock.add(new RetVIR(new ConstantNumber(0)));
+                    case BasicType.FLOAT -> lastBlock.add(new RetVIR(new ConstantNumber(0.0f)));
+                    case BasicType.VOID -> lastBlock.add(new RetVIR(null));
+                    default -> throw new IllegalStateException("Unexpected value: " + func.getType());
+                }
+            }
         }
+    }
+
+    private void initBuiltInFuncs() {
+        funcs.put("getint", symbolTable.makeFunc(BasicType.I32, "getint"));
+        funcs.put("getch", symbolTable.makeFunc(BasicType.I32, "getch"));
+        funcs.put("getarray", symbolTable.makeFunc(BasicType.I32, "getarray").addArg(new Argument(new PointerType(BasicType.I32), "a")));
+        funcs.put("getfloat", symbolTable.makeFunc(BasicType.FLOAT, "getfloat"));
+        funcs.put("getfarray", symbolTable.makeFunc(BasicType.I32, "getfarray").addArg(new Argument(new PointerType(BasicType.FLOAT), "a")));
+        funcs.put("putint", symbolTable.makeFunc(BasicType.VOID, "putint").addArg(new Argument(BasicType.I32, "a")));
+        funcs.put("putch", symbolTable.makeFunc(BasicType.VOID, "putch").addArg(new Argument(BasicType.I32, "a")));
+        funcs.put("putarray", symbolTable.makeFunc(BasicType.VOID, "putarray").addArg(new Argument(BasicType.I32, "n")).addArg(new Argument(new PointerType(BasicType.I32), "a")));
+        funcs.put("putfloat", symbolTable.makeFunc(BasicType.VOID, "putfloat").addArg(new Argument(BasicType.FLOAT, "a")));
+        funcs.put("putfarray", symbolTable.makeFunc(BasicType.VOID, "putfarray").addArg(new Argument(BasicType.I32, "n")).addArg(new Argument(new PointerType(BasicType.FLOAT), "a")));
+        funcs.put("_sysy_starttime", symbolTable.makeFunc(BasicType.VOID, "_sysy_starttime").addArg(new Argument(BasicType.I32, "lineno")));
+        funcs.put("_sysy_stoptime", symbolTable.makeFunc(BasicType.VOID, "_sysy_stoptime").addArg(new Argument(BasicType.I32, "lineno")));
+    }
+
+    private void initSyscalls() {
+        funcs.put("memset", symbolTable.makeFunc(BasicType.VOID, "memset").addArg(new Argument(new PointerType(BasicType.I32), "addr")).addArg(new Argument(BasicType.I32, "value")).addArg(new Argument(BasicType.I32, "size")));
+    }
+
+    @Override
+    public Object visitRoot(SysYParser.RootContext ctx) {
+
+        return super.visitRoot(ctx);
     }
 
     @Override
@@ -363,7 +336,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 if (initVal != null) {
                     Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
                     allocInitVal(dimensions, exps, 0, initVal);
-                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(allocaVIR, new ConstantNumber(0), new ConstantNumber(dimensions.stream().reduce(4, Math::multiplyExact)))));
+                    BitCastVIR bitCastVIR = new BitCastVIR(new PointerType(BasicType.I32), allocaVIR);
+                    curBlock.add(bitCastVIR);
+                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(bitCastVIR, new ConstantNumber(0), new ConstantNumber(dimensions.stream().reduce(4, Math::multiplyExact)))));
                     int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
                     for (int i = 0; i < totalNum; i++) {
                         SysYParser.BinaryExpContext exp = exps.get(i);
@@ -424,6 +399,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Object visitFuncDef(SysYParser.FuncDefContext ctx) {
+        argToAllocaMap.clear();
         Type funcType = visitType(ctx.type());
         curFunc = symbolTable.makeFunc(funcType, ctx.Ident().getSymbol().getText());
         symbolTable.in();
@@ -436,6 +412,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             AllocaVIR allocaVIR = symbolTable.makeLocal(arg.getType(), arg.getName());
             allocaVIRs.add(allocaVIR);
             curBlock.add(new StoreVIR(arg, allocaVIR));
+            argToAllocaMap.put(arg, allocaVIR);
         }
         visitBlockStmt(ctx.blockStmt());
         curFunc.getBlocks().getFirst().addAll(0, allocaVIRs);
@@ -470,55 +447,13 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Object visitAssignStmt(SysYParser.AssignStmtContext ctx) {
-        Pair<Value, List<Value>> lValUnit = visitLVal(ctx.lVal());
+        Value pointer = visitLVal(ctx.lVal());
         Value value = visitBinaryExp(ctx.binaryExp());
-        if (lValUnit.getLeft() instanceof AllocaVIR) {
-            Type targetType = lValUnit.getLeft().getType();
-            for (int i = 0; i < lValUnit.getRight().size(); i++) {
-                if (targetType instanceof BasicType)
-                    throw new RuntimeException();
-                targetType = targetType.getBaseType();
-            }
-            value = typeConversion(value, targetType);
-        } else {
-            value = typeConversion(value, lValUnit.getLeft().getType());
-        }
-        Value pointer = lValUnit.getLeft();
         Type type = pointer.getType();
-        if (pointer instanceof GlobalVariable global) {
-            for (int i = global.getDimensions().size() - 1; i >= 0; i--) {
-                type = new ArrayType(type, global.getDimensions().get(i));
-            }
-            type = new PointerType(type);
-        }
-        if (type.getBaseType() instanceof PointerType) {
-            boolean isFirst = true;
-            for (Value index : lValUnit.getRight()) {
-                if (isFirst) {
-                    VIR loadIR = new LoadVIR(pointer);
-                    curBlock.add(loadIR);
-                    pointer = loadIR;
-                    VIR ir = new GetElementPtrVIR(pointer, index);
-                    curBlock.add(ir);
-                    pointer = ir;
-                } else {
-                    VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
-                    curBlock.add(ir);
-                    pointer = ir;
-                }
-                isFirst = false;
-            }
-        } else {
-            for (Value index : lValUnit.getRight()) {
-                VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
-                curBlock.add(ir);
-                pointer = ir;
-            }
-        }
-        for (int i = 0; i < lValUnit.getRight().size(); i++) {
-            type = type.getBaseType();
-        }
-        value = typeConversion(value, type.getBaseType());
+        if (type instanceof BasicType)
+            value = typeConversion(value, type);
+        else
+            value = typeConversion(value, type.getBaseType());
         curBlock.add(new StoreVIR(value, pointer));
         return null;
     }
@@ -536,16 +471,22 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.falseBlock = falseBlock;
             calculatingCond = true;
             Value reg = visitBinaryExp(ctx.binaryExp());
-            if (reg != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new ConstantNumber(0), this.trueBlock, this.falseBlock));
+            if (reg != null && reg.getType() != BasicType.VOID) {
+                VIR cmpVIR = switch (reg.getType()) {
+                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, reg, new ConstantNumber(0));
+                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, reg, new ConstantNumber(0.0f));
+                    default -> throw new IllegalStateException("Unexpected value: " + reg.getType());
+                };
+                curBlock.add(cmpVIR);
+                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
             }
             calculatingCond = false;
             curBlock = trueBlock;
             visitStmt(ctx.stmt(0));
-            curBlock.add(new JumpVIR(ifEndBlock));
+            curBlock.add(new BranchVIR(ifEndBlock));
             curBlock = falseBlock;
             visitStmt(ctx.stmt(1));
-            curBlock.add(new JumpVIR(ifEndBlock));
+            curBlock.add(new BranchVIR(ifEndBlock));
             curBlock = ifEndBlock;
         } else {
             curFunc.insertBlockAfter(curBlock, trueBlock);
@@ -554,13 +495,19 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.falseBlock = falseBlock;
             calculatingCond = true;
             Value reg = visitBinaryExp(ctx.binaryExp());
-            if (reg != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new ConstantNumber(0), trueBlock, falseBlock));
+            if (reg != null && reg.getType() != BasicType.VOID) {
+                VIR cmpVIR = switch (reg.getType()) {
+                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, reg, new ConstantNumber(0));
+                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, reg, new ConstantNumber(0.0f));
+                    default -> throw new IllegalStateException("Unexpected value: " + reg.getType());
+                };
+                curBlock.add(cmpVIR);
+                curBlock.add(new BranchVIR(cmpVIR, trueBlock, falseBlock));
             }
             calculatingCond = false;
             curBlock = trueBlock;
             visitStmt(ctx.stmt(0));
-            curBlock.add(new JumpVIR(falseBlock));
+            curBlock.add(new BranchVIR(falseBlock));
             curBlock = falseBlock;
         }
         return null;
@@ -576,19 +523,25 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         curFunc.insertBlockAfter(loopBlock, endBlock);
         continueStack.push(entryBlock);
         breakStack.push(endBlock);
-        curBlock.add(new JumpVIR(entryBlock));
+        curBlock.add(new BranchVIR(entryBlock));
         curBlock = entryBlock;
         trueBlock = loopBlock;
         falseBlock = endBlock;
         calculatingCond = true;
         Value reg = visitBinaryExp(ctx.binaryExp());
-        if (reg != null) {
-            curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new ConstantNumber(0), this.trueBlock, this.falseBlock));
+        if (reg != null && reg.getType() != BasicType.VOID) {
+            VIR cmpVIR = switch (reg.getType()) {
+                case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, reg, new ConstantNumber(0));
+                case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, reg, new ConstantNumber(0.0f));
+                default -> throw new IllegalStateException("Unexpected value: " + reg.getType());
+            };
+            curBlock.add(cmpVIR);
+            curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
         }
         calculatingCond = false;
         curBlock = loopBlock;
         visitStmt(ctx.stmt());
-        curBlock.add(new JumpVIR(entryBlock));
+        curBlock.add(new BranchVIR(entryBlock));
         curBlock = endBlock;
         continueStack.pop();
         breakStack.pop();
@@ -597,13 +550,13 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Object visitBreakStmt(SysYParser.BreakStmtContext ctx) {
-        curBlock.add(new JumpVIR(breakStack.peek()));
+        curBlock.add(new BranchVIR(breakStack.peek()));
         return null;
     }
 
     @Override
     public Object visitContinueStmt(SysYParser.ContinueStmtContext ctx) {
-        curBlock.add(new JumpVIR(continueStack.peek()));
+        curBlock.add(new BranchVIR(continueStack.peek()));
         return null;
     }
 
@@ -620,12 +573,36 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public Pair<Value, List<Value>> visitLVal(SysYParser.LValContext ctx) {
-        Value symbol = symbolTable.getData(ctx.Ident().getSymbol().getText());
-        if (ctx.binaryExp().isEmpty())
-            return Pair.of(symbol, List.of());
-        List<Value> dimensions = ctx.binaryExp().stream().map(this::visitBinaryExp).collect(Collectors.toList());
-        return Pair.of(symbol, dimensions);
+    public Value visitLVal(SysYParser.LValContext ctx) {
+        Value pointer = symbolTable.getData(ctx.Ident().getSymbol().getText());
+        boolean isArg = false;
+        if (pointer instanceof Argument) {
+            isArg = true;
+            pointer = argToAllocaMap.get(pointer);
+        }
+        if (ctx.binaryExp().isEmpty()) {
+            return pointer;
+        }
+        if (pointer.getType() instanceof PointerType pointerType && pointerType.getBaseType() instanceof PointerType) {
+            VIR ir = new LoadVIR(pointer);
+            pointer = ir;
+            curBlock.add(ir);
+        }
+        List<Value> dimensions = ctx.binaryExp().stream().map(this::visitBinaryExp).toList();
+        boolean isFirst = true;
+        for (Value dimension : dimensions) {
+            VIR ir;
+            if (isArg && isFirst)
+                ir = new GetElementPtrVIR(pointer, dimension);
+            else if (pointer.getType() instanceof PointerType pointerType && pointerType.getBaseType() instanceof BasicType)
+                ir = new GetElementPtrVIR(pointer, dimension);
+            else
+                ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), dimension);
+            curBlock.add(ir);
+            pointer = ir;
+            isFirst = false;
+        }
+        return pointer;
     }
 
     @Override
@@ -642,22 +619,37 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 }
                 this.calculatingCond = calculatingCond;
                 Value reg = visitUnaryExp(ctx.unaryExp());
-                if (reg != null) {
-                    curBlock.add(new BranchVIR(BranchVIR.Type.NE, reg, new ConstantNumber(0), this.trueBlock, this.falseBlock));
+                if (reg != null && reg.getType() != BasicType.VOID) {
+                    VIR cmpVIR = switch (reg.getType()) {
+                        case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, reg, new ConstantNumber(0));
+                        case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, reg, new ConstantNumber(0.0f));
+                        default -> throw new IllegalStateException("Unexpected value: " + reg.getType());
+                    };
+                    curBlock.add(cmpVIR);
+                    curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
                 }
                 return null;
             }
-            Value reg = visitUnaryExp(ctx.unaryExp());
+            Value value = visitUnaryExp(ctx.unaryExp());
             this.calculatingCond = calculatingCond;
             return switch (ctx.getChild(0).getText()) {
-                case "+" -> reg;
+                case "+" -> value;
                 case "-" -> {
-                    VIR ir = new UnaryVIR(UnaryVIR.Type.NEG, reg);
+                    VIR ir = switch (value.getType()) {
+                        case BasicType.I1 -> new SExtVIR(BasicType.I32, value);
+                        case BasicType.I32 -> new BinaryVIR(BinaryVIR.Type.SUB, new ConstantNumber(0), value);
+                        case BasicType.FLOAT -> new BinaryVIR(BinaryVIR.Type.FSUB, new ConstantNumber(0.0f), value);
+                        default -> throw new IllegalStateException("Unexpected value: " + value.getType());
+                    };
                     curBlock.add(ir);
                     yield ir;
                 }
                 case "!" -> {
-                    VIR ir = new UnaryVIR(UnaryVIR.Type.L_NOT, reg);
+                    VIR ir = switch (value.getType()) {
+                        case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.EQ, value, new ConstantNumber(0));
+                        case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OEQ, value, new ConstantNumber(0.0f));
+                        default -> throw new IllegalStateException("Unexpected value: " + value.getType());
+                    };
                     curBlock.add(ir);
                     yield ir;
                 }
@@ -670,16 +662,12 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             return reg;
         }
         if (ctx.IntConst() != null) {
-            VIR ir = new LiVIR(Integer.decode(ctx.IntConst().getSymbol().getText()));
-            curBlock.add(ir);
             this.calculatingCond = calculatingCond;
-            return ir;
+            return new ConstantNumber(Integer.decode(ctx.IntConst().getSymbol().getText()));
         }
         if (ctx.FloatConst() != null) {
-            VIR ir = new LiVIR(Float.parseFloat(ctx.FloatConst().getSymbol().getText()));
-            curBlock.add(ir);
             this.calculatingCond = calculatingCond;
-            return ir;
+            return new ConstantNumber(Float.parseFloat(ctx.FloatConst().getSymbol().getText()));
         }
         Value result = (Value) visit(ctx.getChild(0));
         this.calculatingCond = calculatingCond;
@@ -689,14 +677,29 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public Value visitVarExp(SysYParser.VarExpContext ctx) {
         Value pointer = symbolTable.getData(ctx.Ident().getSymbol().getText());
-        Type type = pointer.getType();
-        if (pointer instanceof GlobalVariable global) {
-            for (int i = global.getDimensions().size() - 1; i >= 0; i--) {
-                type = new ArrayType(type, global.getDimensions().get(i));
-            }
-            type = new PointerType(type);
+        boolean isArg = false;
+        if (pointer instanceof Argument) {
+            isArg = true;
+            pointer = argToAllocaMap.get(pointer);
         }
+        Type type = pointer.getType();
         if (ctx.binaryExp().isEmpty()) {
+            if (pointer instanceof GlobalVariable) {
+                VIR ir;
+                if (type instanceof ArrayType) {
+                    int depth = 2;
+                    while (type.getBaseType() instanceof ArrayType) {
+                        depth++;
+                        type = type.getBaseType();
+                    }
+                    Value[] indexes = new Value[depth];
+                    Arrays.fill(indexes, new ConstantNumber(0));
+                    ir = new GetElementPtrVIR(pointer, indexes);
+                } else
+                    ir = new LoadVIR(pointer);
+                curBlock.add(ir);
+                return ir;
+            }
             if (type instanceof BasicType) {
                 return pointer;
             }
@@ -710,35 +713,37 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 curBlock.add(newIR);
                 return newIR;
             }
+            if (type instanceof PointerType && type.getBaseType() instanceof ArrayType) {
+                int depth = 1;
+                while (type.getBaseType() instanceof ArrayType) {
+                    depth++;
+                    type = type.getBaseType();
+                }
+                Value[] indexes = new Value[depth];
+                Arrays.fill(indexes, new ConstantNumber(0));
+                VIR ir = new GetElementPtrVIR(pointer, indexes);
+                curBlock.add(ir);
+                return ir;
+            }
             return pointer;
         }
-        if (type.getBaseType() instanceof PointerType) {
-            boolean isFirst = true;
-            for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
-                Value index = visitBinaryExp(dimension);
-                index = typeConversion(index, BasicType.I32);
-                if (isFirst) {
-                    VIR loadVIR = new LoadVIR(pointer);
-                    curBlock.add(loadVIR);
-                    pointer = loadVIR;
-                    VIR ir = new GetElementPtrVIR(pointer, index);
-                    curBlock.add(ir);
-                    pointer = ir;
-                } else {
-                    VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
-                    curBlock.add(ir);
-                    pointer = ir;
-                }
-                isFirst = false;
-            }
-        } else {
-            for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
-                Value index = visitBinaryExp(dimension);
-                index = typeConversion(index, BasicType.I32);
-                VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
-                curBlock.add(ir);
-                pointer = ir;
-            }
+        if (pointer.getType() instanceof PointerType pointerType && pointerType.getBaseType() instanceof PointerType) {
+            VIR ir = new LoadVIR(pointer);
+            pointer = ir;
+            curBlock.add(ir);
+        }
+        boolean isFirst = true;
+        for (SysYParser.BinaryExpContext dimension : ctx.binaryExp()) {
+            Value index = visitBinaryExp(dimension);
+            index = typeConversion(index, BasicType.I32);
+            VIR ir;
+            if (isArg && isFirst)
+                ir = new GetElementPtrVIR(pointer, index);
+            else
+                ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
+            curBlock.add(ir);
+            pointer = ir;
+            isFirst = false;
         }
         if (pointer.getType().getBaseType() instanceof ArrayType) {
             return pointer;
@@ -778,15 +783,27 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.trueBlock = trueBlock;
             this.falseBlock = rBlock;
             Value lVal = visitBinaryExp(ctx.binaryExp(0));
-            if (lVal != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, new ConstantNumber(0), this.trueBlock, this.falseBlock));
+            if (lVal != null && lVal.getType() != BasicType.VOID) {
+                VIR cmpVIR = switch (lVal.getType()) {
+                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, lVal, new ConstantNumber(0));
+                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, lVal, new ConstantNumber(0.0f));
+                    default -> throw new IllegalStateException("Unexpected value: " + lVal.getType());
+                };
+                curBlock.add(cmpVIR);
+                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
             }
             this.curBlock = rBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             Value rVal = visitBinaryExp(ctx.binaryExp(1));
-            if (rVal != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, new ConstantNumber(0), this.trueBlock, this.falseBlock));
+            if (rVal != null && rVal.getType() != BasicType.VOID) {
+                VIR cmpVIR = switch (rVal.getType()) {
+                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, rVal, new ConstantNumber(0));
+                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, rVal, new ConstantNumber(0.0f));
+                    default -> throw new IllegalStateException("Unexpected value: " + rVal.getType());
+                };
+                curBlock.add(cmpVIR);
+                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
             }
             return null;
         }
@@ -800,15 +817,27 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.trueBlock = rBlock;
             this.falseBlock = falseBlock;
             Value lVal = visitBinaryExp(ctx.binaryExp(0));
-            if (lVal != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, lVal, new ConstantNumber(0), this.trueBlock, this.falseBlock));
+            if (lVal != null && lVal.getType() != BasicType.VOID) {
+                VIR cmpVIR = switch (lVal.getType()) {
+                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, lVal, new ConstantNumber(0));
+                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, lVal, new ConstantNumber(0.0f));
+                    default -> throw new IllegalStateException("Unexpected value: " + lVal.getType());
+                };
+                curBlock.add(cmpVIR);
+                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
             }
             this.curBlock = rBlock;
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             Value rVal = visitBinaryExp(ctx.binaryExp(1));
-            if (rVal != null) {
-                curBlock.add(new BranchVIR(BranchVIR.Type.NE, rVal, new ConstantNumber(0), this.trueBlock, this.falseBlock));
+            if (rVal != null && rVal.getType() != BasicType.VOID) {
+                VIR cmpVIR = switch (rVal.getType()) {
+                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, rVal, new ConstantNumber(0));
+                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, rVal, new ConstantNumber(0.0f));
+                    default -> throw new IllegalStateException("Unexpected value: " + rVal.getType());
+                };
+                curBlock.add(cmpVIR);
+                curBlock.add(new BranchVIR(cmpVIR, this.trueBlock, this.falseBlock));
             }
             return null;
         }
@@ -823,35 +852,59 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         VIR result = switch (op) {
             case "+", "-", "*", "/", "%" -> {
                 VIR ir = new BinaryVIR(switch (op) {
-                    case "+" -> BinaryVIR.Type.ADD;
-                    case "-" -> BinaryVIR.Type.SUB;
-                    case "*" -> BinaryVIR.Type.MUL;
-                    case "/" -> BinaryVIR.Type.DIV;
-                    case "%" -> BinaryVIR.Type.MOD;
+                    case "+" -> switch (targetType) {
+                        case BasicType.I32 -> BinaryVIR.Type.ADD;
+                        case BasicType.FLOAT -> BinaryVIR.Type.FADD;
+                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                    };
+                    case "-" -> switch (targetType) {
+                        case BasicType.I32 -> BinaryVIR.Type.SUB;
+                        case BasicType.FLOAT -> BinaryVIR.Type.FSUB;
+                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                    };
+                    case "*" -> switch (targetType) {
+                        case BasicType.I32 -> BinaryVIR.Type.MUL;
+                        case BasicType.FLOAT -> BinaryVIR.Type.FMUL;
+                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                    };
+                    case "/" -> switch (targetType) {
+                        case BasicType.I32 -> BinaryVIR.Type.SDIV;
+                        case BasicType.FLOAT -> BinaryVIR.Type.FDIV;
+                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                    };
+                    case "%" -> BinaryVIR.Type.SREM;
                     default -> throw new IllegalStateException("Unexpected value: " + op);
                 }, lReg, rReg);
                 curBlock.add(ir);
                 yield ir;
             }
             case "==", "!=", ">=", ">", "<=", "<" -> {
-                VIR ir = calculatingCond ? new BranchVIR(switch (op) {
-                    case "==" -> BranchVIR.Type.EQ;
-                    case "!=" -> BranchVIR.Type.NE;
-                    case ">=" -> BranchVIR.Type.GE;
-                    case ">" -> BranchVIR.Type.GT;
-                    case "<=" -> BranchVIR.Type.LE;
-                    case "<" -> BranchVIR.Type.LT;
-                    default -> throw new IllegalStateException("Unexpected value: " + op);
-                }, lReg, rReg, trueBlock, falseBlock) : new BinaryVIR(switch (op) {
-                    case "==" -> BinaryVIR.Type.EQ;
-                    case "!=" -> BinaryVIR.Type.NE;
-                    case ">=" -> BinaryVIR.Type.GE;
-                    case ">" -> BinaryVIR.Type.GT;
-                    case "<=" -> BinaryVIR.Type.LE;
-                    case "<" -> BinaryVIR.Type.LT;
-                    default -> throw new IllegalStateException("Unexpected value: " + op);
-                }, lReg, rReg);
+                VIR ir = switch (targetType) {
+                    case BasicType.I32 -> new ICmpVIR(switch (op) {
+                        case "==" -> ICmpVIR.Cond.EQ;
+                        case "!=" -> ICmpVIR.Cond.NE;
+                        case ">=" -> ICmpVIR.Cond.SGE;
+                        case ">" -> ICmpVIR.Cond.SGT;
+                        case "<=" -> ICmpVIR.Cond.SLE;
+                        case "<" -> ICmpVIR.Cond.SLT;
+                        default -> throw new IllegalStateException("Unexpected value: " + op);
+                    }, lReg, rReg);
+                    case BasicType.FLOAT -> new FCmpVIR(switch (op) {
+                        case "==" -> FCmpVIR.Cond.OEQ;
+                        case "!=" -> FCmpVIR.Cond.UNE;
+                        case ">=" -> FCmpVIR.Cond.OGE;
+                        case ">" -> FCmpVIR.Cond.OGT;
+                        case "<=" -> FCmpVIR.Cond.OLE;
+                        case "<" -> FCmpVIR.Cond.OLT;
+                        default -> throw new IllegalStateException("Unexpected value: " + op);
+                    }, lReg, rReg);
+                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                };
                 curBlock.add(ir);
+                if (calculatingCond) {
+                    ir = new BranchVIR(ir, trueBlock, falseBlock);
+                    curBlock.add(ir);
+                }
                 yield ir;
             }
             default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
@@ -918,22 +971,59 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     private static Type automaticTypePromotion(Type type1, Type type2) {
-        return type1 == BasicType.FLOAT || type2 == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
+        if (type1 == BasicType.FLOAT || type2 == BasicType.FLOAT)
+            return BasicType.FLOAT;
+        if (type1 == BasicType.I32 || type2 == BasicType.I32)
+            return BasicType.I32;
+        return BasicType.I1;
     }
 
     private Value typeConversion(Value value, Type targetType) {
         if (value.getType() == targetType)
             return value;
-        if (value.getType() == BasicType.FLOAT && targetType == BasicType.I32) {
-            VIR ir = new UnaryVIR(UnaryVIR.Type.F2I, value);
-            curBlock.add(ir);
-            value = ir;
-        }
-        if (value.getType() == BasicType.I32 && targetType == BasicType.FLOAT) {
-            VIR ir = new UnaryVIR(UnaryVIR.Type.I2F, value);
-            curBlock.add(ir);
-            value = ir;
-        }
-        return value;
+        return switch (targetType) {
+            case BasicType.I1 -> switch (value.getType()) {
+                case BasicType.I32 -> {
+                    VIR ir = new ICmpVIR(ICmpVIR.Cond.NE, value, new ConstantNumber(0));
+                    curBlock.add(ir);
+                    yield ir;
+                }
+                case BasicType.FLOAT -> {
+                    VIR ir = new FCmpVIR(FCmpVIR.Cond.UNE, value, new ConstantNumber(0.0f));
+                    curBlock.add(ir);
+                    yield ir;
+                }
+                default -> value;
+            };
+            case BasicType.I32 -> switch (value.getType()) {
+                case BasicType.I1 -> {
+                    VIR ir = new ZExtVIR(BasicType.I32, value);
+                    curBlock.add(ir);
+                    yield ir;
+                }
+                case BasicType.FLOAT -> {
+                    VIR ir = new FPToSIVIR(BasicType.I32, value);
+                    curBlock.add(ir);
+                    yield ir;
+                }
+                default -> value;
+            };
+            case BasicType.FLOAT -> switch (value.getType()) {
+                case BasicType.I1 -> {
+                    VIR ir = new ZExtVIR(BasicType.I32, value);
+                    curBlock.add(ir);
+                    ir = new SIToFPVIR(BasicType.FLOAT, ir);
+                    curBlock.add(ir);
+                    yield ir;
+                }
+                case BasicType.I32 -> {
+                    VIR ir = new SIToFPVIR(BasicType.FLOAT, value);
+                    curBlock.add(ir);
+                    yield ir;
+                }
+                default -> value;
+            };
+            default -> value;
+        };
     }
 }

@@ -9,9 +9,8 @@ public class UnaryVIR extends VIR {
 
     public UnaryVIR(Type type, Value source) {
         super(switch (type) {
-            case F2I, L_NOT -> BasicType.I32;
             case I2F -> BasicType.FLOAT;
-            case NEG, ABS -> source.getType();
+            case FNEG, ABS -> source.getType();
         });
         this.type = type;
         this.source = source;
@@ -27,6 +26,6 @@ public class UnaryVIR extends VIR {
     }
 
     public enum Type {
-        F2I, I2F, NEG, L_NOT, ABS
+        I2F, FNEG, ABS
     }
 }

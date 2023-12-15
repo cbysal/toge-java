@@ -13,11 +13,11 @@ public class Argument extends Value {
 
     @Override
     public String getName() {
-        return name;
+        return "%" + name;
     }
 
     @Override
     public String toString() {
-        return String.format("%s %s", type, name);
+        return String.format("%s %s", type, getName());
     }
 }

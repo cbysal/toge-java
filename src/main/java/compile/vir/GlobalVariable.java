@@ -6,6 +6,7 @@ import compile.vir.contant.ConstantNumber;
 import compile.vir.contant.ConstantZero;
 import compile.vir.type.ArrayType;
 import compile.vir.type.BasicType;
+import compile.vir.type.PointerType;
 import compile.vir.type.Type;
 import compile.vir.value.User;
 
@@ -109,11 +110,15 @@ public class GlobalVariable extends User {
 
     @Override
     public String getName() {
+        return "@" + name;
+    }
+
+    public String getRawName() {
         return name;
     }
 
     @Override
     public String toString() {
-        return String.format("%s %s = %s", type, name, value);
+        return String.format("%s = global %s", getName(), value);
     }
 }

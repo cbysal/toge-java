@@ -43,6 +43,6 @@ public class LlaMIR extends MIR {
 
     @Override
     public String toString() {
-        return String.format("lla\t%s,%s", dest, global.getName());
+        return String.format("lla\t%s,%s", dest, global.getRawName());
     }
 }

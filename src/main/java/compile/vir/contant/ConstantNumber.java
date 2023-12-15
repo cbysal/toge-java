@@ -41,11 +41,19 @@ public final class ConstantNumber extends Constant {
 
     @Override
     public String getName() {
-        return toString();
+        return switch (type) {
+            case BasicType.I32 -> value.toString();
+            case BasicType.FLOAT -> String.format("0x%X", Double.doubleToLongBits(value.floatValue()));
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        };
     }
 
     @Override
     public String toString() {
-        return String.format("%s %s", type, value);
+        return String.format("%s %s", type, switch (type) {
+            case BasicType.I32 -> value;
+            case BasicType.FLOAT -> String.format("0x%X", Double.doubleToLongBits(value.floatValue()));
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        });
     }
 }

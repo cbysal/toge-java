@@ -15,6 +15,6 @@ public class LabelMIR extends MIR {
 
     @Override
     public String toString() {
-        return label + ":";
+        return "l" + label.getId() + ":";
     }
 }

@@ -52,10 +52,8 @@ public final class MIRUnaryTrans {
         VReg target = virRegMap.get(unaryVIR);
         switch (unaryVIR.type) {
             case ABS -> transAbsRegReg(irs, target, reg);
-            case F2I -> transF2IRegReg(irs, target, reg);
             case I2F -> transI2FRegReg(irs, target, reg);
-            case L_NOT -> transLNotRegReg(irs, target, reg);
-            case NEG -> transNegRegReg(irs, target, reg);
+            case FNEG -> transNegRegReg(irs, target, reg);
             default -> throw new RuntimeException();
         }
     }

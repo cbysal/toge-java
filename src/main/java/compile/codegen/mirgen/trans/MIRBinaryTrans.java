@@ -41,18 +41,10 @@ public final class MIRBinaryTrans {
     static void transBinaryImmReg(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, ConstantNumber value, VReg reg) {
         VReg target = virRegMap.get(binaryVIR);
         switch (binaryVIR.type) {
-            case ADD -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transAddRegImmF(irs, target, reg, value.floatValue());
-                else
-                    transAddRegImmI(irs, target, reg, value.intValue());
-            }
-            case DIV -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transDivImmRegF(irs, target, value.floatValue(), reg);
-                else
-                    transDivImmRegI(irs, target, value.intValue(), reg);
-            }
+            case ADD -> transAddRegImmI(irs, target, reg, value.intValue());
+            case FADD -> transAddRegImmF(irs, target, reg, value.floatValue());
+            case SDIV -> transDivImmRegI(irs, target, value.intValue(), reg);
+            case FDIV -> transDivImmRegF(irs, target, value.floatValue(), reg);
             case EQ, GE, GT, LE, LT, NE -> {
                 BinaryVIR.Type type = switch (binaryVIR.type) {
                     case EQ -> BinaryVIR.Type.EQ;
@@ -68,19 +60,11 @@ public final class MIRBinaryTrans {
                 else
                     transCmpRegImmI(irs, type, target, reg, value.intValue());
             }
-            case MOD -> transModImmReg(irs, target, value.intValue(), reg);
-            case MUL -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transMulRegImmF(irs, target, reg, value.floatValue());
-                else
-                    transMulRegImmI(irs, target, reg, value.intValue());
-            }
-            case SUB -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transSubImmRegF(irs, target, value.floatValue(), reg);
-                else
-                    transSubImmRegI(irs, target, value.intValue(), reg);
-            }
+            case SREM -> transModImmReg(irs, target, value.intValue(), reg);
+            case MUL -> transMulRegImmI(irs, target, reg, value.intValue());
+            case FMUL -> transMulRegImmF(irs, target, reg, value.floatValue());
+            case SUB -> transSubImmRegI(irs, target, value.intValue(), reg);
+            case FSUB -> transSubImmRegF(irs, target, value.floatValue(), reg);
             default -> throw new RuntimeException();
         }
     }
@@ -88,37 +72,21 @@ public final class MIRBinaryTrans {
     static void transBinaryRegImm(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, VReg reg, ConstantNumber value) {
         VReg target = virRegMap.get(binaryVIR);
         switch (binaryVIR.type) {
-            case ADD -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transAddRegImmF(irs, target, reg, value.floatValue());
-                else
-                    transAddRegImmI(irs, target, reg, value.intValue());
-            }
-            case DIV -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transDivRegImmF(irs, target, reg, value.floatValue());
-                else
-                    transDivRegImmI(irs, target, reg, value.intValue());
-            }
+            case ADD -> transAddRegImmI(irs, target, reg, value.intValue());
+            case FADD -> transAddRegImmF(irs, target, reg, value.floatValue());
+            case SDIV -> transDivRegImmI(irs, target, reg, value.intValue());
+            case FDIV -> transDivRegImmF(irs, target, reg, value.floatValue());
             case EQ, GE, GT, LE, LT, NE -> {
                 if (reg.getType() == BasicType.FLOAT)
                     transCmpRegImmF(irs, binaryVIR.type, target, reg, value.floatValue());
                 else
                     transCmpRegImmI(irs, binaryVIR.type, target, reg, value.intValue());
             }
-            case MOD -> transModRegImm(irs, target, reg, value.intValue());
-            case MUL -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transMulRegImmF(irs, target, reg, value.floatValue());
-                else
-                    transMulRegImmI(irs, target, reg, value.intValue());
-            }
-            case SUB -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transSubRegImmF(irs, target, reg, value.floatValue());
-                else
-                    transSubRegImmI(irs, target, reg, value.intValue());
-            }
+            case SREM -> transModRegImm(irs, target, reg, value.intValue());
+            case MUL -> transMulRegImmI(irs, target, reg, value.intValue());
+            case FMUL -> transMulRegImmF(irs, target, reg, value.floatValue());
+            case SUB -> transSubRegImmI(irs, target, reg, value.intValue());
+            case FSUB -> transSubRegImmF(irs, target, reg, value.floatValue());
             default -> throw new RuntimeException();
         }
     }
@@ -126,37 +94,21 @@ public final class MIRBinaryTrans {
     static void transBinaryRegReg(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, VReg reg1, VReg reg2) {
         VReg target = virRegMap.get(binaryVIR);
         switch (binaryVIR.type) {
-            case ADD -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transAddRegRegF(irs, target, reg1, reg2);
-                else
-                    transAddRegRegI(irs, target, reg1, reg2);
-            }
-            case DIV -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transDivRegRegF(irs, target, reg1, reg2);
-                else
-                    transDivRegRegI(irs, target, reg1, reg2);
-            }
+            case ADD -> transAddRegRegI(irs, target, reg1, reg2);
+            case FADD -> transAddRegRegF(irs, target, reg1, reg2);
+            case SDIV -> transDivRegRegI(irs, target, reg1, reg2);
+            case FDIV -> transDivRegRegF(irs, target, reg1, reg2);
             case EQ, GE, GT, LE, LT, NE -> {
                 if (reg1.getType() == BasicType.FLOAT)
                     transCmpRegRegF(irs, binaryVIR.type, target, reg1, reg2);
                 else
                     transCmpRegRegI(irs, binaryVIR.type, target, reg1, reg2);
             }
-            case MOD -> transModRegReg(irs, target, reg1, reg2);
-            case MUL -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transMulRegRegF(irs, target, reg1, reg2);
-                else
-                    transMulRegRegI(irs, target, reg1, reg2);
-            }
-            case SUB -> {
-                if (target.getType() == BasicType.FLOAT)
-                    transSubRegRegF(irs, target, reg1, reg2);
-                else
-                    transSubRegRegI(irs, target, reg1, reg2);
-            }
+            case SREM -> transModRegReg(irs, target, reg1, reg2);
+            case MUL -> transMulRegRegI(irs, target, reg1, reg2);
+            case FMUL -> transMulRegRegF(irs, target, reg1, reg2);
+            case SUB -> transSubRegRegI(irs, target, reg1, reg2);
+            case FSUB -> transSubRegRegF(irs, target, reg1, reg2);
             default -> throw new RuntimeException();
         }
     }

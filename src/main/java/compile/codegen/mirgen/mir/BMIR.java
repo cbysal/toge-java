@@ -73,9 +73,9 @@ public class BMIR extends MIR {
     @Override
     public String toString() {
         if (op == null) {
-            return "j\t" + label;
+            return "j\tl" + label.getId();
         }
-        return String.format("b%s\t%s,%s,%s", op.toString().toLowerCase(), src1, src2, label);
+        return String.format("b%s\t%s,%s,l%d", op.toString().toLowerCase(), src1, src2, label.getId());
     }
 
     public enum Op {
