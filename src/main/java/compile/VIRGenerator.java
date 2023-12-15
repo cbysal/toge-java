@@ -49,7 +49,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.addFirst(new HashMap<>());
         }
 
-        private Constant fuseConst(Type type, Map<Integer, Integer> values) {
+        private Constant fuseConst(Type type, Map<Integer, Number> values) {
             if (values.isEmpty()) {
                 return new ConstantZero(type);
             }
@@ -71,11 +71,11 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 List<Constant> array = new ArrayList<>(arraySize);
                 for (int j = 0; j < arraySize; j++) {
                     int index = i + j;
-                    ConstantNumber number = switch (type) {
-                        case BasicType.I32 -> new ConstantNumber(values.getOrDefault(index, 0));
-                        case BasicType.FLOAT -> new ConstantNumber(Float.intBitsToFloat(values.getOrDefault(index, 0)));
+                    ConstantNumber number = new ConstantNumber(values.getOrDefault(index, switch (type) {
+                        case BasicType.I32 -> 0;
+                        case BasicType.FLOAT -> 0.0f;
                         default -> throw new IllegalStateException("Unexpected value: " + type);
-                    };
+                    }));
                     array.add(number);
                 }
                 constants.add(new ConstantArray(arrayTypes.getFirst(), array));
@@ -95,33 +95,34 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             return constants.getFirst();
         }
 
-        public GlobalVariable makeConst(Type type, String name, Number value) {
-            GlobalVariable symbol = new GlobalVariable(true, type, name, new ConstantNumber(value));
-            this.getFirst().put(name, symbol);
-            return symbol;
-        }
-
-        public GlobalVariable makeConst(Type type, String name, Map<Integer, Integer> values) {
-
-            GlobalVariable symbol = new GlobalVariable(true, type, name, fuseConst(type, values));
-            this.getFirst().put(name, symbol);
-            return symbol;
-        }
-
         public VirtualFunction makeFunc(Type type, String name) {
             VirtualFunction symbol = new VirtualFunction(type, name);
             this.getLast().put(name, symbol);
             return symbol;
         }
 
-        public GlobalVariable makeGlobal(Type type, String name, Number value) {
-            GlobalVariable symbol = new GlobalVariable(false, type, name, new ConstantNumber(value));
+        public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Number value) {
+            GlobalVariable symbol = new GlobalVariable(isConst, type, name, new ConstantNumber(switch (type) {
+                case BasicType.I32 -> value.intValue();
+                case BasicType.FLOAT -> value.floatValue();
+                default -> throw new IllegalStateException("Unexpected value: " + type);
+            }));
             this.getFirst().put(name, symbol);
             return symbol;
         }
 
-        public GlobalVariable makeGlobal(Type type, String name, Map<Integer, Integer> values) {
-            GlobalVariable symbol = new GlobalVariable(false, type, name, fuseConst(type, values));
+        public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Map<Integer, Number> values) {
+            Type rootType = type;
+            while (rootType instanceof ArrayType arrayType)
+                rootType = arrayType.getBaseType();
+            for (Map.Entry<Integer, Number> entry : values.entrySet()) {
+                entry.setValue(switch (rootType) {
+                    case BasicType.I32 -> entry.getValue().intValue();
+                    case BasicType.FLOAT -> entry.getValue().floatValue();
+                    default -> throw new IllegalStateException("Unexpected value: " + rootType);
+                });
+            }
+            GlobalVariable symbol = new GlobalVariable(isConst, type, name, fuseConst(type, values));
             this.getFirst().put(name, symbol);
             return symbol;
         }
@@ -300,98 +301,70 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     @Override
     public Object visitVarDef(SysYParser.VarDefContext ctx) {
         String name = ctx.Ident().getSymbol().getText();
-        if (ctx.dimensions() != null) {
-            List<Integer> dimensions = visitDimensions(ctx.dimensions());
-            SysYParser.InitValContext initVal = ctx.initVal();
-            if (isConst) {
-                Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
-                allocInitVal(dimensions, exps, 0, initVal);
-                Type type = curType;
-                for (int dimension : dimensions.reversed())
-                    type = new ArrayType(type, dimension);
-                globals.add(switch (curType) {
-                    case BasicType.I32 ->
-                            symbolTable.makeConst(type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
-                    case BasicType.FLOAT ->
-                            symbolTable.makeConst(type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
-                    default -> throw new IllegalStateException("Unexpected value: " + curType);
-                });
-            } else if (symbolTable.size() == 1) {
-                Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
-                if (initVal != null)
-                    allocInitVal(dimensions, exps, 0, initVal);
-                Type type = curType;
-                for (int dimension : dimensions.reversed())
-                    type = new ArrayType(type, dimension);
-                globals.add(switch (curType) {
-                    case BasicType.I32 ->
-                            symbolTable.makeGlobal(type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue()).intValue())));
-                    case BasicType.FLOAT ->
-                            symbolTable.makeGlobal(type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> Float.floatToIntBits(calc(exp.getValue()).floatValue()))));
-                    default -> throw new IllegalStateException("Unexpected value: " + curType);
-                });
-            } else {
-                AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name, dimensions);
-                allocaVIRs.add(allocaVIR);
-                if (initVal != null) {
-                    Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
-                    allocInitVal(dimensions, exps, 0, initVal);
-                    BitCastVIR bitCastVIR = new BitCastVIR(new PointerType(BasicType.I32), allocaVIR);
-                    curBlock.add(bitCastVIR);
-                    curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(bitCastVIR, new ConstantNumber(0), new ConstantNumber(dimensions.stream().reduce(4, Math::multiplyExact)))));
-                    int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
-                    for (int i = 0; i < totalNum; i++) {
-                        SysYParser.BinaryExpContext exp = exps.get(i);
-                        if (exp != null) {
-                            List<Integer> indexes = new ArrayList<>();
-                            int rest = i;
-                            for (int j = 0; j < dimensions.size(); j++) {
-                                indexes.add(rest % dimensions.get(dimensions.size() - j - 1));
-                                rest /= dimensions.get(dimensions.size() - j - 1);
-                            }
-                            Collections.reverse(indexes);
-                            Value value = typeConversion(visitBinaryExp(exps.get(i)), curType);
-                            Value pointer = allocaVIR;
-                            for (int index : indexes) {
-                                VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), new ConstantNumber(index));
-                                curBlock.add(ir);
-                                pointer = ir;
-                            }
-                            curBlock.add(new StoreVIR(value, pointer));
-                        }
-                    }
-                }
-            }
-        } else {
-            if (isConst) {
-                Number value = calc(ctx.initVal().binaryExp());
-                globals.add(switch (curType) {
-                    case BasicType.I32 -> symbolTable.makeConst(BasicType.I32, name, value.intValue());
-                    case BasicType.FLOAT -> symbolTable.makeConst(BasicType.FLOAT, name, value.floatValue());
-                    default -> throw new IllegalStateException("Unexpected value: " + curType);
-                });
-            } else if (symbolTable.size() == 1) {
-                Number value = switch (curType) {
-                    case BasicType.I32 -> 0;
-                    case BasicType.FLOAT -> 0.0f;
-                    default -> throw new IllegalStateException("Unexpected value: " + curType);
-                };
+        // Scalar
+        if (ctx.dimensions() == null) {
+            // Scalar Global
+            if (isConst || symbolTable.size() == 1) {
+                Number value = 0;
                 if (ctx.initVal() != null)
                     value = calc(ctx.initVal().binaryExp());
-                globals.add(switch (curType) {
-                    case BasicType.I32 -> symbolTable.makeGlobal(BasicType.I32, name, value.intValue());
-                    case BasicType.FLOAT -> symbolTable.makeGlobal(BasicType.FLOAT, name, value.floatValue());
-                    default -> throw new IllegalStateException("Unexpected value: " + curType);
-                });
-            } else {
-                AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name);
-                allocaVIRs.add(allocaVIR);
-                SysYParser.InitValContext initVal = ctx.initVal();
-                if (initVal != null) {
-                    Value value = visitBinaryExp(initVal.binaryExp());
-                    value = typeConversion(value, curType);
-                    curBlock.add(new StoreVIR(value, allocaVIR));
+                globals.add(symbolTable.makeGlobal(isConst, curType, name, value));
+                return null;
+            }
+            // Scalar Local
+            AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name);
+            allocaVIRs.add(allocaVIR);
+            SysYParser.InitValContext initVal = ctx.initVal();
+            if (initVal != null) {
+                Value value = visitBinaryExp(initVal.binaryExp());
+                value = typeConversion(value, curType);
+                curBlock.add(new StoreVIR(value, allocaVIR));
+            }
+            return null;
+        }
+        // Array
+        List<Integer> dimensions = visitDimensions(ctx.dimensions());
+        SysYParser.InitValContext initVal = ctx.initVal();
+        // Array Global
+        if (isConst || symbolTable.size() == 1) {
+            Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
+            if (initVal != null)
+                allocInitVal(dimensions, exps, 0, initVal);
+            Type type = curType;
+            for (int dimension : dimensions.reversed())
+                type = new ArrayType(type, dimension);
+            globals.add(symbolTable.makeGlobal(isConst, type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue())))));
+            return null;
+        }
+        // Array Local
+        AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name, dimensions);
+        allocaVIRs.add(allocaVIR);
+        if (initVal != null) {
+            Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
+            allocInitVal(dimensions, exps, 0, initVal);
+            BitCastVIR bitCastVIR = new BitCastVIR(new PointerType(BasicType.I32), allocaVIR);
+            curBlock.add(bitCastVIR);
+            curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(bitCastVIR, new ConstantNumber(0), new ConstantNumber(dimensions.stream().reduce(4, Math::multiplyExact)))));
+            int totalNum = dimensions.stream().reduce(1, Math::multiplyExact);
+            for (int i = 0; i < totalNum; i++) {
+                SysYParser.BinaryExpContext exp = exps.get(i);
+                if (exp == null)
+                    continue;
+                List<Integer> indexes = new ArrayList<>();
+                int rest = i;
+                for (int j = 0; j < dimensions.size(); j++) {
+                    indexes.add(rest % dimensions.get(dimensions.size() - j - 1));
+                    rest /= dimensions.get(dimensions.size() - j - 1);
                 }
+                Collections.reverse(indexes);
+                Value value = typeConversion(visitBinaryExp(exp), curType);
+                Value pointer = allocaVIR;
+                for (int index : indexes) {
+                    VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), new ConstantNumber(index));
+                    curBlock.add(ir);
+                    pointer = ir;
+                }
+                curBlock.add(new StoreVIR(value, pointer));
             }
         }
         return null;
