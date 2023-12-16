@@ -68,8 +68,7 @@ unaryExp:
     | LP additiveExp RP
     | varExp
     | funcCallExp
-    | IntConst
-    | FloatConst;
+    | numberExp;
 
 varExp:
     scalarVarExp
@@ -80,6 +79,10 @@ scalarVarExp: Ident;
 arrayVarExp: Ident (LB additiveExp RB)+;
 
 funcCallExp: Ident LP (additiveExp (COMMA additiveExp)*)? RP;
+
+numberExp:
+    IntConst
+    | FloatConst;
 
 lorExp: landExp (LOR landExp)*;
 

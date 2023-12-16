@@ -179,6 +179,12 @@ public interface SysYVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitFuncCallExp(SysYParser.FuncCallExpContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link SysYParser#numberExp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitNumberExp(SysYParser.NumberExpContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link SysYParser#lorExp}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

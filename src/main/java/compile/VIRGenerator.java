@@ -161,7 +161,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     private Type curType;
     private Block curBlock, trueBlock, falseBlock;
     private List<AllocaVIR> allocaVIRs;
-    private boolean calculatingCond = false;
 
     public VIRGenerator(SysYParser.RootContext rootAST) {
         this.rootAST = rootAST;
@@ -408,10 +407,8 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         curFunc.insertBlockAfter(falseBlock, ifEndBlock);
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
-        calculatingCond = true;
         Value value = visitLorExp(ctx.lorExp());
         processValueCond(value);
-        calculatingCond = false;
         curBlock = trueBlock;
         visitStmt(ctx.stmt(0));
         curBlock.add(new BranchVIR(ifEndBlock));
@@ -430,12 +427,10 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         curFunc.insertBlockAfter(trueBlock, falseBlock);
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
-        calculatingCond = true;
         Value value = visitLorExp(ctx.lorExp());
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
         processValueCond(value);
-        calculatingCond = false;
         curBlock = trueBlock;
         visitStmt(ctx.stmt());
         curBlock.add(new BranchVIR(falseBlock));
@@ -457,10 +452,8 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         curBlock = entryBlock;
         trueBlock = loopBlock;
         falseBlock = endBlock;
-        calculatingCond = true;
         Value value = visitLorExp(ctx.lorExp());
         processValueCond(value);
-        calculatingCond = false;
         curBlock = loopBlock;
         visitStmt(ctx.stmt());
         curBlock.add(new BranchVIR(entryBlock));
@@ -527,11 +520,8 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Value visitUnaryExp(SysYParser.UnaryExpContext ctx) {
-        boolean calculatingCond = this.calculatingCond;
-        this.calculatingCond = false;
         if (ctx.getChildCount() == 2) {
             Value value = visitUnaryExp(ctx.unaryExp());
-            this.calculatingCond = calculatingCond;
             if (value instanceof ConstantNumber number) {
                 return switch (ctx.getChild(0).getText()) {
                     case "+" -> number;
@@ -573,23 +563,9 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(0).getText());
             };
         }
-        if (ctx.getChildCount() == 3) {
-            Value value = visitAdditiveExp(ctx.additiveExp());
-            this.calculatingCond = calculatingCond;
-            return value;
-        }
-        if (ctx.IntConst() != null) {
-            this.calculatingCond = calculatingCond;
-            return new ConstantNumber(Integer.decode(ctx.IntConst().getSymbol().getText()));
-        }
-        if (ctx.FloatConst() != null) {
-            this.calculatingCond = calculatingCond;
-            return new ConstantNumber(Float.parseFloat(ctx.FloatConst().getSymbol().getText()));
-        }
-
-        Value result = (Value) visit(ctx.getChild(0));
-        this.calculatingCond = calculatingCond;
-        return result;
+        if (ctx.getChildCount() == 3)
+            return visitAdditiveExp(ctx.additiveExp());
+        return (Value) super.visitUnaryExp(ctx);
     }
 
     @Override
@@ -694,6 +670,17 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
+    public Object visitNumberExp(SysYParser.NumberExpContext ctx) {
+        if (ctx.IntConst() != null) {
+            return new ConstantNumber(Integer.decode(ctx.IntConst().getSymbol().getText()));
+        }
+        if (ctx.FloatConst() != null) {
+            return new ConstantNumber(Float.parseFloat(ctx.FloatConst().getSymbol().getText()));
+        }
+        throw new RuntimeException();
+    }
+
+    @Override
     public Value visitLorExp(SysYParser.LorExpContext ctx) {
         List<Block> blocks = new ArrayList<>();
         blocks.add(curBlock);
@@ -747,8 +734,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
 
     @Override
     public Value visitEqualityExp(SysYParser.EqualityExpContext ctx) {
-        boolean calculatingCond = this.calculatingCond;
-        this.calculatingCond = false;
         Value iterVal = visitRelationalExp(ctx.relationalExp(0));
         for (int i = 1; i < ctx.relationalExp().size(); i++) {
             Value nextVal = visitRelationalExp(ctx.relationalExp(i));
@@ -771,14 +756,11 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             curBlock.add(ir);
             iterVal = ir;
         }
-        this.calculatingCond = calculatingCond;
         return iterVal;
     }
 
     @Override
     public Value visitRelationalExp(SysYParser.RelationalExpContext ctx) {
-        boolean calculatingCond = this.calculatingCond;
-        this.calculatingCond = false;
         Value iterVal = visitAdditiveExp(ctx.additiveExp(0));
         for (int i = 1; i < ctx.additiveExp().size(); i++) {
             Value nextVal = visitAdditiveExp(ctx.additiveExp(i));
@@ -811,14 +793,11 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             curBlock.add(ir);
             iterVal = ir;
         }
-        this.calculatingCond = calculatingCond;
         return iterVal;
     }
 
     @Override
     public Value visitAdditiveExp(SysYParser.AdditiveExpContext ctx) {
-        boolean calculatingCond = this.calculatingCond;
-        this.calculatingCond = false;
         Value iterVal = visitMultiplicativeExp(ctx.multiplicativeExp(0));
         for (int i = 1; i < ctx.multiplicativeExp().size(); i++) {
             Value nextVal = visitMultiplicativeExp(ctx.multiplicativeExp(i));
@@ -858,14 +837,11 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             curBlock.add(ir);
             iterVal = ir;
         }
-        this.calculatingCond = calculatingCond;
         return iterVal;
     }
 
     @Override
     public Value visitMultiplicativeExp(SysYParser.MultiplicativeExpContext ctx) {
-        boolean calculatingCond = this.calculatingCond;
-        this.calculatingCond = false;
         Value iterVal = visitUnaryExp(ctx.unaryExp(0));
         for (int i = 1; i < ctx.unaryExp().size(); i++) {
             Value nextVal = visitUnaryExp(ctx.unaryExp(i));
@@ -907,7 +883,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             curBlock.add(ir);
             iterVal = ir;
         }
-        this.calculatingCond = calculatingCond;
         return iterVal;
     }
 
