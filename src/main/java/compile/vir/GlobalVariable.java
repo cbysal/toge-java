@@ -108,6 +108,10 @@ public class GlobalVariable extends User {
         return ((ConstantNumber) value).intValue();
     }
 
+    public Constant getValue() {
+        return value;
+    }
+
     @Override
     public String getName() {
         return "@" + name;

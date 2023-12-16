@@ -1,6 +1,5 @@
 package compile;
 
-import common.NumberUtils;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
 import compile.vir.Argument;
@@ -17,11 +16,8 @@ import compile.vir.type.BasicType;
 import compile.vir.type.PointerType;
 import compile.vir.type.Type;
 import compile.vir.value.Value;
-import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.*;
-import java.util.function.BinaryOperator;
-import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -152,26 +148,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
     }
 
-    private static final Map<String, UnaryOperator<Number>> UOP_MAP = new HashMap<>() {{
-        put("+", NumberUtils::self);
-        put("-", NumberUtils::neg);
-        put("!", NumberUtils::lnot);
-    }};
-    private static final Map<String, BinaryOperator<Number>> BIOP_MAP = new HashMap<>() {{
-        put("==", (num1, num2) -> NumberUtils.compare(num1, num2) == 0 ? 1 : 0);
-        put("!=", (num1, num2) -> NumberUtils.compare(num1, num2) != 0 ? 1 : 0);
-        put(">=", (num1, num2) -> NumberUtils.compare(num1, num2) >= 0 ? 1 : 0);
-        put(">", (num1, num2) -> NumberUtils.compare(num1, num2) > 0 ? 1 : 0);
-        put("<=", (num1, num2) -> NumberUtils.compare(num1, num2) <= 0 ? 1 : 0);
-        put("<", (num1, num2) -> NumberUtils.compare(num1, num2) < 0 ? 1 : 0);
-        put("+", NumberUtils::add);
-        put("-", NumberUtils::sub);
-        put("*", NumberUtils::mul);
-        put("/", NumberUtils::div);
-        put("%", NumberUtils::mod);
-        put("&&", NumberUtils::land);
-        put("||", NumberUtils::lor);
-    }};
     private final SysYParser.RootContext rootAST;
     private final Set<GlobalVariable> globals = new HashSet<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
@@ -281,7 +257,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     public List<Integer> visitDimensions(SysYParser.DimensionsContext ctx) {
         List<Integer> dimensions = new ArrayList<>();
         for (SysYParser.AdditiveExpContext exp : ctx.additiveExp()) {
-            dimensions.add(calc(exp).intValue());
+            dimensions.add(((ConstantNumber) visitAdditiveExp(exp)).intValue());
         }
         return dimensions;
     }
@@ -298,7 +274,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         if (isConst || symbolTable.size() == 1) {
             Number value = 0;
             if (ctx.additiveExp() != null)
-                value = calc(ctx.additiveExp());
+                value = ((ConstantNumber) visitAdditiveExp(ctx.additiveExp())).getValue();
             globals.add(symbolTable.makeGlobal(isConst, curType, name, value));
             return null;
         }
@@ -325,7 +301,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             Type type = curType;
             for (int dimension : dimensions.reversed())
                 type = new ArrayType(type, dimension);
-            globals.add(symbolTable.makeGlobal(isConst, type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue())))));
+            globals.add(symbolTable.makeGlobal(isConst, type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> ((ConstantNumber) visitAdditiveExp(exp.getValue())).getValue()))));
             return null;
         }
         AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name, dimensions);
@@ -391,7 +367,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         Type type = visitType(ctx.type());
         if (!ctx.LB().isEmpty()) {
             for (SysYParser.AdditiveExpContext exp : ctx.additiveExp().reversed())
-                type = new ArrayType(type, calc(exp).intValue());
+                type = new ArrayType(type, ((ConstantNumber) visitAdditiveExp(exp)).intValue());
             type = new PointerType(type);
         }
         return symbolTable.makeArg(type, ctx.Ident().getSymbol().getText());
@@ -556,6 +532,22 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         if (ctx.getChildCount() == 2) {
             Value value = visitUnaryExp(ctx.unaryExp());
             this.calculatingCond = calculatingCond;
+            if (value instanceof ConstantNumber number) {
+                return switch (ctx.getChild(0).getText()) {
+                    case "+" -> number;
+                    case "-" -> new ConstantNumber(switch (number.getType()) {
+                        case BasicType.I1, BasicType.I32 -> -number.intValue();
+                        case BasicType.FLOAT -> -number.floatValue();
+                        default -> throw new IllegalStateException("Unexpected value: " + number.getType());
+                    });
+                    case "!" -> new ConstantNumber(switch (number.getType()) {
+                        case BasicType.I1, BasicType.I32 -> number.intValue() == 0 ? 1 : 0;
+                        case BasicType.FLOAT -> number.floatValue() == 0.0f ? 1 : 0;
+                        default -> throw new IllegalStateException("Unexpected value: " + number.getType());
+                    });
+                    default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(0).getText());
+                };
+            }
             return switch (ctx.getChild(0).getText()) {
                 case "+" -> value;
                 case "-" -> {
@@ -594,6 +586,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.calculatingCond = calculatingCond;
             return new ConstantNumber(Float.parseFloat(ctx.FloatConst().getSymbol().getText()));
         }
+
         Value result = (Value) visit(ctx.getChild(0));
         this.calculatingCond = calculatingCond;
         return result;
@@ -609,7 +602,10 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
         Type type = pointer.getType();
         if (ctx.additiveExp().isEmpty()) {
-            if (pointer instanceof GlobalVariable) {
+            if (pointer instanceof GlobalVariable global) {
+                if (global.isConst() && global.isSingle()) {
+                    return global.getValue();
+                }
                 VIR ir;
                 if (type instanceof ArrayType) {
                     int depth = 2;
@@ -823,6 +819,23 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             Type targetType = automaticTypePromotion(iterVal.getType(), nextVal.getType());
             iterVal = typeConversion(iterVal, targetType);
             nextVal = typeConversion(nextVal, targetType);
+            if (iterVal instanceof ConstantNumber number1 && nextVal instanceof ConstantNumber number2) {
+                iterVal = switch (ctx.getChild(i * 2 - 1).getText()) {
+                    case "+" -> switch (targetType) {
+                        case BasicType.I32 -> new ConstantNumber(number1.intValue() + number2.intValue());
+                        case BasicType.FLOAT -> new ConstantNumber(number1.floatValue() + number2.floatValue());
+                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                    };
+                    case "-" -> switch (targetType) {
+                        case BasicType.I32 -> new ConstantNumber(number1.intValue() - number2.intValue());
+                        case BasicType.FLOAT -> new ConstantNumber(number1.floatValue() - number2.floatValue());
+                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                    };
+                    default ->
+                            throw new IllegalStateException("Unexpected value: " + ctx.getChild(i * 2 - 1).getText());
+                };
+                continue;
+            }
             VIR ir = switch (ctx.getChild(i * 2 - 1).getText()) {
                 case "+" -> new BinaryVIR(switch (targetType) {
                     case BasicType.I32 -> BinaryVIR.Type.ADD;
@@ -853,6 +866,24 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             Type targetType = automaticTypePromotion(iterVal.getType(), nextVal.getType());
             iterVal = typeConversion(iterVal, targetType);
             nextVal = typeConversion(nextVal, targetType);
+            if (iterVal instanceof ConstantNumber number1 && nextVal instanceof ConstantNumber number2) {
+                iterVal = switch (ctx.getChild(i * 2 - 1).getText()) {
+                    case "*" -> switch (targetType) {
+                        case BasicType.I32 -> new ConstantNumber(number1.intValue() * number2.intValue());
+                        case BasicType.FLOAT -> new ConstantNumber(number1.floatValue() * number2.floatValue());
+                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                    };
+                    case "/" -> switch (targetType) {
+                        case BasicType.I32 -> new ConstantNumber(number1.intValue() / number2.intValue());
+                        case BasicType.FLOAT -> new ConstantNumber(number1.floatValue() / number2.floatValue());
+                        default -> throw new IllegalStateException("Unexpected value: " + targetType);
+                    };
+                    case "%" -> new ConstantNumber(number1.intValue() % number2.intValue());
+                    default ->
+                            throw new IllegalStateException("Unexpected value: " + ctx.getChild(i * 2 - 1).getText());
+                };
+                continue;
+            }
             VIR ir = switch (ctx.getChild(i * 2 - 1).getText()) {
                 case "*" -> new BinaryVIR(switch (targetType) {
                     case BasicType.I32 -> BinaryVIR.Type.MUL;
@@ -909,87 +940,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
     }
 
-    private Number calc(ParserRuleContext ctx) {
-        if (ctx instanceof SysYParser.LorExpContext lorExp) {
-            List<Boolean> values = new ArrayList<>();
-            for (SysYParser.LandExpContext landExp : lorExp.landExp()) {
-                values.add(calc(landExp).intValue() != 0);
-            }
-            return values.stream().reduce(false, Boolean::logicalOr) ? 1 : 0;
-        }
-        if (ctx instanceof SysYParser.LandExpContext landExp) {
-            List<Boolean> values = new ArrayList<>();
-            for (SysYParser.EqualityExpContext equalityExp : landExp.equalityExp()) {
-                values.add(calc(equalityExp).intValue() != 0);
-            }
-            return values.stream().reduce(true, Boolean::logicalAnd) ? 1 : 0;
-        }
-        if (ctx instanceof SysYParser.EqualityExpContext equalityExp) {
-            Number iterNum = calc(equalityExp.relationalExp(0));
-            for (int i = 1; i < equalityExp.relationalExp().size(); i++) {
-                Number nextNum = calc(equalityExp.relationalExp(i));
-                iterNum = BIOP_MAP.get(equalityExp.getChild(i * 2 - 1).getText()).apply(iterNum, nextNum);
-            }
-            return iterNum;
-        }
-        if (ctx instanceof SysYParser.RelationalExpContext relationalExp) {
-            Number iterNum = calc(relationalExp.additiveExp(0));
-            for (int i = 1; i < relationalExp.additiveExp().size(); i++) {
-                Number nextNum = calc(relationalExp.additiveExp(i));
-                iterNum = BIOP_MAP.get(relationalExp.getChild(i * 2 - 1).getText()).apply(iterNum, nextNum);
-            }
-            return iterNum;
-        }
-        if (ctx instanceof SysYParser.AdditiveExpContext additiveExp) {
-            Number iterNum = calc(additiveExp.multiplicativeExp(0));
-            for (int i = 1; i < additiveExp.multiplicativeExp().size(); i++) {
-                Number nextNum = calc(additiveExp.multiplicativeExp(i));
-                iterNum = BIOP_MAP.get(additiveExp.getChild(i * 2 - 1).getText()).apply(iterNum, nextNum);
-            }
-            return iterNum;
-        }
-        if (ctx instanceof SysYParser.MultiplicativeExpContext multiplicativeExp) {
-            Number iterNum = calc(multiplicativeExp.unaryExp(0));
-            for (int i = 1; i < multiplicativeExp.unaryExp().size(); i++) {
-                Number nextNum = calc(multiplicativeExp.unaryExp(i));
-                iterNum = BIOP_MAP.get(multiplicativeExp.getChild(i * 2 - 1).getText()).apply(iterNum, nextNum);
-            }
-            return iterNum;
-        }
-        if (ctx instanceof SysYParser.UnaryExpContext unaryExp) {
-            if (unaryExp.varExp() != null)
-                return calc(unaryExp.varExp());
-            if (unaryExp.IntConst() != null)
-                return Integer.decode(unaryExp.IntConst().getText());
-            if (unaryExp.FloatConst() != null)
-                return Float.parseFloat(unaryExp.FloatConst().getText());
-            Number val = calc(unaryExp.unaryExp());
-            return UOP_MAP.get(unaryExp.getChild(0).getText()).apply(val);
-        }
-        if (ctx instanceof SysYParser.VarExpContext varExp) {
-            String name = varExp.Ident().getSymbol().getText();
-            Value symbol = symbolTable.getData(name);
-            if (symbol instanceof GlobalVariable global) {
-                if (varExp.additiveExp().isEmpty()) {
-                    if (global.getType() == BasicType.FLOAT)
-                        return global.getFloat();
-                    return global.getInt();
-                }
-                if (global.getDimensions().size() != varExp.additiveExp().size())
-                    throw new RuntimeException();
-                int offset = 0;
-                int[] sizes = global.getSizes();
-                for (int i = 0; i < varExp.additiveExp().size(); i++)
-                    offset += sizes[i] * calc(varExp.additiveExp().get(i)).intValue();
-                if (global.getType() == BasicType.FLOAT)
-                    return global.getFloat(offset);
-                return global.getInt(offset);
-            }
-            throw new RuntimeException();
-        }
-        throw new RuntimeException();
-    }
-
     private static Type automaticTypePromotion(Type type1, Type type2) {
         if (type1 == BasicType.FLOAT || type2 == BasicType.FLOAT)
             return BasicType.FLOAT;
@@ -1001,6 +951,14 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     private Value typeConversion(Value value, Type targetType) {
         if (value.getType() == targetType)
             return value;
+        if (value instanceof ConstantNumber number) {
+            return switch (targetType) {
+                case BasicType.I1 -> new ConstantNumber(number.intValue() != 0);
+                case BasicType.I32 -> new ConstantNumber(number.intValue());
+                case BasicType.FLOAT -> new ConstantNumber(number.floatValue());
+                default -> throw new IllegalStateException("Unexpected value: " + targetType);
+            };
+        }
         return switch (targetType) {
             case BasicType.I1 -> switch (value.getType()) {
                 case BasicType.I32 -> {

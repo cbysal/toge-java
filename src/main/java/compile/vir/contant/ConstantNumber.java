@@ -29,6 +29,10 @@ public final class ConstantNumber extends Constant {
         return value.floatValue();
     }
 
+    public Number getValue() {
+        return value;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o)
