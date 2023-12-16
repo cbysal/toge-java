@@ -107,6 +107,12 @@ public interface SysYVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExpStmt(SysYParser.ExpStmtContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link SysYParser#ifElseStmt}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitIfElseStmt(SysYParser.IfElseStmtContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link SysYParser#ifStmt}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -173,9 +179,27 @@ public interface SysYVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitLandExp(SysYParser.LandExpContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SysYParser#binaryExp}.
+	 * Visit a parse tree produced by {@link SysYParser#equalityExp}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitBinaryExp(SysYParser.BinaryExpContext ctx);
+	T visitEqualityExp(SysYParser.EqualityExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysYParser#relationalExp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRelationalExp(SysYParser.RelationalExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysYParser#additiveExp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitAdditiveExp(SysYParser.AdditiveExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysYParser#multiplicativeExp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMultiplicativeExp(SysYParser.MultiplicativeExpContext ctx);
 }

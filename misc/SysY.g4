@@ -8,7 +8,7 @@ compUnit:
 
 type: INT | FLOAT | VOID;
 
-dimensions: (LB binaryExp RB)+;
+dimensions: (LB additiveExp RB)+;
 
 varDecl: CONST? type varDef (COMMA varDef)* SEMI;
 
@@ -16,17 +16,17 @@ varDef:
     scalarVarDef
     | arrayVarDef;
 
-scalarVarDef :Ident (ASSIGN binaryExp)?;
+scalarVarDef :Ident (ASSIGN additiveExp)?;
 
 arrayVarDef :Ident dimensions (ASSIGN initVal)?;
 
 initVal:
-	binaryExp
+	additiveExp
 	| LC (initVal (COMMA initVal)*)? RC;
 
 funcDef: type Ident LP (funcArg (COMMA funcArg)*)? RP blockStmt;
 
-funcArg: type Ident (LB RB (LB binaryExp RB)*)?;
+funcArg: type Ident (LB RB (LB additiveExp RB)*)?;
 
 blockStmt: LC stmt* RC;
 
@@ -34,6 +34,7 @@ stmt:
     assignStmt
     | varDecl
     | expStmt
+    | ifElseStmt
     | ifStmt
     | whileStmt
 	| blockStmt
@@ -42,13 +43,15 @@ stmt:
 	| continueStmt
 	| retStmt;
 
-assignStmt: lVal ASSIGN binaryExp SEMI;
+assignStmt: lVal ASSIGN additiveExp SEMI;
 
 blankStmt: SEMI;
 
-expStmt: binaryExp SEMI;
+expStmt: additiveExp SEMI;
 
-ifStmt: IF LP lorExp RP stmt (ELSE stmt)?;
+ifElseStmt: IF LP lorExp RP stmt ELSE stmt;
+
+ifStmt: IF LP lorExp RP stmt;
 
 whileStmt: WHILE LP lorExp RP stmt;
 
@@ -56,36 +59,33 @@ breakStmt: BREAK SEMI;
 
 continueStmt: CONTINUE SEMI;
 
-retStmt: RETURN binaryExp? SEMI;
+retStmt: RETURN additiveExp? SEMI;
 
-lVal: Ident (LB binaryExp RB)*;
+lVal: Ident (LB additiveExp RB)*;
 
 unaryExp:
     (ADD | SUB | LNOT) unaryExp
-    | LP binaryExp RP
+    | LP additiveExp RP
     | varExp
     | funcCallExp
     | IntConst
     | FloatConst;
 
-varExp: Ident (LB binaryExp RB)*;
+varExp: Ident (LB additiveExp RB)*;
 
-funcCallExp: Ident LP (binaryExp (COMMA binaryExp)*)? RP;
+funcCallExp: Ident LP (additiveExp (COMMA additiveExp)*)? RP;
 
-lorExp:
-    lorExp LOR lorExp
-    | landExp;
+lorExp: landExp (LOR landExp)*;
 
-landExp:
-    landExp LAND landExp
-    | binaryExp;
+landExp: equalityExp (LAND equalityExp)*;
 
-binaryExp:
-    binaryExp (MUL | DIV | MOD) binaryExp
-    | binaryExp (ADD | SUB) binaryExp
-    | binaryExp (LT | GT | LE | GE) binaryExp
-    | binaryExp (EQ | NE) binaryExp
-    | unaryExp;
+equalityExp: relationalExp ((EQ | NE) relationalExp)*;
+
+relationalExp: additiveExp ((LT | GT | LE | GE) additiveExp)*;
+
+additiveExp: multiplicativeExp ((ADD | SUB) multiplicativeExp)*;
+
+multiplicativeExp: unaryExp ((MUL | DIV | MOD) unaryExp)*;
 
 BREAK: 'break';
 CONST: 'const';
