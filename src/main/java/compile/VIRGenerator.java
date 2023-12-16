@@ -21,99 +21,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class VIRGenerator extends SysYBaseVisitor<Object> {
-    private static class SymbolTable extends LinkedList<Map<String, Value>> {
-        private Value get(String name) {
-            for (Map<String, Value> symbols : this)
-                if (symbols.containsKey(name))
-                    return symbols.get(name);
-            throw new RuntimeException("Undefined symbol: " + name);
-        }
-
-        public Value getData(String name) {
-            return get(name);
-        }
-
-        public VirtualFunction getFunc(String name) {
-            Value symbol = get(name);
-            if (symbol instanceof VirtualFunction function)
-                return function;
-            throw new RuntimeException("Undefined function symbol: " + name);
-        }
-
-        public void in() {
-            this.addFirst(new HashMap<>());
-        }
-
-        private Constant fuseConst(Type type, SortedMap<Integer, Number> values, int base) {
-            if (type instanceof BasicType)
-                return new ConstantNumber(values.getOrDefault(base, 0));
-            if (values.isEmpty())
-                return new ConstantZero(type);
-            ArrayType arrayType = (ArrayType) type;
-            int size = arrayType.getArraySizes().stream().reduce(1, Math::multiplyExact);
-            List<Constant> array = new ArrayList<>();
-            for (int i = base; i < base + size; i += size / arrayType.arraySize())
-                array.add(fuseConst(arrayType.baseType(), values.subMap(i, i + size / arrayType.arraySize()), i));
-            return new ConstantArray(arrayType, array);
-        }
-
-        public VirtualFunction makeFunc(Type type, String name) {
-            VirtualFunction symbol = new VirtualFunction(type, name);
-            this.getLast().put(name, symbol);
-            return symbol;
-        }
-
-        public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Number value) {
-            GlobalVariable symbol = new GlobalVariable(isConst, type, name, new ConstantNumber(switch (type) {
-                case BasicType.I32 -> value.intValue();
-                case BasicType.FLOAT -> value.floatValue();
-                default -> throw new IllegalStateException("Unexpected value: " + type);
-            }));
-            this.getFirst().put(name, symbol);
-            return symbol;
-        }
-
-        public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Map<Integer, Number> values) {
-            Type rootType = type;
-            while (rootType instanceof ArrayType arrayType)
-                rootType = arrayType.baseType();
-            for (Map.Entry<Integer, Number> entry : values.entrySet()) {
-                entry.setValue(switch (rootType) {
-                    case BasicType.I32 -> entry.getValue().intValue();
-                    case BasicType.FLOAT -> entry.getValue().floatValue();
-                    default -> throw new IllegalStateException("Unexpected value: " + rootType);
-                });
-            }
-            GlobalVariable symbol = new GlobalVariable(isConst, type, name, fuseConst(type, new TreeMap<>(values), 0));
-            this.getFirst().put(name, symbol);
-            return symbol;
-        }
-
-        public AllocaVIR makeLocal(Type type, String name) {
-            AllocaVIR symbol = new AllocaVIR(type);
-            this.getFirst().put(name, symbol);
-            return symbol;
-        }
-
-        public AllocaVIR makeLocal(Type type, String name, List<Integer> dimensions) {
-            for (int i = dimensions.size() - 1; i >= 0; i--)
-                type = new ArrayType(type, dimensions.get(i));
-            AllocaVIR symbol = new AllocaVIR(type);
-            this.getFirst().put(name, symbol);
-            return symbol;
-        }
-
-        public Argument makeArg(Type type, String name) {
-            Argument arg = new Argument(type, name);
-            this.getFirst().put(name, arg);
-            return arg;
-        }
-
-        public void out() {
-            this.removeFirst();
-        }
-    }
-
     private final SysYParser.RootContext rootAST;
     private final Set<GlobalVariable> globals = new HashSet<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
@@ -821,7 +728,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         }
     }
 
-    private static Type automaticTypePromotion(Type type1, Type type2) {
+    private Type automaticTypePromotion(Type type1, Type type2) {
         if (type1 == BasicType.FLOAT || type2 == BasicType.FLOAT)
             return BasicType.FLOAT;
         if (type1 == BasicType.I32 || type2 == BasicType.I32)
@@ -884,5 +791,98 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             };
             default -> value;
         };
+    }
+
+    private static class SymbolTable extends LinkedList<Map<String, Value>> {
+        private Value get(String name) {
+            for (Map<String, Value> symbols : this)
+                if (symbols.containsKey(name))
+                    return symbols.get(name);
+            throw new RuntimeException("Undefined symbol: " + name);
+        }
+
+        public Value getData(String name) {
+            return get(name);
+        }
+
+        public VirtualFunction getFunc(String name) {
+            Value symbol = get(name);
+            if (symbol instanceof VirtualFunction function)
+                return function;
+            throw new RuntimeException("Undefined function symbol: " + name);
+        }
+
+        public void in() {
+            this.addFirst(new HashMap<>());
+        }
+
+        private Constant fuseConst(Type type, SortedMap<Integer, Number> values, int base) {
+            if (type instanceof BasicType)
+                return new ConstantNumber(values.getOrDefault(base, 0));
+            if (values.isEmpty())
+                return new ConstantZero(type);
+            ArrayType arrayType = (ArrayType) type;
+            int size = arrayType.getArraySizes().stream().reduce(1, Math::multiplyExact);
+            List<Constant> array = new ArrayList<>();
+            for (int i = base; i < base + size; i += size / arrayType.arraySize())
+                array.add(fuseConst(arrayType.baseType(), values.subMap(i, i + size / arrayType.arraySize()), i));
+            return new ConstantArray(arrayType, array);
+        }
+
+        public VirtualFunction makeFunc(Type type, String name) {
+            VirtualFunction symbol = new VirtualFunction(type, name);
+            this.getLast().put(name, symbol);
+            return symbol;
+        }
+
+        public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Number value) {
+            GlobalVariable symbol = new GlobalVariable(isConst, type, name, new ConstantNumber(switch (type) {
+                case BasicType.I32 -> value.intValue();
+                case BasicType.FLOAT -> value.floatValue();
+                default -> throw new IllegalStateException("Unexpected value: " + type);
+            }));
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Map<Integer, Number> values) {
+            Type rootType = type;
+            while (rootType instanceof ArrayType arrayType)
+                rootType = arrayType.baseType();
+            for (Map.Entry<Integer, Number> entry : values.entrySet()) {
+                entry.setValue(switch (rootType) {
+                    case BasicType.I32 -> entry.getValue().intValue();
+                    case BasicType.FLOAT -> entry.getValue().floatValue();
+                    default -> throw new IllegalStateException("Unexpected value: " + rootType);
+                });
+            }
+            GlobalVariable symbol = new GlobalVariable(isConst, type, name, fuseConst(type, new TreeMap<>(values), 0));
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public AllocaVIR makeLocal(Type type, String name) {
+            AllocaVIR symbol = new AllocaVIR(type);
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public AllocaVIR makeLocal(Type type, String name, List<Integer> dimensions) {
+            for (int i = dimensions.size() - 1; i >= 0; i--)
+                type = new ArrayType(type, dimensions.get(i));
+            AllocaVIR symbol = new AllocaVIR(type);
+            this.getFirst().put(name, symbol);
+            return symbol;
+        }
+
+        public Argument makeArg(Type type, String name) {
+            Argument arg = new Argument(type, name);
+            this.getFirst().put(name, arg);
+            return arg;
+        }
+
+        public void out() {
+            this.removeFirst();
+        }
     }
 }

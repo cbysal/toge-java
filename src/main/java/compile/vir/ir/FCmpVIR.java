@@ -5,10 +5,6 @@ import compile.vir.type.Type;
 import compile.vir.value.Value;
 
 public class FCmpVIR extends VIR {
-    public enum Cond {
-        OEQ, OGT, OGE, OLT, OLE, UNE
-    }
-
     private final Cond cond;
     private final Type cmpType;
     private final Value op1, op2;
@@ -36,5 +32,9 @@ public class FCmpVIR extends VIR {
     @Override
     public String toString() {
         return String.format("%s = fcmp %s %s %s, %s", getName(), cond.toString().toLowerCase(), cmpType, op1.getName(), op2.getName());
+    }
+
+    public enum Cond {
+        OEQ, OGT, OGE, OLT, OLE, UNE
     }
 }

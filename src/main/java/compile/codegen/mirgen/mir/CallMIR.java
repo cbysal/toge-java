@@ -1,10 +1,10 @@
 package compile.codegen.mirgen.mir;
 
-import compile.codegen.Reg;
 import compile.codegen.MReg;
+import compile.codegen.Reg;
+import compile.vir.Argument;
 import compile.vir.VirtualFunction;
 import compile.vir.type.BasicType;
-import compile.vir.Argument;
 
 import java.util.ArrayList;
 import java.util.List;

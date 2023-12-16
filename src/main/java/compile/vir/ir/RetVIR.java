@@ -1,6 +1,5 @@
 package compile.vir.ir;
 
-import compile.vir.contant.ConstantNumber;
 import compile.vir.type.BasicType;
 import compile.vir.value.Value;
 

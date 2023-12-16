@@ -1,7 +1,7 @@
 package compile.codegen.mirgen.trans;
 
-import compile.codegen.mirgen.mir.*;
 import compile.codegen.VReg;
+import compile.codegen.mirgen.mir.*;
 import compile.vir.contant.ConstantNumber;
 import compile.vir.ir.BinaryVIR;
 import compile.vir.ir.VIR;

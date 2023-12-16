@@ -1,9 +1,10 @@
 package compile.vir.value;
 
 public class Use {
-    private Value value;
-    private Use prev, next;
-    private User parent;
+    private final Value value;
+    private final Use prev;
+    private final Use next;
+    private final User parent;
 
     public Use(Value value, Use prev, Use next, User parent) {
         this.value = value;

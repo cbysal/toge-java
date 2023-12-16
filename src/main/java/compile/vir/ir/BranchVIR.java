@@ -6,8 +6,8 @@ import compile.vir.value.Value;
 
 public class BranchVIR extends VIR {
     private final Value cond;
-    public final Block ifTrue, ifFalse;
-    public final Block dest;
+    private final Block ifTrue, ifFalse;
+    private final Block dest;
 
     public BranchVIR(Value cond, Block ifTrue, Block ifFalse) {
         super(BasicType.VOID);
@@ -27,6 +27,18 @@ public class BranchVIR extends VIR {
 
     public Value getCond() {
         return cond;
+    }
+
+    public Block getIfTrue() {
+        return ifTrue;
+    }
+
+    public Block getIfFalse() {
+        return ifFalse;
+    }
+
+    public Block getDest() {
+        return dest;
     }
 
     public boolean conditional() {

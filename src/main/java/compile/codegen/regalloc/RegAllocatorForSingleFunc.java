@@ -1,13 +1,13 @@
 package compile.codegen.regalloc;
 
 import compile.codegen.Label;
-import compile.codegen.Reg;
 import compile.codegen.MReg;
+import compile.codegen.Reg;
+import compile.codegen.VReg;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.*;
-import compile.codegen.VReg;
-import compile.vir.type.BasicType;
 import compile.vir.Argument;
+import compile.vir.type.BasicType;
 
 import java.util.*;
 

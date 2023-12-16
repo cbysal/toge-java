@@ -17,7 +17,7 @@ import java.util.Map;
 public final class MIROpTrans {
     public static void transBranch(List<MIR> irs, Map<VIR, VReg> virRegMap, BranchVIR branchVIR) {
         if (!branchVIR.conditional()) {
-            irs.add(new BMIR(null, null, null, branchVIR.dest.getLabel()));
+            irs.add(new BMIR(null, null, null, branchVIR.getDest().getLabel()));
             return;
         }
         VReg reg = switch (branchVIR.getCond()) {
@@ -32,8 +32,8 @@ public final class MIROpTrans {
             }
             default -> throw new IllegalStateException("Unexpected value: " + branchVIR.getCond());
         };
-        irs.add(new BMIR(BMIR.Op.NE, reg, MReg.ZERO, branchVIR.ifTrue.getLabel()));
-        irs.add(new BMIR(null, null, null, branchVIR.ifFalse.getLabel()));
+        irs.add(new BMIR(BMIR.Op.NE, reg, MReg.ZERO, branchVIR.getIfTrue().getLabel()));
+        irs.add(new BMIR(null, null, null, branchVIR.getIfFalse().getLabel()));
     }
 
     public static void transBinary(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR) {

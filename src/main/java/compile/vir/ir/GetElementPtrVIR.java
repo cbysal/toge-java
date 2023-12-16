@@ -13,6 +13,12 @@ public class GetElementPtrVIR extends VIR {
     private final Value pointer;
     private final List<Value> indexes;
 
+    public GetElementPtrVIR(Value pointer, Value... indexes) {
+        super(calcType(pointer, indexes.length));
+        this.pointer = pointer;
+        this.indexes = new ArrayList<>(Arrays.asList(indexes));
+    }
+
     private static Type calcType(Value value, int indexSize) {
         Type type = value.getType();
         if (value instanceof GlobalVariable)
@@ -20,12 +26,6 @@ public class GetElementPtrVIR extends VIR {
         for (int i = 0; i < indexSize; i++)
             type = type.baseType();
         return new PointerType(type);
-    }
-
-    public GetElementPtrVIR(Value pointer, Value... indexes) {
-        super(calcType(pointer, indexes.length));
-        this.pointer = pointer;
-        this.indexes = new ArrayList<>(Arrays.asList(indexes));
     }
 
     public Value getPointer() {
