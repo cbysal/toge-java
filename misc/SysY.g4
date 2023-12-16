@@ -12,7 +12,13 @@ dimensions: (LB binaryExp RB)+;
 
 varDecl: CONST? type varDef (COMMA varDef)* SEMI;
 
-varDef: Ident dimensions? (ASSIGN initVal)?;
+varDef:
+    scalarVarDef
+    | arrayVarDef;
+
+scalarVarDef :Ident (ASSIGN binaryExp)?;
+
+arrayVarDef :Ident dimensions (ASSIGN initVal)?;
 
 initVal:
 	binaryExp
@@ -42,9 +48,9 @@ blankStmt: SEMI;
 
 expStmt: binaryExp SEMI;
 
-ifStmt: IF LP binaryExp RP stmt (ELSE stmt)?;
+ifStmt: IF LP lorExp RP stmt (ELSE stmt)?;
 
-whileStmt: WHILE LP binaryExp RP stmt;
+whileStmt: WHILE LP lorExp RP stmt;
 
 breakStmt: BREAK SEMI;
 
@@ -66,13 +72,19 @@ varExp: Ident (LB binaryExp RB)*;
 
 funcCallExp: Ident LP (binaryExp (COMMA binaryExp)*)? RP;
 
+lorExp:
+    lorExp LOR lorExp
+    | landExp;
+
+landExp:
+    landExp LAND landExp
+    | binaryExp;
+
 binaryExp:
     binaryExp (MUL | DIV | MOD) binaryExp
     | binaryExp (ADD | SUB) binaryExp
     | binaryExp (LT | GT | LE | GE) binaryExp
     | binaryExp (EQ | NE) binaryExp
-    | binaryExp LAND binaryExp
-    | binaryExp LOR binaryExp
     | unaryExp;
 
 BREAK: 'break';

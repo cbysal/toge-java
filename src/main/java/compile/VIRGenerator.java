@@ -293,33 +293,31 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public Object visitVarDef(SysYParser.VarDefContext ctx) {
+    public Object visitScalarVarDef(SysYParser.ScalarVarDefContext ctx) {
         String name = ctx.Ident().getSymbol().getText();
-        // Scalar
-        if (ctx.dimensions() == null) {
-            // Scalar Global
-            if (isConst || symbolTable.size() == 1) {
-                Number value = 0;
-                if (ctx.initVal() != null)
-                    value = calc(ctx.initVal().binaryExp());
-                globals.add(symbolTable.makeGlobal(isConst, curType, name, value));
-                return null;
-            }
-            // Scalar Local
-            AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name);
-            allocaVIRs.add(allocaVIR);
-            SysYParser.InitValContext initVal = ctx.initVal();
-            if (initVal != null) {
-                Value value = visitBinaryExp(initVal.binaryExp());
-                value = typeConversion(value, curType);
-                curBlock.add(new StoreVIR(value, allocaVIR));
-            }
+        if (isConst || symbolTable.size() == 1) {
+            Number value = 0;
+            if (ctx.binaryExp() != null)
+                value = calc(ctx.binaryExp());
+            globals.add(symbolTable.makeGlobal(isConst, curType, name, value));
             return null;
         }
-        // Array
+        AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name);
+        allocaVIRs.add(allocaVIR);
+        SysYParser.BinaryExpContext valueExp = ctx.binaryExp();
+        if (valueExp != null) {
+            Value value = visitBinaryExp(valueExp);
+            value = typeConversion(value, curType);
+            curBlock.add(new StoreVIR(value, allocaVIR));
+        }
+        return null;
+    }
+
+    @Override
+    public Object visitArrayVarDef(SysYParser.ArrayVarDefContext ctx) {
+        String name = ctx.Ident().getSymbol().getText();
         List<Integer> dimensions = visitDimensions(ctx.dimensions());
         SysYParser.InitValContext initVal = ctx.initVal();
-        // Array Global
         if (isConst || symbolTable.size() == 1) {
             Map<Integer, SysYParser.BinaryExpContext> exps = new HashMap<>();
             if (initVal != null)
@@ -330,7 +328,6 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             globals.add(symbolTable.makeGlobal(isConst, type, name, exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> calc(exp.getValue())))));
             return null;
         }
-        // Array Local
         AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name, dimensions);
         allocaVIRs.add(allocaVIR);
         if (initVal != null) {
@@ -436,7 +433,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             calculatingCond = true;
-            Value value = visitBinaryExp(ctx.binaryExp());
+            Value value = visitLorExp(ctx.lorExp());
             this.trueBlock = trueBlock;
             this.falseBlock = falseBlock;
             processValueCond(value);
@@ -455,7 +452,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
         calculatingCond = true;
-        Value value = visitBinaryExp(ctx.binaryExp());
+        Value value = visitLorExp(ctx.lorExp());
         processValueCond(value);
         calculatingCond = false;
         curBlock = trueBlock;
@@ -483,7 +480,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
         trueBlock = loopBlock;
         falseBlock = endBlock;
         calculatingCond = true;
-        Value value = visitBinaryExp(ctx.binaryExp());
+        Value value = visitLorExp(ctx.lorExp());
         processValueCond(value);
         calculatingCond = false;
         curBlock = loopBlock;
@@ -693,45 +690,53 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
+    public Value visitLorExp(SysYParser.LorExpContext ctx) {
+        if (ctx.getChildCount() == 1)
+            return visitLandExp(ctx.landExp());
+        Block lBlock = curBlock;
+        Block rBlock = new Block();
+        curFunc.insertBlockAfter(lBlock, rBlock);
+        Block trueBlock = this.trueBlock;
+        Block falseBlock = this.falseBlock;
+        this.curBlock = lBlock;
+        this.trueBlock = trueBlock;
+        this.falseBlock = rBlock;
+        Value lVal = visitLorExp(ctx.lorExp(0));
+        processValueCond(lVal);
+        this.curBlock = rBlock;
+        this.trueBlock = trueBlock;
+        this.falseBlock = falseBlock;
+        Value rVal = visitLorExp(ctx.lorExp(1));
+        processValueCond(rVal);
+        return null;
+    }
+
+    @Override
+    public Value visitLandExp(SysYParser.LandExpContext ctx) {
+        if (ctx.getChildCount() == 1)
+            return visitBinaryExp(ctx.binaryExp());
+        Block lBlock = curBlock;
+        Block rBlock = new Block();
+        curFunc.insertBlockAfter(lBlock, rBlock);
+        Block trueBlock = this.trueBlock;
+        Block falseBlock = this.falseBlock;
+        this.curBlock = lBlock;
+        this.trueBlock = rBlock;
+        this.falseBlock = falseBlock;
+        Value lVal = visitLandExp(ctx.landExp(0));
+        processValueCond(lVal);
+        this.curBlock = rBlock;
+        this.trueBlock = trueBlock;
+        this.falseBlock = falseBlock;
+        Value rVal = visitLandExp(ctx.landExp(1));
+        processValueCond(rVal);
+        return null;
+    }
+
+    @Override
     public Value visitBinaryExp(SysYParser.BinaryExpContext ctx) {
         if (ctx.getChildCount() == 1)
             return visitUnaryExp(ctx.unaryExp());
-        if (ctx.getChild(1).getText().equals("||")) {
-            Block lBlock = curBlock;
-            Block rBlock = new Block();
-            curFunc.insertBlockAfter(lBlock, rBlock);
-            Block trueBlock = this.trueBlock;
-            Block falseBlock = this.falseBlock;
-            this.curBlock = lBlock;
-            this.trueBlock = trueBlock;
-            this.falseBlock = rBlock;
-            Value lVal = visitBinaryExp(ctx.binaryExp(0));
-            processValueCond(lVal);
-            this.curBlock = rBlock;
-            this.trueBlock = trueBlock;
-            this.falseBlock = falseBlock;
-            Value rVal = visitBinaryExp(ctx.binaryExp(1));
-            processValueCond(rVal);
-            return null;
-        }
-        if (ctx.getChild(1).getText().equals("&&")) {
-            Block lBlock = curBlock;
-            Block rBlock = new Block();
-            curFunc.insertBlockAfter(lBlock, rBlock);
-            Block trueBlock = this.trueBlock;
-            Block falseBlock = this.falseBlock;
-            this.curBlock = lBlock;
-            this.trueBlock = rBlock;
-            this.falseBlock = falseBlock;
-            Value lVal = visitBinaryExp(ctx.binaryExp(0));
-            processValueCond(lVal);
-            this.curBlock = rBlock;
-            this.trueBlock = trueBlock;
-            this.falseBlock = falseBlock;
-            Value rVal = visitBinaryExp(ctx.binaryExp(1));
-            processValueCond(rVal);
-            return null;
-        }
         boolean calculatingCond = this.calculatingCond;
         this.calculatingCond = false;
         Value lVal = visitBinaryExp(ctx.binaryExp(0));

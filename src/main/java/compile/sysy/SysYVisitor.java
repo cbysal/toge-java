@@ -47,6 +47,18 @@ public interface SysYVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitVarDef(SysYParser.VarDefContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link SysYParser#scalarVarDef}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitScalarVarDef(SysYParser.ScalarVarDefContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysYParser#arrayVarDef}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitArrayVarDef(SysYParser.ArrayVarDefContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link SysYParser#initVal}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -148,6 +160,18 @@ public interface SysYVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitFuncCallExp(SysYParser.FuncCallExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysYParser#lorExp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitLorExp(SysYParser.LorExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysYParser#landExp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitLandExp(SysYParser.LandExpContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link SysYParser#binaryExp}.
 	 * @param ctx the parse tree
