@@ -593,57 +593,63 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     }
 
     @Override
-    public Value visitVarExp(SysYParser.VarExpContext ctx) {
+    public Value visitScalarVarExp(SysYParser.ScalarVarExpContext ctx) {
         Value pointer = symbolTable.getData(ctx.Ident().getSymbol().getText());
-        boolean isArg = false;
         if (pointer instanceof Argument) {
-            isArg = true;
             pointer = argToAllocaMap.get(pointer);
         }
         Type type = pointer.getType();
-        if (ctx.additiveExp().isEmpty()) {
-            if (pointer instanceof GlobalVariable global) {
-                if (global.isConst() && global.isSingle()) {
-                    return global.getValue();
-                }
-                VIR ir;
-                if (type instanceof ArrayType) {
-                    int depth = 2;
-                    while (type.getBaseType() instanceof ArrayType) {
-                        depth++;
-                        type = type.getBaseType();
-                    }
-                    Value[] indexes = new Value[depth];
-                    Arrays.fill(indexes, new ConstantNumber(0));
-                    ir = new GetElementPtrVIR(pointer, indexes);
-                } else
-                    ir = new LoadVIR(pointer);
-                curBlock.add(ir);
-                return ir;
+        if (pointer instanceof GlobalVariable global) {
+            if (global.isConst() && global.isSingle()) {
+                return global.getValue();
             }
-            if (type instanceof PointerType && type.getBaseType() instanceof BasicType) {
-                VIR newIR = new LoadVIR(pointer);
-                curBlock.add(newIR);
-                return newIR;
-            }
-            if (type instanceof PointerType && type.getBaseType() instanceof PointerType) {
-                VIR newIR = new LoadVIR(pointer);
-                curBlock.add(newIR);
-                return newIR;
-            }
-            if (type instanceof PointerType && type.getBaseType() instanceof ArrayType) {
-                int depth = 1;
+            VIR ir;
+            if (type instanceof ArrayType) {
+                int depth = 2;
                 while (type.getBaseType() instanceof ArrayType) {
                     depth++;
                     type = type.getBaseType();
                 }
                 Value[] indexes = new Value[depth];
                 Arrays.fill(indexes, new ConstantNumber(0));
-                VIR ir = new GetElementPtrVIR(pointer, indexes);
-                curBlock.add(ir);
-                return ir;
+                ir = new GetElementPtrVIR(pointer, indexes);
+            } else
+                ir = new LoadVIR(pointer);
+            curBlock.add(ir);
+            return ir;
+        }
+        if (type instanceof PointerType && type.getBaseType() instanceof BasicType) {
+            VIR newIR = new LoadVIR(pointer);
+            curBlock.add(newIR);
+            return newIR;
+        }
+        if (type instanceof PointerType && type.getBaseType() instanceof PointerType) {
+            VIR newIR = new LoadVIR(pointer);
+            curBlock.add(newIR);
+            return newIR;
+        }
+        if (type instanceof PointerType && type.getBaseType() instanceof ArrayType) {
+            int depth = 1;
+            while (type.getBaseType() instanceof ArrayType) {
+                depth++;
+                type = type.getBaseType();
             }
-            return pointer;
+            Value[] indexes = new Value[depth];
+            Arrays.fill(indexes, new ConstantNumber(0));
+            VIR ir = new GetElementPtrVIR(pointer, indexes);
+            curBlock.add(ir);
+            return ir;
+        }
+        return pointer;
+    }
+
+    @Override
+    public Value visitArrayVarExp(SysYParser.ArrayVarExpContext ctx) {
+        Value pointer = symbolTable.getData(ctx.Ident().getSymbol().getText());
+        boolean isArg = false;
+        if (pointer instanceof Argument) {
+            isArg = true;
+            pointer = argToAllocaMap.get(pointer);
         }
         if (pointer.getType() instanceof PointerType pointerType && pointerType.getBaseType() instanceof PointerType) {
             VIR ir = new LoadVIR(pointer);

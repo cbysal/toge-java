@@ -161,6 +161,18 @@ public interface SysYVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitVarExp(SysYParser.VarExpContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link SysYParser#scalarVarExp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitScalarVarExp(SysYParser.ScalarVarExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysYParser#arrayVarExp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitArrayVarExp(SysYParser.ArrayVarExpContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link SysYParser#funcCallExp}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

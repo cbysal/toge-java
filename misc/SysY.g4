@@ -71,7 +71,13 @@ unaryExp:
     | IntConst
     | FloatConst;
 
-varExp: Ident (LB additiveExp RB)*;
+varExp:
+    scalarVarExp
+    | arrayVarExp;
+
+scalarVarExp: Ident;
+
+arrayVarExp: Ident (LB additiveExp RB)+;
 
 funcCallExp: Ident LP (additiveExp (COMMA additiveExp)*)? RP;
 
