@@ -1,7 +1,6 @@
 package compile.vir.ir;
 
 import compile.vir.GlobalVariable;
-import compile.vir.type.ArrayType;
 import compile.vir.type.PointerType;
 import compile.vir.type.Type;
 import compile.vir.value.Value;
@@ -19,7 +18,7 @@ public class GetElementPtrVIR extends VIR {
         if (value instanceof GlobalVariable)
             type = new PointerType(type);
         for (int i = 0; i < indexSize; i++)
-            type = type.getBaseType();
+            type = type.baseType();
         return new PointerType(type);
     }
 
@@ -42,7 +41,7 @@ public class GetElementPtrVIR extends VIR {
         StringBuilder builder = new StringBuilder();
         builder.append(String.format("%s = getelementptr %s, %s %s", getName(), switch (pointer) {
             case GlobalVariable global -> pointer.getType();
-            default -> pointer.getType().getBaseType();
+            default -> pointer.getType().baseType();
         }, switch (pointer) {
             case GlobalVariable global -> new PointerType(pointer.getType());
             default -> pointer.getType();

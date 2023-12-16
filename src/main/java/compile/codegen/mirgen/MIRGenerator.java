@@ -64,7 +64,7 @@ public class MIRGenerator {
         for (VIR ir : block) {
             if (!(ir instanceof AllocaVIR allocaVIR))
                 break;
-            int size = allocaVIR.getType().getBaseType().getSize() / 8;
+            int size = allocaVIR.getType().baseType().getSize() / 8;
             localOffsets.put(allocaVIR, localSize);
             localSize += size;
         }
@@ -145,7 +145,7 @@ public class MIRGenerator {
                         VReg midReg3 = new VReg(BasicType.I32);
                         VReg midReg4 = new VReg(BasicType.I32);
                         mFunc.getIrs().add(new LlaMIR(midReg1, global));
-                        mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrVIR.getType().getBaseType().getSize() / 8));
+                        mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrVIR.getType().baseType().getSize() / 8));
                         switch (getElementPtrVIR.getIndexes().getLast()) {
                             case VIR ir -> mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, virRegMap.get(ir)));
                             case ConstantNumber value -> {
@@ -170,7 +170,7 @@ public class MIRGenerator {
                         VReg midReg3 = new VReg(BasicType.I32);
                         VReg midReg4 = new VReg(BasicType.I32);
                         mFunc.getIrs().add(new LoadItemMIR(innerOffset.getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1, innerOffset.getRight()));
-                        mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrVIR.getType().getBaseType().getSize() / 8));
+                        mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrVIR.getType().baseType().getSize() / 8));
                         switch (getElementPtrVIR.getIndexes().getLast()) {
                             case VIR ir -> mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, virRegMap.get(ir)));
                             case ConstantNumber value -> {
@@ -208,7 +208,7 @@ public class MIRGenerator {
                                 default ->
                                         throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
                             }
-                            mFunc.getIrs().add(new LiMIR(midReg3, pointer.getType().getBaseType().getBaseType().getSize() / 8));
+                            mFunc.getIrs().add(new LiMIR(midReg3, pointer.getType().baseType().baseType().getSize() / 8));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), midReg1, midReg4));
                         } else {
@@ -231,7 +231,7 @@ public class MIRGenerator {
                                 default ->
                                         throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
                             }
-                            mFunc.getIrs().add(new LiMIR(midReg3, pointer.getType().getBaseType().getSize() / 8));
+                            mFunc.getIrs().add(new LiMIR(midReg3, pointer.getType().baseType().getSize() / 8));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), midReg1, midReg4));
                         }
@@ -256,7 +256,7 @@ public class MIRGenerator {
                                 default ->
                                         throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
                             }
-                            mFunc.getIrs().add(new LiMIR(midReg2, pointer.getType().getBaseType().getBaseType().getSize() / 8));
+                            mFunc.getIrs().add(new LiMIR(midReg2, pointer.getType().baseType().baseType().getSize() / 8));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg3, midReg1, midReg2));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), virRegMap.get(ir), midReg3));
                         } else {
@@ -277,7 +277,7 @@ public class MIRGenerator {
                                 default ->
                                         throw new IllegalStateException("Unexpected value: " + getElementPtrVIR.getIndexes().getLast());
                             }
-                            mFunc.getIrs().add(new LiMIR(midReg2, pointer.getType().getBaseType().getSize() / 8));
+                            mFunc.getIrs().add(new LiMIR(midReg2, pointer.getType().baseType().getSize() / 8));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg3, midReg1, midReg2));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, virRegMap.get(getElementPtrVIR), virRegMap.get(ir), midReg3));
                         }
@@ -299,11 +299,11 @@ public class MIRGenerator {
                     if (pointer instanceof AllocaVIR allocaVIR) {
                         VReg midReg = new VReg(BasicType.I32);
                         mFunc.getIrs().add(new AddRegLocalMIR(midReg, localOffsets.get(allocaVIR)));
-                        mFunc.getIrs().add(new LoadMIR(virRegMap.get(loadVIR), midReg, 0, allocaVIR.getType().getBaseType().getSize() / 8));
+                        mFunc.getIrs().add(new LoadMIR(virRegMap.get(loadVIR), midReg, 0, allocaVIR.getType().baseType().getSize() / 8));
                         continue;
                     }
                     if (pointer instanceof VIR ir) {
-                        mFunc.getIrs().add(new LoadMIR(virRegMap.get(loadVIR), virRegMap.get(ir), 0, ir.getType().getBaseType().getSize() / 8));
+                        mFunc.getIrs().add(new LoadMIR(virRegMap.get(loadVIR), virRegMap.get(ir), 0, ir.getType().baseType().getSize() / 8));
                     }
                     continue;
                 }
@@ -402,7 +402,7 @@ public class MIRGenerator {
                             default -> throw new IllegalStateException("Unexpected value: " + value);
                         }
                         mFunc.getIrs().add(new AddRegLocalMIR(midReg2, localOffsets.get(allocaVIR)));
-                        mFunc.getIrs().add(new StoreMIR(midReg1, midReg2, 0, allocaVIR.getType().getBaseType().getSize() / 8));
+                        mFunc.getIrs().add(new StoreMIR(midReg1, midReg2, 0, allocaVIR.getType().baseType().getSize() / 8));
                         continue;
                     }
                     if (pointer instanceof VIR ir) {
@@ -420,7 +420,7 @@ public class MIRGenerator {
                             }
                             default -> throw new IllegalStateException("Unexpected value: " + value);
                         }
-                        mFunc.getIrs().add(new StoreMIR(midReg, virRegMap.get(ir), 0, ir.getType().getBaseType().getSize() / 8));
+                        mFunc.getIrs().add(new StoreMIR(midReg, virRegMap.get(ir), 0, ir.getType().baseType().getSize() / 8));
                     }
                     continue;
                 }

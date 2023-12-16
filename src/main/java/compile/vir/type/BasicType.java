@@ -13,7 +13,7 @@ public enum BasicType implements Type {
     }
 
     @Override
-    public Type getBaseType() {
+    public Type baseType() {
         throw new UnsupportedOperationException();
     }
 

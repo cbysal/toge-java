@@ -33,6 +33,58 @@ public final class ConstantNumber extends Constant {
         return value;
     }
 
+    public ConstantNumber mul(ConstantNumber number) {
+        return new ConstantNumber(switch (type) {
+            case BasicType.I1, BasicType.I32 -> value.intValue() * number.value.intValue();
+            case BasicType.FLOAT -> value.floatValue() * number.value.floatValue();
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        });
+    }
+
+    public ConstantNumber div(ConstantNumber number) {
+        return new ConstantNumber(switch (type) {
+            case BasicType.I1, BasicType.I32 -> value.intValue() / number.value.intValue();
+            case BasicType.FLOAT -> value.floatValue() / number.value.floatValue();
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        });
+    }
+
+    public ConstantNumber rem(ConstantNumber number) {
+        return new ConstantNumber(value.intValue() % number.value.intValue());
+    }
+
+    public ConstantNumber add(ConstantNumber number) {
+        return new ConstantNumber(switch (type) {
+            case BasicType.I1, BasicType.I32 -> value.intValue() + number.value.intValue();
+            case BasicType.FLOAT -> value.floatValue() + number.value.floatValue();
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        });
+    }
+
+    public ConstantNumber sub(ConstantNumber number) {
+        return new ConstantNumber(switch (type) {
+            case BasicType.I1, BasicType.I32 -> value.intValue() - number.value.intValue();
+            case BasicType.FLOAT -> value.floatValue() - number.value.floatValue();
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        });
+    }
+
+    public ConstantNumber neg() {
+        return new ConstantNumber(switch (type) {
+            case BasicType.I1, BasicType.I32 -> -value.intValue();
+            case BasicType.FLOAT -> -value.floatValue();
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        });
+    }
+
+    public ConstantNumber lNot() {
+        return new ConstantNumber(switch (type) {
+            case BasicType.I1, BasicType.I32 -> value.intValue() == 0 ? 1 : 0;
+            case BasicType.FLOAT -> value.floatValue() == 0.0f ? 1 : 0;
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        });
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o)

@@ -56,7 +56,7 @@ public class CodeGenerator {
             } else {
                 Type type = global.getType();
                 while (type instanceof ArrayType arrayType)
-                    type = arrayType.getBaseType();
+                    type = arrayType.baseType();
                 for (int i = 0; i < num; i++) {
                     builder.append("\t.word ").append(switch (type) {
                         case BasicType.I32 -> global.getInt(i);

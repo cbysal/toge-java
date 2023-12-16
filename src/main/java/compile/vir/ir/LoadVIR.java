@@ -10,7 +10,7 @@ public class LoadVIR extends VIR {
     public LoadVIR(Value pointer) {
         super(switch (pointer) {
             case GlobalVariable global -> pointer.getType();
-            default -> pointer.getType().getBaseType();
+            default -> pointer.getType().baseType();
         });
         this.pointer = pointer;
     }

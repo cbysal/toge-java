@@ -1,43 +1,33 @@
 package compile.vir.type;
 
-import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
 
-public class ArrayType implements Type {
-    private final Type baseType;
-    private final int arraySize;
-
-    public ArrayType(Type baseType, int arraySize) {
-        this.baseType = baseType;
-        this.arraySize = arraySize;
-    }
-
-    @Override
-    public Type getBaseType() {
-        return baseType;
-    }
-
-    public int getArraySize() {
-        return arraySize;
-    }
-
+public record ArrayType(Type baseType, int arraySize) implements Type {
     @Override
     public int getSize() {
         return baseType.getSize() * arraySize;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
-        ArrayType arrayType = (ArrayType) o;
-        return arraySize == arrayType.arraySize && Objects.equals(baseType, arrayType.baseType);
+    public Type getScalarType() {
+        Type type = this;
+        while (type instanceof ArrayType arrayType)
+            type = arrayType.baseType;
+        return type;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(baseType, arraySize);
+    public List<ArrayType> getArrayTypes() {
+        List<ArrayType> arrayTypes = new ArrayList<>();
+        Type type = this;
+        while (type instanceof ArrayType arrayType) {
+            arrayTypes.add(arrayType);
+            type = arrayType.baseType;
+        }
+        return arrayTypes;
+    }
+
+    public List<Integer> getArraySizes() {
+        return getArrayTypes().stream().map(ArrayType::arraySize).toList();
     }
 
     @Override
