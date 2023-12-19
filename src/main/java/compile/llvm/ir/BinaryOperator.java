@@ -3,11 +3,11 @@ package compile.llvm.ir;
 import compile.llvm.type.BasicType;
 import compile.llvm.value.Value;
 
-public class BinaryInst extends Instruction {
+public class BinaryOperator extends Instruction {
     public final Type type;
     public final Value left, right;
 
-    public BinaryInst(Type type, Value left, Value right) {
+    public BinaryOperator(Type type, Value left, Value right) {
         super(switch (type) {
             case XOR -> BasicType.I1;
             case ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM ->

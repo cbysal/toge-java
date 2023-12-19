@@ -68,8 +68,8 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             List<BasicBlock> blocks = func.getBlocks();
             for (int i = 0; i < blocks.size(); i++) {
                 BasicBlock block = blocks.get(i);
-                if (block.isEmpty() || !(block.getLast() instanceof RetInst || block.getLast() instanceof BranchOperator)) {
-                    block.add(new BranchOperator(blocks.get(i + 1)));
+                if (block.isEmpty() || !(block.getLast() instanceof RetInst || block.getLast() instanceof BranchInst)) {
+                    block.add(new BranchInst(blocks.get(i + 1)));
                 }
             }
         }
@@ -276,10 +276,10 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         processValueCond(value);
         curBlock = trueBlock;
         visitStmt(ctx.stmt(0));
-        curBlock.add(new BranchOperator(ifEndBlock));
+        curBlock.add(new BranchInst(ifEndBlock));
         curBlock = falseBlock;
         visitStmt(ctx.stmt(1));
-        curBlock.add(new BranchOperator(ifEndBlock));
+        curBlock.add(new BranchInst(ifEndBlock));
         curBlock = ifEndBlock;
         return null;
     }
@@ -298,7 +298,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         processValueCond(value);
         curBlock = trueBlock;
         visitStmt(ctx.stmt());
-        curBlock.add(new BranchOperator(falseBlock));
+        curBlock.add(new BranchInst(falseBlock));
         curBlock = falseBlock;
         return null;
     }
@@ -313,7 +313,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         curFunc.insertBlockAfter(loopBlock, endBlock);
         continueStack.push(entryBlock);
         breakStack.push(endBlock);
-        curBlock.add(new BranchOperator(entryBlock));
+        curBlock.add(new BranchInst(entryBlock));
         curBlock = entryBlock;
         trueBlock = loopBlock;
         falseBlock = endBlock;
@@ -321,7 +321,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         processValueCond(value);
         curBlock = loopBlock;
         visitStmt(ctx.stmt());
-        curBlock.add(new BranchOperator(entryBlock));
+        curBlock.add(new BranchInst(entryBlock));
         curBlock = endBlock;
         continueStack.pop();
         breakStack.pop();
@@ -330,26 +330,26 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
 
     @Override
     public Object visitBreakStmt(SysYParser.BreakStmtContext ctx) {
-        curBlock.add(new BranchOperator(breakStack.peek()));
+        curBlock.add(new BranchInst(breakStack.peek()));
         return null;
     }
 
     @Override
     public Object visitContinueStmt(SysYParser.ContinueStmtContext ctx) {
-        curBlock.add(new BranchOperator(continueStack.peek()));
+        curBlock.add(new BranchInst(continueStack.peek()));
         return null;
     }
 
     @Override
     public Object visitRetStmt(SysYParser.RetStmtContext ctx) {
         if (ctx.additiveExp() == null) {
-            curBlock.add(new BranchOperator(retBlock));
+            curBlock.add(new BranchInst(retBlock));
             return null;
         }
         Value retVal = visitAdditiveExp(ctx.additiveExp());
         retVal = typeConversion(retVal, curFunc.getType());
         curBlock.add(new StoreInst(retVal, curRetVal));
-        curBlock.add(new BranchOperator(retBlock));
+        curBlock.add(new BranchInst(retBlock));
         return null;
     }
 
@@ -402,9 +402,9 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                     case "-" -> {
                         Instruction inst = switch (value.getType()) {
                             case BasicType.I1 -> new SExtInst(BasicType.I32, value);
-                            case BasicType.I32 -> new BinaryInst(BinaryInst.Type.SUB, new ConstantNumber(0), value);
+                            case BasicType.I32 -> new BinaryOperator(BinaryOperator.Type.SUB, new ConstantNumber(0), value);
                             case BasicType.FLOAT ->
-                                    new BinaryInst(BinaryInst.Type.FSUB, new ConstantNumber(0.0f), value);
+                                    new BinaryOperator(BinaryOperator.Type.FSUB, new ConstantNumber(0.0f), value);
                             default -> throw new IllegalStateException("Unexpected value: " + value.getType());
                         };
                         curBlock.add(inst);
@@ -412,7 +412,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                     }
                     case "!" -> {
                         Instruction inst = switch (value.getType()) {
-                            case BasicType.I1 -> new BinaryInst(BinaryInst.Type.XOR, value, new ConstantNumber(true));
+                            case BasicType.I1 -> new BinaryOperator(BinaryOperator.Type.XOR, value, new ConstantNumber(true));
                             case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.EQ, value, new ConstantNumber(0));
                             case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.OEQ, value, new ConstantNumber(0.0f));
                             default -> throw new IllegalStateException("Unexpected value: " + value.getType());
@@ -637,15 +637,15 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                 };
                 continue;
             }
-            Instruction inst = new BinaryInst(switch (ctx.getChild(i * 2 - 1).getText()) {
+            Instruction inst = new BinaryOperator(switch (ctx.getChild(i * 2 - 1).getText()) {
                 case "+" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryInst.Type.ADD;
-                    case BasicType.FLOAT -> BinaryInst.Type.FADD;
+                    case BasicType.I32 -> BinaryOperator.Type.ADD;
+                    case BasicType.FLOAT -> BinaryOperator.Type.FADD;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case "-" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryInst.Type.SUB;
-                    case BasicType.FLOAT -> BinaryInst.Type.FSUB;
+                    case BasicType.I32 -> BinaryOperator.Type.SUB;
+                    case BasicType.FLOAT -> BinaryOperator.Type.FSUB;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
@@ -674,18 +674,18 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                 };
                 continue;
             }
-            Instruction inst = new BinaryInst(switch (ctx.getChild(i * 2 - 1).getText()) {
+            Instruction inst = new BinaryOperator(switch (ctx.getChild(i * 2 - 1).getText()) {
                 case "*" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryInst.Type.MUL;
-                    case BasicType.FLOAT -> BinaryInst.Type.FMUL;
+                    case BasicType.I32 -> BinaryOperator.Type.MUL;
+                    case BasicType.FLOAT -> BinaryOperator.Type.FMUL;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case "/" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryInst.Type.SDIV;
-                    case BasicType.FLOAT -> BinaryInst.Type.FDIV;
+                    case BasicType.I32 -> BinaryOperator.Type.SDIV;
+                    case BasicType.FLOAT -> BinaryOperator.Type.FDIV;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
-                case "%" -> BinaryInst.Type.SREM;
+                case "%" -> BinaryOperator.Type.SREM;
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
             }, iterVal, nextVal);
             curBlock.add(inst);
@@ -725,7 +725,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + value.getType());
             };
-            curBlock.add(new BranchOperator(cond, this.trueBlock, this.falseBlock));
+            curBlock.add(new BranchInst(cond, this.trueBlock, this.falseBlock));
         }
     }
 

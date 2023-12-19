@@ -4,12 +4,12 @@ import compile.llvm.BasicBlock;
 import compile.llvm.type.BasicType;
 import compile.llvm.value.Value;
 
-public class BranchOperator extends Instruction {
+public class BranchInst extends Instruction {
     private final Value cond;
     private final BasicBlock ifTrue, ifFalse;
     private final BasicBlock dest;
 
-    public BranchOperator(Value cond, BasicBlock ifTrue, BasicBlock ifFalse) {
+    public BranchInst(Value cond, BasicBlock ifTrue, BasicBlock ifFalse) {
         super(BasicType.VOID);
         this.cond = cond;
         this.ifTrue = ifTrue;
@@ -17,7 +17,7 @@ public class BranchOperator extends Instruction {
         this.dest = null;
     }
 
-    public BranchOperator(BasicBlock dest) {
+    public BranchInst(BasicBlock dest) {
         super(BasicType.VOID);
         this.cond = null;
         this.ifTrue = null;

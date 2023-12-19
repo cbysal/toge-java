@@ -15,12 +15,12 @@ import java.util.List;
 import java.util.Map;
 
 public final class MIROpTrans {
-    public static void transBranch(List<MIR> irs, Map<Instruction, VReg> instRegMap, BranchOperator branchOperator) {
-        if (!branchOperator.conditional()) {
-            irs.add(new BMIR(null, null, null, branchOperator.getDest().getLabel()));
+    public static void transBranch(List<MIR> irs, Map<Instruction, VReg> instRegMap, BranchInst branchInst) {
+        if (!branchInst.conditional()) {
+            irs.add(new BMIR(null, null, null, branchInst.getDest().getLabel()));
             return;
         }
-        VReg reg = switch (branchOperator.getCond()) {
+        VReg reg = switch (branchInst.getCond()) {
             case Instruction ir -> instRegMap.get(ir);
             case ConstantNumber value -> {
                 VReg midReg = new VReg(value.getType());
@@ -30,33 +30,33 @@ public final class MIROpTrans {
                     MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
                 yield midReg;
             }
-            default -> throw new IllegalStateException("Unexpected value: " + branchOperator.getCond());
+            default -> throw new IllegalStateException("Unexpected value: " + branchInst.getCond());
         };
-        irs.add(new BMIR(BMIR.Op.NE, reg, MReg.ZERO, branchOperator.getIfTrue().getLabel()));
-        irs.add(new BMIR(null, null, null, branchOperator.getIfFalse().getLabel()));
+        irs.add(new BMIR(BMIR.Op.NE, reg, MReg.ZERO, branchInst.getIfTrue().getLabel()));
+        irs.add(new BMIR(null, null, null, branchInst.getIfFalse().getLabel()));
     }
 
-    public static void transBinary(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryInst binaryInst) {
-        if (binaryInst.left instanceof Instruction inst1 && binaryInst.right instanceof Instruction inst2) {
-            MIRBinaryTrans.transBinaryRegReg(irs, instRegMap, binaryInst, instRegMap.get(inst1), instRegMap.get(inst2));
+    public static void transBinary(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryOperator binaryOperator) {
+        if (binaryOperator.left instanceof Instruction inst1 && binaryOperator.right instanceof Instruction inst2) {
+            MIRBinaryTrans.transBinaryRegReg(irs, instRegMap, binaryOperator, instRegMap.get(inst1), instRegMap.get(inst2));
             return;
         }
-        if (binaryInst.left instanceof Instruction inst1 && binaryInst.right instanceof ConstantNumber value2) {
-            MIRBinaryTrans.transBinaryRegImm(irs, instRegMap, binaryInst, instRegMap.get(inst1), value2);
+        if (binaryOperator.left instanceof Instruction inst1 && binaryOperator.right instanceof ConstantNumber value2) {
+            MIRBinaryTrans.transBinaryRegImm(irs, instRegMap, binaryOperator, instRegMap.get(inst1), value2);
             return;
         }
-        if (binaryInst.left instanceof ConstantNumber value1 && binaryInst.right instanceof Instruction inst2) {
-            MIRBinaryTrans.transBinaryImmReg(irs, instRegMap, binaryInst, value1, instRegMap.get(inst2));
+        if (binaryOperator.left instanceof ConstantNumber value1 && binaryOperator.right instanceof Instruction inst2) {
+            MIRBinaryTrans.transBinaryImmReg(irs, instRegMap, binaryOperator, value1, instRegMap.get(inst2));
             return;
         }
-        if (binaryInst.left instanceof ConstantNumber value1 && binaryInst.right instanceof ConstantNumber value2) {
+        if (binaryOperator.left instanceof ConstantNumber value1 && binaryOperator.right instanceof ConstantNumber value2) {
             VReg midReg = new VReg(value1.getType());
             switch (value1.getType()) {
                 case BasicType.I32 -> MIROpHelper.loadImmToReg(irs, midReg, value1.intValue());
                 case BasicType.FLOAT -> MIROpHelper.loadImmToReg(irs, midReg, value1.floatValue());
                 default -> throw new IllegalStateException("Unexpected value: " + value1.getType());
             }
-            MIRBinaryTrans.transBinaryRegImm(irs, instRegMap, binaryInst, midReg, value2);
+            MIRBinaryTrans.transBinaryRegImm(irs, instRegMap, binaryOperator, midReg, value2);
             return;
         }
         throw new RuntimeException();

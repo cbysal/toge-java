@@ -124,12 +124,12 @@ public class MIRGenerator {
         for (BasicBlock block : func.getBlocks()) {
             mFunc.addIR(new LabelMIR(block.getLabel()));
             for (Instruction inst : block) {
-                if (inst instanceof BinaryInst binaryInst) {
-                    MIROpTrans.transBinary(mFunc.getIrs(), instRegMap, binaryInst);
+                if (inst instanceof BinaryOperator binaryOperator) {
+                    MIROpTrans.transBinary(mFunc.getIrs(), instRegMap, binaryOperator);
                     continue;
                 }
-                if (inst instanceof BranchOperator branchOperator) {
-                    MIROpTrans.transBranch(mFunc.getIrs(), instRegMap, branchOperator);
+                if (inst instanceof BranchInst branchInst) {
+                    MIROpTrans.transBranch(mFunc.getIrs(), instRegMap, branchInst);
                     continue;
                 }
                 if (inst instanceof CallInst callInst) {
