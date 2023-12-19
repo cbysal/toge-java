@@ -20,7 +20,7 @@ import compile.vir.value.Value;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class VIRGenerator extends SysYBaseVisitor<Object> {
+public class ASTVisitor extends SysYBaseVisitor<Object> {
     private final SysYParser.RootContext rootAST;
     private final Set<GlobalVariable> globals = new HashSet<>();
     private final Map<String, VirtualFunction> funcs = new HashMap<>();
@@ -36,7 +36,7 @@ public class VIRGenerator extends SysYBaseVisitor<Object> {
     private Block retBlock, curBlock, trueBlock, falseBlock;
     private List<AllocaVIR> allocaVIRs;
 
-    public VIRGenerator(SysYParser.RootContext rootAST) {
+    public ASTVisitor(SysYParser.RootContext rootAST) {
         this.rootAST = rootAST;
         symbolTable.in();
         initBuiltInFuncs();

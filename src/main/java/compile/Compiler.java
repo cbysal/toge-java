@@ -36,9 +36,9 @@ public class Compiler {
         CommonTokenStream commonTokenStream = new CommonTokenStream(lexer);
         SysYParser parser = new SysYParser(commonTokenStream);
         SysYParser.RootContext rootContext = parser.root();
-        VIRGenerator virGenerator = new VIRGenerator(rootContext);
-        Set<GlobalVariable> globals = virGenerator.getGlobals();
-        Map<String, VirtualFunction> vFuncs = virGenerator.getFuncs();
+        ASTVisitor astVisitor = new ASTVisitor(rootContext);
+        Set<GlobalVariable> globals = astVisitor.getGlobals();
+        Map<String, VirtualFunction> vFuncs = astVisitor.getFuncs();
         if (options.containsKey("emit-llvm"))
             emitLLVM(options.get("emit-llvm"), globals, vFuncs);
         if (options.containsKey("emit-opt-llvm"))
