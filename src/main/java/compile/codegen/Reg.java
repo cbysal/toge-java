@@ -1,10 +1,15 @@
 package compile.codegen;
 
 import compile.llvm.type.Type;
-import compile.llvm.value.Value;
 
-public abstract class Reg extends Value {
+public abstract class Reg {
+    protected final Type type;
+
     protected Reg(Type type) {
-        super(type);
+        this.type = type;
+    }
+
+    public Type getType() {
+        return type;
     }
 }

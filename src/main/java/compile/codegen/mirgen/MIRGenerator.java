@@ -320,8 +320,6 @@ public class MIRGenerator {
                                 mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retInst.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, midReg));
                             }
                         }
-                        case VReg reg ->
-                                mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retInst.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, reg));
                         case ConstantNumber value -> {
                             switch (value.getType()) {
                                 case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));

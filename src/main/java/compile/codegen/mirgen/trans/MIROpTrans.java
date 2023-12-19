@@ -37,39 +37,19 @@ public final class MIROpTrans {
     }
 
     public static void transBinary(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryInst binaryInst) {
-        Value item1 = binaryInst.left;
-        Value item2 = binaryInst.right;
-        if (item1 instanceof Instruction ir) {
-            if (instRegMap.containsKey(ir))
-                item1 = instRegMap.get(ir);
-            else {
-                VReg reg = new VReg(ir.getType());
-                instRegMap.put(ir, reg);
-                item1 = reg;
-            }
-        }
-        if (item2 instanceof Instruction ir) {
-            if (instRegMap.containsKey(ir))
-                item2 = instRegMap.get(ir);
-            else {
-                VReg reg = new VReg(ir.getType());
-                instRegMap.put(ir, reg);
-                item2 = reg;
-            }
-        }
-        if (item1 instanceof VReg reg1 && item2 instanceof VReg reg2) {
-            MIRBinaryTrans.transBinaryRegReg(irs, instRegMap, binaryInst, reg1, reg2);
+        if (binaryInst.left instanceof Instruction inst1 && binaryInst.right instanceof Instruction inst2) {
+            MIRBinaryTrans.transBinaryRegReg(irs, instRegMap, binaryInst, instRegMap.get(inst1), instRegMap.get(inst2));
             return;
         }
-        if (item1 instanceof VReg reg1 && item2 instanceof ConstantNumber value2) {
-            MIRBinaryTrans.transBinaryRegImm(irs, instRegMap, binaryInst, reg1, value2);
+        if (binaryInst.left instanceof Instruction inst1 && binaryInst.right instanceof ConstantNumber value2) {
+            MIRBinaryTrans.transBinaryRegImm(irs, instRegMap, binaryInst, instRegMap.get(inst1), value2);
             return;
         }
-        if (item1 instanceof ConstantNumber value1 && item2 instanceof VReg reg2) {
-            MIRBinaryTrans.transBinaryImmReg(irs, instRegMap, binaryInst, value1, reg2);
+        if (binaryInst.left instanceof ConstantNumber value1 && binaryInst.right instanceof Instruction inst2) {
+            MIRBinaryTrans.transBinaryImmReg(irs, instRegMap, binaryInst, value1, instRegMap.get(inst2));
             return;
         }
-        if (item1 instanceof ConstantNumber value1 && item2 instanceof ConstantNumber value2) {
+        if (binaryInst.left instanceof ConstantNumber value1 && binaryInst.right instanceof ConstantNumber value2) {
             VReg midReg = new VReg(value1.getType());
             switch (value1.getType()) {
                 case BasicType.I32 -> MIROpHelper.loadImmToReg(irs, midReg, value1.intValue());
@@ -108,7 +88,6 @@ public final class MIROpTrans {
                                 instRegMap.put(inst, reg);
                             }
                         }
-                        case VReg reg -> saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
                         case ConstantNumber value ->
                                 MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.F_CALLER_REGS.get(fSize), value.floatValue());
                         default -> throw new IllegalStateException("Unexpected value: " + param);
@@ -124,8 +103,6 @@ public final class MIROpTrans {
                                 instRegMap.put(inst, reg);
                             }
                         }
-                        case VReg reg ->
-                                irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(BasicType.I32);
                             MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
@@ -155,7 +132,6 @@ public final class MIROpTrans {
                                 instRegMap.put(inst, reg);
                             }
                         }
-                        case VReg reg -> saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), reg));
                         case ConstantNumber value ->
                                 MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.I_CALLER_REGS.get(iSize), value.intValue());
                         default -> throw new IllegalStateException("Unexpected value: " + param);
@@ -176,8 +152,6 @@ public final class MIROpTrans {
                                 instRegMap.put(inst, reg);
                             }
                         }
-                        case VReg reg ->
-                                irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(BasicType.I32);
                             MIROpHelper.loadImmToReg(irs, midReg, value.intValue());

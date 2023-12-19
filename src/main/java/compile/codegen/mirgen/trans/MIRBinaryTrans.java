@@ -32,10 +32,7 @@ public final class MIRBinaryTrans {
     }
 
     private static void transAddRegRegI(List<MIR> irs, VReg target, VReg source1, VReg source2) {
-        if (target.getSize() == 4)
-            irs.add(new RrrMIR(RrrMIR.Op.ADDW, target, source1, source2));
-        else
-            irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, source2));
+        irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, source2));
     }
 
     static void transBinaryImmReg(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryInst binaryInst, ConstantNumber value, VReg reg) {

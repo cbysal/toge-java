@@ -18,11 +18,6 @@ public class VReg extends Reg {
     }
 
     @Override
-    public String getName() {
-        return toString();
-    }
-
-    @Override
     public String toString() {
         return switch (type) {
             case BasicType.I32 -> "$i";
