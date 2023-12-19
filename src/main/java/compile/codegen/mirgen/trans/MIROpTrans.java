@@ -70,39 +70,18 @@ public final class MIROpTrans {
             if (param.getType() == BasicType.FLOAT) {
                 if (fSize < MReg.F_CALLER_REGS.size()) {
                     switch (param) {
-                        case AllocaInst allocaInst -> {
-                            if (instRegMap.containsKey(allocaInst))
+                        case AllocaInst allocaInst ->
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), instRegMap.get(allocaInst)));
-                            else {
-                                VReg reg = new VReg(allocaInst.getType());
-                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
-                                instRegMap.put(allocaInst, reg);
-                            }
-                        }
-                        case Instruction inst -> {
-                            if (instRegMap.containsKey(inst))
+                        case Instruction inst ->
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), instRegMap.get(inst)));
-                            else {
-                                VReg reg = new VReg(inst.getType());
-                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), reg));
-                                instRegMap.put(inst, reg);
-                            }
-                        }
                         case ConstantNumber value ->
                                 MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.F_CALLER_REGS.get(fSize), value.floatValue());
                         default -> throw new IllegalStateException("Unexpected value: " + param);
                     }
                 } else {
                     switch (param) {
-                        case Instruction inst -> {
-                            if (instRegMap.containsKey(inst))
+                        case Instruction inst ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, instRegMap.get(inst), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
-                            else {
-                                VReg reg = new VReg(inst.getType());
-                                irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
-                                instRegMap.put(inst, reg);
-                            }
-                        }
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(BasicType.I32);
                             MIROpHelper.loadImmToReg(irs, midReg, value.floatValue());
@@ -123,15 +102,8 @@ public final class MIROpTrans {
                             else
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), instRegMap.get(allocaInst)));
                         }
-                        case Instruction inst -> {
-                            if (instRegMap.containsKey(inst))
+                        case Instruction inst ->
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), instRegMap.get(inst)));
-                            else {
-                                VReg reg = new VReg(inst.getType());
-                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), reg));
-                                instRegMap.put(inst, reg);
-                            }
-                        }
                         case ConstantNumber value ->
                                 MIROpHelper.loadImmToReg(saveCalleeIRs, MReg.I_CALLER_REGS.get(iSize), value.intValue());
                         default -> throw new IllegalStateException("Unexpected value: " + param);
@@ -143,15 +115,8 @@ public final class MIROpTrans {
                             irs.add(new AddRegLocalMIR(midReg, localOffsets.get(allocaInst)));
                             irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         }
-                        case Instruction inst -> {
-                            if (instRegMap.containsKey(inst))
+                        case Instruction inst ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, instRegMap.get(inst), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
-                            else {
-                                VReg reg = new VReg(inst.getType());
-                                irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, reg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
-                                instRegMap.put(inst, reg);
-                            }
-                        }
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(BasicType.I32);
                             MIROpHelper.loadImmToReg(irs, midReg, value.intValue());

@@ -311,15 +311,8 @@ public class MIRGenerator {
                 }
                 if (inst instanceof RetInst retInst) {
                     switch (retInst.retVal) {
-                        case Instruction valueInst -> {
-                            if (instRegMap.containsKey(valueInst)) {
+                        case Instruction valueInst ->
                                 mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retInst.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, instRegMap.get(valueInst)));
-                            } else {
-                                VReg midReg = new VReg(retInst.retVal.getType());
-                                instRegMap.put(valueInst, midReg);
-                                mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retInst.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, midReg));
-                            }
-                        }
                         case ConstantNumber value -> {
                             switch (value.getType()) {
                                 case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
