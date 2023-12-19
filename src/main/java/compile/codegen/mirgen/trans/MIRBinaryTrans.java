@@ -2,10 +2,10 @@ package compile.codegen.mirgen.trans;
 
 import compile.codegen.VReg;
 import compile.codegen.mirgen.mir.*;
-import compile.vir.contant.ConstantNumber;
-import compile.vir.ir.BinaryVIR;
-import compile.vir.ir.VIR;
-import compile.vir.type.BasicType;
+import compile.llvm.contant.ConstantNumber;
+import compile.llvm.ir.BinaryInst;
+import compile.llvm.ir.Instruction;
+import compile.llvm.type.BasicType;
 
 import java.util.List;
 import java.util.Map;
@@ -38,21 +38,21 @@ public final class MIRBinaryTrans {
             irs.add(new RrrMIR(RrrMIR.Op.ADD, target, source1, source2));
     }
 
-    static void transBinaryImmReg(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, ConstantNumber value, VReg reg) {
-        VReg target = virRegMap.get(binaryVIR);
-        switch (binaryVIR.type) {
+    static void transBinaryImmReg(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryInst binaryInst, ConstantNumber value, VReg reg) {
+        VReg target = instRegMap.get(binaryInst);
+        switch (binaryInst.type) {
             case ADD -> transAddRegImmI(irs, target, reg, value.intValue());
             case FADD -> transAddRegImmF(irs, target, reg, value.floatValue());
             case SDIV -> transDivImmRegI(irs, target, value.intValue(), reg);
             case FDIV -> transDivImmRegF(irs, target, value.floatValue(), reg);
             case EQ, GE, GT, LE, LT, NE -> {
-                BinaryVIR.Type type = switch (binaryVIR.type) {
-                    case EQ -> BinaryVIR.Type.EQ;
-                    case GE -> BinaryVIR.Type.LT;
-                    case GT -> BinaryVIR.Type.LE;
-                    case LE -> BinaryVIR.Type.GT;
-                    case LT -> BinaryVIR.Type.GE;
-                    case NE -> BinaryVIR.Type.NE;
+                BinaryInst.Type type = switch (binaryInst.type) {
+                    case EQ -> BinaryInst.Type.EQ;
+                    case GE -> BinaryInst.Type.LT;
+                    case GT -> BinaryInst.Type.LE;
+                    case LE -> BinaryInst.Type.GT;
+                    case LT -> BinaryInst.Type.GE;
+                    case NE -> BinaryInst.Type.NE;
                     default -> throw new RuntimeException();
                 };
                 if (reg.getType() == BasicType.FLOAT)
@@ -69,18 +69,18 @@ public final class MIRBinaryTrans {
         }
     }
 
-    static void transBinaryRegImm(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, VReg reg, ConstantNumber value) {
-        VReg target = virRegMap.get(binaryVIR);
-        switch (binaryVIR.type) {
+    static void transBinaryRegImm(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryInst binaryInst, VReg reg, ConstantNumber value) {
+        VReg target = instRegMap.get(binaryInst);
+        switch (binaryInst.type) {
             case ADD -> transAddRegImmI(irs, target, reg, value.intValue());
             case FADD -> transAddRegImmF(irs, target, reg, value.floatValue());
             case SDIV -> transDivRegImmI(irs, target, reg, value.intValue());
             case FDIV -> transDivRegImmF(irs, target, reg, value.floatValue());
             case EQ, GE, GT, LE, LT, NE -> {
                 if (reg.getType() == BasicType.FLOAT)
-                    transCmpRegImmF(irs, binaryVIR.type, target, reg, value.floatValue());
+                    transCmpRegImmF(irs, binaryInst.type, target, reg, value.floatValue());
                 else
-                    transCmpRegImmI(irs, binaryVIR.type, target, reg, value.intValue());
+                    transCmpRegImmI(irs, binaryInst.type, target, reg, value.intValue());
             }
             case SREM -> transModRegImm(irs, target, reg, value.intValue());
             case MUL -> transMulRegImmI(irs, target, reg, value.intValue());
@@ -96,18 +96,18 @@ public final class MIRBinaryTrans {
         }
     }
 
-    static void transBinaryRegReg(List<MIR> irs, Map<VIR, VReg> virRegMap, BinaryVIR binaryVIR, VReg reg1, VReg reg2) {
-        VReg target = virRegMap.get(binaryVIR);
-        switch (binaryVIR.type) {
+    static void transBinaryRegReg(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryInst binaryInst, VReg reg1, VReg reg2) {
+        VReg target = instRegMap.get(binaryInst);
+        switch (binaryInst.type) {
             case ADD -> transAddRegRegI(irs, target, reg1, reg2);
             case FADD -> transAddRegRegF(irs, target, reg1, reg2);
             case SDIV -> transDivRegRegI(irs, target, reg1, reg2);
             case FDIV -> transDivRegRegF(irs, target, reg1, reg2);
             case EQ, GE, GT, LE, LT, NE -> {
                 if (reg1.getType() == BasicType.FLOAT)
-                    transCmpRegRegF(irs, binaryVIR.type, target, reg1, reg2);
+                    transCmpRegRegF(irs, binaryInst.type, target, reg1, reg2);
                 else
-                    transCmpRegRegI(irs, binaryVIR.type, target, reg1, reg2);
+                    transCmpRegRegI(irs, binaryInst.type, target, reg1, reg2);
             }
             case SREM -> transModRegReg(irs, target, reg1, reg2);
             case MUL -> transMulRegRegI(irs, target, reg1, reg2);
@@ -118,20 +118,20 @@ public final class MIRBinaryTrans {
         }
     }
 
-    private static void transCmpRegImmF(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source, float imm) {
+    private static void transCmpRegImmF(List<MIR> irs, BinaryInst.Type type, VReg target, VReg source, float imm) {
         VReg midReg = new VReg(BasicType.FLOAT);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transCmpRegRegF(irs, type, target, source, midReg);
     }
 
-    private static void transCmpRegImmI(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source, int imm) {
+    private static void transCmpRegImmI(List<MIR> irs, BinaryInst.Type type, VReg target, VReg source, int imm) {
         VReg midReg = new VReg(BasicType.I32);
         MIROpHelper.loadImmToReg(irs, midReg, imm);
         transCmpRegRegI(irs, type, target, source, midReg);
     }
 
-    private static void transCmpRegRegF(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source1, VReg source2) {
-        if (type == BinaryVIR.Type.NE) {
+    private static void transCmpRegRegF(List<MIR> irs, BinaryInst.Type type, VReg target, VReg source1, VReg source2) {
+        if (type == BinaryInst.Type.NE) {
             irs.add(new RrrMIR(RrrMIR.Op.EQ, target, source1, source2));
             irs.add(new RriMIR(RriMIR.Op.XORI, target, target, 1));
             return;
@@ -146,7 +146,7 @@ public final class MIRBinaryTrans {
         }, target, source1, source2));
     }
 
-    private static void transCmpRegRegI(List<MIR> irs, BinaryVIR.Type type, VReg target, VReg source1, VReg source2) {
+    private static void transCmpRegRegI(List<MIR> irs, BinaryInst.Type type, VReg target, VReg source1, VReg source2) {
         switch (type) {
             case EQ -> {
                 VReg midReg = new VReg(BasicType.I32);

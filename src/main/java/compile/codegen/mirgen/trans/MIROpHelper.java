@@ -5,7 +5,7 @@ import compile.codegen.VReg;
 import compile.codegen.mirgen.mir.LiMIR;
 import compile.codegen.mirgen.mir.MIR;
 import compile.codegen.mirgen.mir.RrMIR;
-import compile.vir.type.BasicType;
+import compile.llvm.type.BasicType;
 
 import java.util.List;
 

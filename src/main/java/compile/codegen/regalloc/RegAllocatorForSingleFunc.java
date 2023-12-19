@@ -6,8 +6,8 @@ import compile.codegen.Reg;
 import compile.codegen.VReg;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.*;
-import compile.vir.Argument;
-import compile.vir.type.BasicType;
+import compile.llvm.Argument;
+import compile.llvm.type.BasicType;
 
 import java.util.*;
 

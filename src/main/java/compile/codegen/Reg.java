@@ -1,7 +1,7 @@
 package compile.codegen;
 
-import compile.vir.type.Type;
-import compile.vir.value.Value;
+import compile.llvm.type.Type;
+import compile.llvm.value.Value;
 
 public abstract class Reg extends Value {
     protected Reg(Type type) {

@@ -1,21 +1,21 @@
 package compile;
 
+import compile.llvm.Argument;
+import compile.llvm.BasicBlock;
+import compile.llvm.Function;
+import compile.llvm.GlobalVariable;
+import compile.llvm.contant.Constant;
+import compile.llvm.contant.ConstantArray;
+import compile.llvm.contant.ConstantNumber;
+import compile.llvm.contant.ConstantZero;
+import compile.llvm.ir.*;
+import compile.llvm.type.ArrayType;
+import compile.llvm.type.BasicType;
+import compile.llvm.type.PointerType;
+import compile.llvm.type.Type;
+import compile.llvm.value.Value;
 import compile.sysy.SysYBaseVisitor;
 import compile.sysy.SysYParser;
-import compile.vir.Argument;
-import compile.vir.Block;
-import compile.vir.GlobalVariable;
-import compile.vir.VirtualFunction;
-import compile.vir.contant.Constant;
-import compile.vir.contant.ConstantArray;
-import compile.vir.contant.ConstantNumber;
-import compile.vir.contant.ConstantZero;
-import compile.vir.ir.*;
-import compile.vir.type.ArrayType;
-import compile.vir.type.BasicType;
-import compile.vir.type.PointerType;
-import compile.vir.type.Type;
-import compile.vir.value.Value;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,18 +23,18 @@ import java.util.stream.Collectors;
 public class ASTVisitor extends SysYBaseVisitor<Object> {
     private final SysYParser.RootContext rootAST;
     private final Set<GlobalVariable> globals = new HashSet<>();
-    private final Map<String, VirtualFunction> funcs = new HashMap<>();
+    private final Map<String, Function> funcs = new HashMap<>();
     private final SymbolTable symbolTable = new SymbolTable();
-    private final Map<Argument, AllocaVIR> argToAllocaMap = new HashMap<>();
-    private final Deque<Block> continueStack = new ArrayDeque<>();
-    private final Deque<Block> breakStack = new ArrayDeque<>();
+    private final Map<Argument, AllocaInst> argToAllocaMap = new HashMap<>();
+    private final Deque<BasicBlock> continueStack = new ArrayDeque<>();
+    private final Deque<BasicBlock> breakStack = new ArrayDeque<>();
     private boolean isProcessed = false;
-    private VirtualFunction curFunc;
+    private Function curFunc;
     private Value curRetVal;
     private boolean isConst;
     private Type curType;
-    private Block retBlock, curBlock, trueBlock, falseBlock;
-    private List<AllocaVIR> allocaVIRs;
+    private BasicBlock retBlock, curBlock, trueBlock, falseBlock;
+    private List<AllocaInst> allocaVIRs;
 
     public ASTVisitor(SysYParser.RootContext rootAST) {
         this.rootAST = rootAST;
@@ -51,7 +51,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         formatVIRs();
     }
 
-    public Map<String, VirtualFunction> getFuncs() {
+    public Map<String, Function> getFuncs() {
         checkIfIsProcessed();
         return funcs;
     }
@@ -62,14 +62,14 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
     }
 
     private void formatVIRs() {
-        for (VirtualFunction func : funcs.values()) {
+        for (Function func : funcs.values()) {
             if (func.isDeclare())
                 continue;
-            List<Block> blocks = func.getBlocks();
+            List<BasicBlock> blocks = func.getBlocks();
             for (int i = 0; i < blocks.size(); i++) {
-                Block block = blocks.get(i);
-                if (block.isEmpty() || !(block.getLast() instanceof RetVIR || block.getLast() instanceof BranchVIR)) {
-                    block.add(new BranchVIR(blocks.get(i + 1)));
+                BasicBlock block = blocks.get(i);
+                if (block.isEmpty() || !(block.getLast() instanceof RetInst || block.getLast() instanceof BranchOperator)) {
+                    block.add(new BranchOperator(blocks.get(i + 1)));
                 }
             }
         }
@@ -136,13 +136,13 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             globals.add(symbolTable.makeGlobal(isConst, curType, name, value));
             return null;
         }
-        AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name);
-        allocaVIRs.add(allocaVIR);
+        AllocaInst allocaInst = symbolTable.makeLocal(curType, name);
+        allocaVIRs.add(allocaInst);
         SysYParser.AdditiveExpContext valueExp = ctx.additiveExp();
         if (valueExp != null) {
             Value value = visitAdditiveExp(valueExp);
             value = typeConversion(value, curType);
-            curBlock.add(new StoreVIR(value, allocaVIR));
+            curBlock.add(new StoreInst(value, allocaInst));
         }
         return null;
     }
@@ -161,24 +161,24 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             globals.add(symbolTable.makeGlobal(isConst, type, name, values));
             return null;
         }
-        AllocaVIR allocaVIR = symbolTable.makeLocal(curType, name, dimensions);
-        allocaVIRs.add(allocaVIR);
+        AllocaInst allocaInst = symbolTable.makeLocal(curType, name, dimensions);
+        allocaVIRs.add(allocaInst);
         if (initVal != null) {
             SortedMap<Integer, SysYParser.AdditiveExpContext> exps = new TreeMap<>();
             allocInitVal(dimensions, exps, 0, initVal);
-            BitCastVIR bitCastVIR = new BitCastVIR(new PointerType(BasicType.I32), allocaVIR);
-            curBlock.add(bitCastVIR);
-            curBlock.add(new CallVIR(symbolTable.getFunc("memset"), List.of(bitCastVIR, new ConstantNumber(0), new ConstantNumber(dimensions.stream().reduce(4, Math::multiplyExact)))));
+            BitCastInst bitCastInst = new BitCastInst(new PointerType(BasicType.I32), allocaInst);
+            curBlock.add(bitCastInst);
+            curBlock.add(new CallInst(symbolTable.getFunc("memset"), List.of(bitCastInst, new ConstantNumber(0), new ConstantNumber(dimensions.stream().reduce(4, Math::multiplyExact)))));
             for (Map.Entry<Integer, SysYParser.AdditiveExpContext> entry : exps.entrySet()) {
                 Value value = typeConversion(visitAdditiveExp(entry.getValue()), curType);
-                Value pointer = allocaVIR;
+                Value pointer = allocaInst;
                 for (int j = 0; j < dimensions.size(); j++) {
                     int index = entry.getKey() / dimensions.stream().skip(j + 1).reduce(1, Math::multiplyExact) % dimensions.get(j);
-                    VIR ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), new ConstantNumber(index));
-                    curBlock.add(ir);
-                    pointer = ir;
+                    Instruction inst = new GetElementPtrInst(pointer, new ConstantNumber(0), new ConstantNumber(index));
+                    curBlock.add(inst);
+                    pointer = inst;
                 }
-                curBlock.add(new StoreVIR(value, pointer));
+                curBlock.add(new StoreInst(value, pointer));
             }
         }
         return null;
@@ -191,31 +191,31 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         curFunc = symbolTable.makeFunc(funcType, ctx.Ident().getSymbol().getText());
         symbolTable.in();
         allocaVIRs = new ArrayList<>();
-        retBlock = new Block();
+        retBlock = new BasicBlock();
         switch (curFunc.getType()) {
             case BasicType.I32, BasicType.FLOAT -> {
-                AllocaVIR allocaVIR = new AllocaVIR(curFunc.getType());
-                allocaVIRs.add(allocaVIR);
-                curRetVal = allocaVIR;
-                VIR loadVIR = new LoadVIR(curRetVal);
-                retBlock.add(loadVIR);
-                retBlock.add(new RetVIR(loadVIR));
+                AllocaInst allocaInst = new AllocaInst(curFunc.getType());
+                allocaVIRs.add(allocaInst);
+                curRetVal = allocaInst;
+                Instruction loadInst = new LoadInst(curRetVal);
+                retBlock.add(loadInst);
+                retBlock.add(new RetInst(loadInst));
             }
             case BasicType.VOID -> {
                 curRetVal = null;
-                retBlock.add(new RetVIR(null));
+                retBlock.add(new RetInst(null));
             }
             default -> throw new IllegalStateException("Unexpected value: " + curFunc.getType());
         }
-        curBlock = new Block();
+        curBlock = new BasicBlock();
         curFunc.addBlock(curBlock);
         for (SysYParser.FuncArgContext argCtx : ctx.funcArg()) {
             Argument arg = visitFuncArg(argCtx);
             curFunc.addArg(arg);
-            AllocaVIR allocaVIR = symbolTable.makeLocal(arg.getType(), arg.getName());
-            allocaVIRs.add(allocaVIR);
-            curBlock.add(new StoreVIR(arg, allocaVIR));
-            argToAllocaMap.put(arg, allocaVIR);
+            AllocaInst allocaInst = symbolTable.makeLocal(arg.getType(), arg.getName());
+            allocaVIRs.add(allocaInst);
+            curBlock.add(new StoreInst(arg, allocaInst));
+            argToAllocaMap.put(arg, allocaInst);
         }
         visitBlockStmt(ctx.blockStmt());
         curFunc.addBlock(retBlock);
@@ -258,15 +258,15 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             value = typeConversion(value, type);
         else
             value = typeConversion(value, type.baseType());
-        curBlock.add(new StoreVIR(value, pointer));
+        curBlock.add(new StoreInst(value, pointer));
         return null;
     }
 
     @Override
     public Object visitIfElseStmt(SysYParser.IfElseStmtContext ctx) {
-        Block trueBlock = new Block();
-        Block falseBlock = new Block();
-        Block ifEndBlock = new Block();
+        BasicBlock trueBlock = new BasicBlock();
+        BasicBlock falseBlock = new BasicBlock();
+        BasicBlock ifEndBlock = new BasicBlock();
         curFunc.insertBlockAfter(curBlock, trueBlock);
         curFunc.insertBlockAfter(trueBlock, falseBlock);
         curFunc.insertBlockAfter(falseBlock, ifEndBlock);
@@ -276,18 +276,18 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         processValueCond(value);
         curBlock = trueBlock;
         visitStmt(ctx.stmt(0));
-        curBlock.add(new BranchVIR(ifEndBlock));
+        curBlock.add(new BranchOperator(ifEndBlock));
         curBlock = falseBlock;
         visitStmt(ctx.stmt(1));
-        curBlock.add(new BranchVIR(ifEndBlock));
+        curBlock.add(new BranchOperator(ifEndBlock));
         curBlock = ifEndBlock;
         return null;
     }
 
     @Override
     public Object visitIfStmt(SysYParser.IfStmtContext ctx) {
-        Block trueBlock = new Block();
-        Block falseBlock = new Block();
+        BasicBlock trueBlock = new BasicBlock();
+        BasicBlock falseBlock = new BasicBlock();
         curFunc.insertBlockAfter(curBlock, trueBlock);
         curFunc.insertBlockAfter(trueBlock, falseBlock);
         this.trueBlock = trueBlock;
@@ -298,22 +298,22 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         processValueCond(value);
         curBlock = trueBlock;
         visitStmt(ctx.stmt());
-        curBlock.add(new BranchVIR(falseBlock));
+        curBlock.add(new BranchOperator(falseBlock));
         curBlock = falseBlock;
         return null;
     }
 
     @Override
     public Object visitWhileStmt(SysYParser.WhileStmtContext ctx) {
-        Block entryBlock = new Block();
-        Block loopBlock = new Block();
-        Block endBlock = new Block();
+        BasicBlock entryBlock = new BasicBlock();
+        BasicBlock loopBlock = new BasicBlock();
+        BasicBlock endBlock = new BasicBlock();
         curFunc.insertBlockAfter(curBlock, entryBlock);
         curFunc.insertBlockAfter(entryBlock, loopBlock);
         curFunc.insertBlockAfter(loopBlock, endBlock);
         continueStack.push(entryBlock);
         breakStack.push(endBlock);
-        curBlock.add(new BranchVIR(entryBlock));
+        curBlock.add(new BranchOperator(entryBlock));
         curBlock = entryBlock;
         trueBlock = loopBlock;
         falseBlock = endBlock;
@@ -321,7 +321,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         processValueCond(value);
         curBlock = loopBlock;
         visitStmt(ctx.stmt());
-        curBlock.add(new BranchVIR(entryBlock));
+        curBlock.add(new BranchOperator(entryBlock));
         curBlock = endBlock;
         continueStack.pop();
         breakStack.pop();
@@ -330,26 +330,26 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
 
     @Override
     public Object visitBreakStmt(SysYParser.BreakStmtContext ctx) {
-        curBlock.add(new BranchVIR(breakStack.peek()));
+        curBlock.add(new BranchOperator(breakStack.peek()));
         return null;
     }
 
     @Override
     public Object visitContinueStmt(SysYParser.ContinueStmtContext ctx) {
-        curBlock.add(new BranchVIR(continueStack.peek()));
+        curBlock.add(new BranchOperator(continueStack.peek()));
         return null;
     }
 
     @Override
     public Object visitRetStmt(SysYParser.RetStmtContext ctx) {
         if (ctx.additiveExp() == null) {
-            curBlock.add(new BranchVIR(retBlock));
+            curBlock.add(new BranchOperator(retBlock));
             return null;
         }
         Value retVal = visitAdditiveExp(ctx.additiveExp());
         retVal = typeConversion(retVal, curFunc.getType());
-        curBlock.add(new StoreVIR(retVal, curRetVal));
-        curBlock.add(new BranchVIR(retBlock));
+        curBlock.add(new StoreInst(retVal, curRetVal));
+        curBlock.add(new BranchOperator(retBlock));
         return null;
     }
 
@@ -365,20 +365,20 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             return pointer;
         }
         if (pointer.getType() instanceof PointerType pointerType && pointerType.baseType() instanceof PointerType) {
-            VIR ir = new LoadVIR(pointer);
-            pointer = ir;
-            curBlock.add(ir);
+            Instruction inst = new LoadInst(pointer);
+            pointer = inst;
+            curBlock.add(inst);
         }
         List<Value> dimensions = ctx.additiveExp().stream().map(this::visitAdditiveExp).toList();
         boolean isFirst = true;
         for (Value dimension : dimensions) {
-            VIR ir;
+            Instruction inst;
             if (isArg && isFirst)
-                ir = new GetElementPtrVIR(pointer, dimension);
+                inst = new GetElementPtrInst(pointer, dimension);
             else
-                ir = new GetElementPtrVIR(pointer, new ConstantNumber(0), dimension);
-            curBlock.add(ir);
-            pointer = ir;
+                inst = new GetElementPtrInst(pointer, new ConstantNumber(0), dimension);
+            curBlock.add(inst);
+            pointer = inst;
             isFirst = false;
         }
         return pointer;
@@ -400,24 +400,25 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                 yield switch (ctx.getChild(0).getText()) {
                     case "+" -> value;
                     case "-" -> {
-                        VIR ir = switch (value.getType()) {
-                            case BasicType.I1 -> new SExtVIR(BasicType.I32, value);
-                            case BasicType.I32 -> new BinaryVIR(BinaryVIR.Type.SUB, new ConstantNumber(0), value);
-                            case BasicType.FLOAT -> new BinaryVIR(BinaryVIR.Type.FSUB, new ConstantNumber(0.0f), value);
+                        Instruction inst = switch (value.getType()) {
+                            case BasicType.I1 -> new SExtInst(BasicType.I32, value);
+                            case BasicType.I32 -> new BinaryInst(BinaryInst.Type.SUB, new ConstantNumber(0), value);
+                            case BasicType.FLOAT ->
+                                    new BinaryInst(BinaryInst.Type.FSUB, new ConstantNumber(0.0f), value);
                             default -> throw new IllegalStateException("Unexpected value: " + value.getType());
                         };
-                        curBlock.add(ir);
-                        yield ir;
+                        curBlock.add(inst);
+                        yield inst;
                     }
                     case "!" -> {
-                        VIR ir = switch (value.getType()) {
-                            case BasicType.I1 -> new BinaryVIR(BinaryVIR.Type.XOR, value, new ConstantNumber(true));
-                            case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.EQ, value, new ConstantNumber(0));
-                            case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OEQ, value, new ConstantNumber(0.0f));
+                        Instruction inst = switch (value.getType()) {
+                            case BasicType.I1 -> new BinaryInst(BinaryInst.Type.XOR, value, new ConstantNumber(true));
+                            case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.EQ, value, new ConstantNumber(0));
+                            case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.OEQ, value, new ConstantNumber(0.0f));
                             default -> throw new IllegalStateException("Unexpected value: " + value.getType());
                         };
-                        curBlock.add(ir);
-                        yield ir;
+                        curBlock.add(inst);
+                        yield inst;
                     }
                     default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(0).getText());
                 };
@@ -441,13 +442,13 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         if (type.baseType() instanceof ArrayType arrayType) {
             Value[] indexes = new Value[arrayType.getArraySizes().size()];
             Arrays.fill(indexes, new ConstantNumber(0));
-            VIR ir = new GetElementPtrVIR(pointer, indexes);
-            curBlock.add(ir);
-            return ir;
+            Instruction inst = new GetElementPtrInst(pointer, indexes);
+            curBlock.add(inst);
+            return inst;
         }
-        VIR ir = new LoadVIR(pointer);
-        curBlock.add(ir);
-        return ir;
+        Instruction inst = new LoadInst(pointer);
+        curBlock.add(inst);
+        return inst;
     }
 
     @Override
@@ -457,28 +458,28 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         if (pointer instanceof Argument) {
             isFirstArgDim = true;
             pointer = argToAllocaMap.get(pointer);
-            VIR ir = new LoadVIR(pointer);
-            pointer = ir;
-            curBlock.add(ir);
+            Instruction inst = new LoadInst(pointer);
+            pointer = inst;
+            curBlock.add(inst);
         }
         for (SysYParser.AdditiveExpContext dimension : ctx.additiveExp()) {
             Value index = visitAdditiveExp(dimension);
             index = typeConversion(index, BasicType.I32);
-            VIR ir = isFirstArgDim ? new GetElementPtrVIR(pointer, index) : new GetElementPtrVIR(pointer, new ConstantNumber(0), index);
-            curBlock.add(ir);
-            pointer = ir;
+            Instruction inst = isFirstArgDim ? new GetElementPtrInst(pointer, index) : new GetElementPtrInst(pointer, new ConstantNumber(0), index);
+            curBlock.add(inst);
+            pointer = inst;
             isFirstArgDim = false;
         }
         if (pointer.getType().baseType() instanceof ArrayType)
             return pointer;
-        VIR ir = new LoadVIR(pointer);
-        curBlock.add(ir);
-        return ir;
+        Instruction inst = new LoadInst(pointer);
+        curBlock.add(inst);
+        return inst;
     }
 
     @Override
     public Value visitFuncCallExp(SysYParser.FuncCallExpContext ctx) {
-        VirtualFunction func = symbolTable.getFunc(ctx.Ident().getSymbol().getText());
+        Function func = symbolTable.getFunc(ctx.Ident().getSymbol().getText());
         List<Value> params = new ArrayList<>();
         for (int i = 0; i < ctx.additiveExp().size(); i++) {
             SysYParser.AdditiveExpContext exp = ctx.additiveExp().get(i);
@@ -487,9 +488,9 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             param = typeConversion(param, type);
             params.add(param);
         }
-        VIR newIR = new CallVIR(func, params);
-        curBlock.add(newIR);
-        return newIR;
+        Instruction inst = new CallInst(func, params);
+        curBlock.add(inst);
+        return inst;
     }
 
     @Override
@@ -505,15 +506,15 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
 
     @Override
     public Value visitLorExp(SysYParser.LorExpContext ctx) {
-        List<Block> blocks = new ArrayList<>();
+        List<BasicBlock> blocks = new ArrayList<>();
         blocks.add(curBlock);
         for (int i = 0; i < ctx.landExp().size() - 1; i++) {
-            Block block = new Block();
+            BasicBlock block = new BasicBlock();
             curFunc.insertBlockAfter(blocks.getLast(), block);
             blocks.add(block);
         }
-        Block trueBlock = this.trueBlock;
-        Block falseBlock = this.falseBlock;
+        BasicBlock trueBlock = this.trueBlock;
+        BasicBlock falseBlock = this.falseBlock;
         for (int i = 0; i < ctx.landExp().size() - 1; i++) {
             this.curBlock = blocks.get(i);
             this.trueBlock = trueBlock;
@@ -531,15 +532,15 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
 
     @Override
     public Value visitLandExp(SysYParser.LandExpContext ctx) {
-        List<Block> blocks = new ArrayList<>();
+        List<BasicBlock> blocks = new ArrayList<>();
         blocks.add(curBlock);
         for (int i = 0; i < ctx.equalityExp().size() - 1; i++) {
-            Block block = new Block();
+            BasicBlock block = new BasicBlock();
             curFunc.insertBlockAfter(blocks.getLast(), block);
             blocks.add(block);
         }
-        Block trueBlock = this.trueBlock;
-        Block falseBlock = this.falseBlock;
+        BasicBlock trueBlock = this.trueBlock;
+        BasicBlock falseBlock = this.falseBlock;
         for (int i = 0; i < ctx.equalityExp().size() - 1; i++) {
             this.curBlock = blocks.get(i);
             this.trueBlock = blocks.get(i + 1);
@@ -563,15 +564,15 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Type targetType = automaticTypePromotion(iterVal.getType(), nextVal.getType());
             iterVal = typeConversion(iterVal, targetType);
             nextVal = typeConversion(nextVal, targetType);
-            VIR ir = switch (ctx.getChild(2 * i - 1).getText()) {
+            Instruction ir = switch (ctx.getChild(2 * i - 1).getText()) {
                 case "==" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.EQ, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OEQ, iterVal, nextVal);
+                    case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.EQ, iterVal, nextVal);
+                    case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.OEQ, iterVal, nextVal);
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case "!=" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.NE, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.UNE, iterVal, nextVal);
+                    case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.NE, iterVal, nextVal);
+                    case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.UNE, iterVal, nextVal);
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(2 * i - 1).getText());
@@ -590,31 +591,31 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Type targetType = automaticTypePromotion(iterVal.getType(), nextVal.getType());
             iterVal = typeConversion(iterVal, targetType);
             nextVal = typeConversion(nextVal, targetType);
-            VIR ir = switch (ctx.getChild(2 * i - 1).getText()) {
+            Instruction inst = switch (ctx.getChild(2 * i - 1).getText()) {
                 case "<" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.SLT, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OLT, iterVal, nextVal);
+                    case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.SLT, iterVal, nextVal);
+                    case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.OLT, iterVal, nextVal);
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case ">" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.SGT, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OGT, iterVal, nextVal);
+                    case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.SGT, iterVal, nextVal);
+                    case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.OGT, iterVal, nextVal);
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case "<=" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.SLE, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OLE, iterVal, nextVal);
+                    case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.SLE, iterVal, nextVal);
+                    case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.OLE, iterVal, nextVal);
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case ">=" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpVIR(ICmpVIR.Cond.SGE, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpVIR(FCmpVIR.Cond.OGE, iterVal, nextVal);
+                    case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.SGE, iterVal, nextVal);
+                    case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.OGE, iterVal, nextVal);
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
             };
-            curBlock.add(ir);
-            iterVal = ir;
+            curBlock.add(inst);
+            iterVal = inst;
         }
         return iterVal;
     }
@@ -636,21 +637,21 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                 };
                 continue;
             }
-            VIR ir = new BinaryVIR(switch (ctx.getChild(i * 2 - 1).getText()) {
+            Instruction inst = new BinaryInst(switch (ctx.getChild(i * 2 - 1).getText()) {
                 case "+" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryVIR.Type.ADD;
-                    case BasicType.FLOAT -> BinaryVIR.Type.FADD;
+                    case BasicType.I32 -> BinaryInst.Type.ADD;
+                    case BasicType.FLOAT -> BinaryInst.Type.FADD;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case "-" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryVIR.Type.SUB;
-                    case BasicType.FLOAT -> BinaryVIR.Type.FSUB;
+                    case BasicType.I32 -> BinaryInst.Type.SUB;
+                    case BasicType.FLOAT -> BinaryInst.Type.FSUB;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
             }, iterVal, nextVal);
-            curBlock.add(ir);
-            iterVal = ir;
+            curBlock.add(inst);
+            iterVal = inst;
         }
         return iterVal;
     }
@@ -673,22 +674,22 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                 };
                 continue;
             }
-            VIR ir = new BinaryVIR(switch (ctx.getChild(i * 2 - 1).getText()) {
+            Instruction inst = new BinaryInst(switch (ctx.getChild(i * 2 - 1).getText()) {
                 case "*" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryVIR.Type.MUL;
-                    case BasicType.FLOAT -> BinaryVIR.Type.FMUL;
+                    case BasicType.I32 -> BinaryInst.Type.MUL;
+                    case BasicType.FLOAT -> BinaryInst.Type.FMUL;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case "/" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryVIR.Type.SDIV;
-                    case BasicType.FLOAT -> BinaryVIR.Type.FDIV;
+                    case BasicType.I32 -> BinaryInst.Type.SDIV;
+                    case BasicType.FLOAT -> BinaryInst.Type.FDIV;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
-                case "%" -> BinaryVIR.Type.SREM;
+                case "%" -> BinaryInst.Type.SREM;
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
             }, iterVal, nextVal);
-            curBlock.add(ir);
-            iterVal = ir;
+            curBlock.add(inst);
+            iterVal = inst;
         }
         return iterVal;
     }
@@ -713,18 +714,18 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Value cond = switch (value.getType()) {
                 case BasicType.I1 -> value;
                 case BasicType.I32 -> {
-                    VIR ir = new ICmpVIR(ICmpVIR.Cond.NE, value, new ConstantNumber(0));
+                    Instruction ir = new ICmpInst(ICmpInst.Cond.NE, value, new ConstantNumber(0));
                     curBlock.add(ir);
                     yield ir;
                 }
                 case BasicType.FLOAT -> {
-                    VIR ir = new FCmpVIR(FCmpVIR.Cond.UNE, value, new ConstantNumber(0.0f));
+                    Instruction ir = new FCmpInst(FCmpInst.Cond.UNE, value, new ConstantNumber(0.0f));
                     curBlock.add(ir);
                     yield ir;
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + value.getType());
             };
-            curBlock.add(new BranchVIR(cond, this.trueBlock, this.falseBlock));
+            curBlock.add(new BranchOperator(cond, this.trueBlock, this.falseBlock));
         }
     }
 
@@ -750,42 +751,42 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         return switch (targetType) {
             case BasicType.I1 -> switch (value.getType()) {
                 case BasicType.I32 -> {
-                    VIR ir = new ICmpVIR(ICmpVIR.Cond.NE, value, new ConstantNumber(0));
-                    curBlock.add(ir);
-                    yield ir;
+                    Instruction inst = new ICmpInst(ICmpInst.Cond.NE, value, new ConstantNumber(0));
+                    curBlock.add(inst);
+                    yield inst;
                 }
                 case BasicType.FLOAT -> {
-                    VIR ir = new FCmpVIR(FCmpVIR.Cond.UNE, value, new ConstantNumber(0.0f));
-                    curBlock.add(ir);
-                    yield ir;
+                    Instruction inst = new FCmpInst(FCmpInst.Cond.UNE, value, new ConstantNumber(0.0f));
+                    curBlock.add(inst);
+                    yield inst;
                 }
                 default -> value;
             };
             case BasicType.I32 -> switch (value.getType()) {
                 case BasicType.I1 -> {
-                    VIR ir = new ZExtVIR(BasicType.I32, value);
-                    curBlock.add(ir);
-                    yield ir;
+                    Instruction inst = new ZExtInst(BasicType.I32, value);
+                    curBlock.add(inst);
+                    yield inst;
                 }
                 case BasicType.FLOAT -> {
-                    VIR ir = new FPToSIVIR(BasicType.I32, value);
-                    curBlock.add(ir);
-                    yield ir;
+                    Instruction inst = new FPToSIInst(BasicType.I32, value);
+                    curBlock.add(inst);
+                    yield inst;
                 }
                 default -> value;
             };
             case BasicType.FLOAT -> switch (value.getType()) {
                 case BasicType.I1 -> {
-                    VIR ir = new ZExtVIR(BasicType.I32, value);
-                    curBlock.add(ir);
-                    ir = new SIToFPVIR(BasicType.FLOAT, ir);
-                    curBlock.add(ir);
-                    yield ir;
+                    Instruction inst = new ZExtInst(BasicType.I32, value);
+                    curBlock.add(inst);
+                    inst = new SIToFPInst(BasicType.FLOAT, inst);
+                    curBlock.add(inst);
+                    yield inst;
                 }
                 case BasicType.I32 -> {
-                    VIR ir = new SIToFPVIR(BasicType.FLOAT, value);
-                    curBlock.add(ir);
-                    yield ir;
+                    Instruction inst = new SIToFPInst(BasicType.FLOAT, value);
+                    curBlock.add(inst);
+                    yield inst;
                 }
                 default -> value;
             };
@@ -805,10 +806,10 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             return get(name);
         }
 
-        public VirtualFunction getFunc(String name) {
+        public Function getFunc(String name) {
             Value symbol = get(name);
-            if (symbol instanceof VirtualFunction function)
-                return function;
+            if (symbol instanceof Function func)
+                return func;
             throw new RuntimeException("Undefined function symbol: " + name);
         }
 
@@ -829,10 +830,10 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             return new ConstantArray(arrayType, array);
         }
 
-        public VirtualFunction makeFunc(Type type, String name) {
-            VirtualFunction symbol = new VirtualFunction(type, name);
-            this.getLast().put(name, symbol);
-            return symbol;
+        public Function makeFunc(Type type, String name) {
+            Function func = new Function(type, name);
+            this.getLast().put(name, func);
+            return func;
         }
 
         public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Number value) {
@@ -861,18 +862,18 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             return symbol;
         }
 
-        public AllocaVIR makeLocal(Type type, String name) {
-            AllocaVIR symbol = new AllocaVIR(type);
+        public AllocaInst makeLocal(Type type, String name) {
+            AllocaInst symbol = new AllocaInst(type);
             this.getFirst().put(name, symbol);
             return symbol;
         }
 
-        public AllocaVIR makeLocal(Type type, String name, List<Integer> dimensions) {
+        public AllocaInst makeLocal(Type type, String name, List<Integer> dimensions) {
             for (int i = dimensions.size() - 1; i >= 0; i--)
                 type = new ArrayType(type, dimensions.get(i));
-            AllocaVIR symbol = new AllocaVIR(type);
-            this.getFirst().put(name, symbol);
-            return symbol;
+            AllocaInst allocaInst = new AllocaInst(type);
+            this.getFirst().put(name, allocaInst);
+            return allocaInst;
         }
 
         public Argument makeArg(Type type, String name) {

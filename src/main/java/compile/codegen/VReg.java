@@ -1,7 +1,7 @@
 package compile.codegen;
 
-import compile.vir.type.BasicType;
-import compile.vir.type.Type;
+import compile.llvm.type.BasicType;
+import compile.llvm.type.Type;
 
 public class VReg extends Reg {
     private static int counter = 0;

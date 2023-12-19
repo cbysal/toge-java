@@ -4,10 +4,10 @@ import compile.codegen.CodeGenerator;
 import compile.codegen.mirgen.MIRGenerator;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.regalloc.RegAllocator;
+import compile.llvm.Function;
+import compile.llvm.GlobalVariable;
 import compile.sysy.SysYLexer;
 import compile.sysy.SysYParser;
-import compile.vir.GlobalVariable;
-import compile.vir.VirtualFunction;
 import execute.Executor;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -38,12 +38,12 @@ public class Compiler {
         SysYParser.RootContext rootContext = parser.root();
         ASTVisitor astVisitor = new ASTVisitor(rootContext);
         Set<GlobalVariable> globals = astVisitor.getGlobals();
-        Map<String, VirtualFunction> vFuncs = astVisitor.getFuncs();
+        Map<String, Function> funcs = astVisitor.getFuncs();
         if (options.containsKey("emit-llvm"))
-            emitLLVM(options.get("emit-llvm"), globals, vFuncs);
+            emitLLVM(options.get("emit-llvm"), globals, funcs);
         if (options.containsKey("emit-opt-llvm"))
-            emitLLVM(options.get("emit-opt-llvm"), globals, vFuncs);
-        MIRGenerator mirGenerator = new MIRGenerator(globals, vFuncs);
+            emitLLVM(options.get("emit-opt-llvm"), globals, funcs);
+        MIRGenerator mirGenerator = new MIRGenerator(globals, funcs);
         globals = mirGenerator.getGlobals();
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
         if (options.containsKey("emit-mir"))
@@ -61,7 +61,7 @@ public class Compiler {
         }
     }
 
-    private void emitLLVM(String filePath, Set<GlobalVariable> globals, Map<String, VirtualFunction> funcs) {
+    private void emitLLVM(String filePath, Set<GlobalVariable> globals, Map<String, Function> funcs) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
             for (GlobalVariable global : globals) {
                 writer.write(global.toString());
@@ -70,11 +70,11 @@ public class Compiler {
             if (!globals.isEmpty()) {
                 writer.newLine();
             }
-            for (VirtualFunction func : funcs.values().stream().filter(func -> !func.getBlocks().isEmpty()).toList()) {
+            for (Function func : funcs.values().stream().filter(func -> !func.getBlocks().isEmpty()).toList()) {
                 writer.write(func.toString());
                 writer.newLine();
             }
-            for (VirtualFunction func : funcs.values().stream().filter(func -> func.getBlocks().isEmpty()).toList()) {
+            for (Function func : funcs.values().stream().filter(func -> func.getBlocks().isEmpty()).toList()) {
                 writer.write(func.toString());
             }
         } catch (IOException e) {

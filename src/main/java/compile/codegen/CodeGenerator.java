@@ -3,10 +3,10 @@ package compile.codegen;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.LabelMIR;
 import compile.codegen.mirgen.mir.MIR;
-import compile.vir.GlobalVariable;
-import compile.vir.type.ArrayType;
-import compile.vir.type.BasicType;
-import compile.vir.type.Type;
+import compile.llvm.GlobalVariable;
+import compile.llvm.type.ArrayType;
+import compile.llvm.type.BasicType;
+import compile.llvm.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
