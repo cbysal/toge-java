@@ -1,9 +1,9 @@
 package compile.codegen.mirgen.mir;
 
-import compile.codegen.Label;
 import compile.codegen.MReg;
 import compile.codegen.Reg;
 import compile.codegen.VReg;
+import compile.llvm.BasicBlock;
 
 import java.util.List;
 import java.util.Map;
@@ -11,13 +11,13 @@ import java.util.Map;
 public class BMIR extends MIR {
     public final Op op;
     public final Reg src1, src2;
-    public final Label label;
+    public final BasicBlock block;
 
-    public BMIR(Op op, Reg src1, Reg src2, Label label) {
+    public BMIR(Op op, Reg src1, Reg src2, BasicBlock block) {
         this.op = op;
         this.src1 = src1;
         this.src2 = src2;
-        this.label = label;
+        this.block = block;
     }
 
     @Override
@@ -35,7 +35,7 @@ public class BMIR extends MIR {
             newSrc1 = replaceMap.get(src1);
         if (src2 instanceof VReg && replaceMap.containsKey(src2))
             newSrc2 = replaceMap.get(src2);
-        return new BMIR(op, newSrc1, newSrc2, label);
+        return new BMIR(op, newSrc1, newSrc2, block);
     }
 
     @Override
@@ -48,19 +48,19 @@ public class BMIR extends MIR {
             VReg src2 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src1, offset);
             MIR ir2 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src2, offset);
-            MIR ir3 = new BMIR(op, src1, src2, label);
+            MIR ir3 = new BMIR(op, src1, src2, block);
             return List.of(ir1, ir2, ir3);
         }
         if (src1.equals(reg)) {
             VReg src1 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src1, offset);
-            MIR ir2 = new BMIR(op, src1, src2, label);
+            MIR ir2 = new BMIR(op, src1, src2, block);
             return List.of(ir1, ir2);
         }
         if (src2.equals(reg)) {
             VReg src2 = new VReg(reg.getType());
             MIR ir1 = new LoadItemMIR(LoadItemMIR.Item.SPILL, src2, offset);
-            MIR ir2 = new BMIR(op, src1, src2, label);
+            MIR ir2 = new BMIR(op, src1, src2, block);
             return List.of(ir1, ir2);
         }
         return List.of(this);
@@ -72,10 +72,9 @@ public class BMIR extends MIR {
 
     @Override
     public String toString() {
-        if (op == null) {
-            return "j\tl" + label.getId();
-        }
-        return String.format("b%s\t%s,%s,l%d", op.toString().toLowerCase(), src1, src2, label.getId());
+        if (op == null)
+            return "j\t" + block.getName();
+        return String.format("b%s\t%s,%s,%s", op.toString().toLowerCase(), src1, src2, block.getName());
     }
 
     public enum Op {

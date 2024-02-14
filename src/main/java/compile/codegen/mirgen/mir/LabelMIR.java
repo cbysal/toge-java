@@ -1,20 +1,20 @@
 package compile.codegen.mirgen.mir;
 
-import compile.codegen.Label;
+import compile.llvm.BasicBlock;
 
 public class LabelMIR extends MIR {
-    public final Label label;
+    public final BasicBlock block;
 
-    public LabelMIR(Label label) {
-        this.label = label;
+    public LabelMIR(BasicBlock block) {
+        this.block = block;
     }
 
-    public String getName() {
-        return label.toString();
+    public BasicBlock getBlock() {
+        return block;
     }
 
     @Override
     public String toString() {
-        return "l" + label.getId() + ":";
+        return block.getName() + ":";
     }
 }

@@ -1,6 +1,5 @@
 package compile.llvm;
 
-import compile.codegen.Label;
 import compile.llvm.ir.Instruction;
 import compile.llvm.type.BasicType;
 import compile.llvm.value.Use;
@@ -8,21 +7,14 @@ import compile.llvm.value.User;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Objects;
 
 public class BasicBlock extends User implements Iterable<Instruction> {
     private static int counter = 0;
     private final int id;
-    private final Label label;
 
     public BasicBlock() {
         super(BasicType.VOID);
         this.id = counter++;
-        this.label = new Label();
-    }
-
-    public Label getLabel() {
-        return label;
     }
 
     public Instruction getLast() {
@@ -59,19 +51,7 @@ public class BasicBlock extends User implements Iterable<Instruction> {
 
     @Override
     public String getName() {
-        return "b" + label.getId();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
-        if (!super.equals(o))
-            return false;
-        BasicBlock block = (BasicBlock) o;
-        return id == block.id && Objects.equals(label, block.label);
+        return "b" + id;
     }
 
     @Override

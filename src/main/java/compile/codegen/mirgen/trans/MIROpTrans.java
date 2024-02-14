@@ -20,7 +20,7 @@ public final class MIROpTrans {
     public static void transBranch(List<MIR> irs, Map<Instruction, VReg> instRegMap, BranchInst branchInst) {
         if (!branchInst.conditional()) {
             BasicBlock dest = branchInst.getOperand(0);
-            irs.add(new BMIR(null, null, null, dest.getLabel()));
+            irs.add(new BMIR(null, null, null, dest));
             return;
         }
         Value cond = branchInst.getOperand(0);
@@ -38,8 +38,8 @@ public final class MIROpTrans {
             }
             default -> throw new IllegalStateException("Unexpected value: " + cond);
         };
-        irs.add(new BMIR(BMIR.Op.NE, reg, MReg.ZERO, ifTrue.getLabel()));
-        irs.add(new BMIR(null, null, null, ifFalse.getLabel()));
+        irs.add(new BMIR(BMIR.Op.NE, reg, MReg.ZERO, ifTrue));
+        irs.add(new BMIR(null, null, null, ifFalse));
     }
 
     public static void transBinary(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryOperator binaryOperator) {

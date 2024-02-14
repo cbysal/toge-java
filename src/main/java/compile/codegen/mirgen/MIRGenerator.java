@@ -1,6 +1,5 @@
 package compile.codegen.mirgen;
 
-import compile.codegen.Label;
 import compile.codegen.MReg;
 import compile.codegen.VReg;
 import compile.codegen.mirgen.mir.*;
@@ -112,7 +111,7 @@ public class MIRGenerator {
         Pair<Integer, Map<AllocaInst, Integer>> locals = calcLocalOffsets(func.getBlocks().getFirst());
         Pair<Integer, Integer> callerNums = getCallerNumbers(func);
         MachineFunction mFunc = new MachineFunction(func, locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
-        LabelMIR retLabelMIR = new LabelMIR(new Label());
+        LabelMIR retLabelMIR = new LabelMIR(new BasicBlock());
         Map<VReg, MReg> replaceMap = new HashMap<>();
         Map<Instruction, VReg> instRegMap = new HashMap<>();
         for (BasicBlock block : func.getBlocks()) {
@@ -122,7 +121,7 @@ public class MIRGenerator {
         }
         Map<AllocaInst, Integer> localOffsets = locals.getRight();
         for (BasicBlock block : func.getBlocks()) {
-            mFunc.addIR(new LabelMIR(block.getLabel()));
+            mFunc.addIR(new LabelMIR(block));
             for (Instruction inst : block) {
                 if (inst instanceof BinaryOperator binaryOperator) {
                     MIROpTrans.transBinary(mFunc.getIrs(), instRegMap, binaryOperator);
@@ -329,7 +328,7 @@ public class MIRGenerator {
                             default -> throw new IllegalStateException("Unexpected value: " + retVal);
                         }
                     }
-                    mFunc.getIrs().add(new BMIR(null, null, null, retLabelMIR.label));
+                    mFunc.getIrs().add(new BMIR(null, null, null, retLabelMIR.getBlock()));
                     continue;
                 }
                 if (inst instanceof StoreInst storeInst) {

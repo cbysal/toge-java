@@ -1,12 +1,12 @@
 package compile.codegen.regalloc;
 
-import compile.codegen.Label;
 import compile.codegen.MReg;
 import compile.codegen.Reg;
 import compile.codegen.VReg;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.mirgen.mir.*;
 import compile.llvm.Argument;
+import compile.llvm.BasicBlock;
 import compile.llvm.type.BasicType;
 
 import java.util.*;
@@ -41,10 +41,10 @@ public class RegAllocatorForSingleFunc {
 
     private List<Block> calcBlocks() {
         List<MIR> irs = func.getIrs();
-        Map<Label, Integer> labelIdMap = new HashMap<>();
+        Map<BasicBlock, Integer> labelIdMap = new HashMap<>();
         for (int i = 0; i < irs.size(); i++)
             if (irs.get(i) instanceof LabelMIR labelMIR)
-                labelIdMap.put(labelMIR.label, i);
+                labelIdMap.put(labelMIR.getBlock(), i);
         Set<Integer> begins = new HashSet<>();
         begins.add(0);
         Map<Integer, Integer> jumpIdMap = new HashMap<>();
@@ -52,7 +52,7 @@ public class RegAllocatorForSingleFunc {
         for (int i = 0; i < irs.size(); i++) {
             if (irs.get(i) instanceof BMIR bMIR) {
                 begins.add(i + 1);
-                jumpIdMap.put(i, labelIdMap.get(bMIR.label));
+                jumpIdMap.put(i, labelIdMap.get(bMIR.block));
                 isBranchMap.put(i, bMIR.hasCond());
                 continue;
             }
