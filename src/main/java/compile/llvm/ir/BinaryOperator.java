@@ -1,30 +1,26 @@
 package compile.llvm.ir;
 
-import compile.llvm.type.BasicType;
+import common.ObjectUtils;
+import compile.llvm.type.Type;
 import compile.llvm.value.Value;
 
 public class BinaryOperator extends Instruction {
-    public final Type type;
-    public final Value left, right;
+    public final Op op;
 
-    public BinaryOperator(Type type, Value left, Value right) {
-        super(switch (type) {
-            case XOR -> BasicType.I1;
-            case ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM ->
-                    left.getType() == BasicType.FLOAT || right.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32;
-            case EQ, NE, GE, GT, LE, LT -> BasicType.I32;
-        });
-        this.type = type;
-        this.left = left;
-        this.right = right;
+    public BinaryOperator(Op op, Value operand1, Value operand2) {
+        super(ObjectUtils.checkEquality(operand1.getType(), operand2.getType()), operand1, operand2);
+        this.op = op;
     }
 
     @Override
     public String toString() {
-        return String.format("%s = %s %s %s, %s", getName(), type.toString().toLowerCase(), left.getType(), left.getName(), right.getName());
+        Value operand1 = getOperand(0);
+        Value operand2 = getOperand(1);
+        Type type = ObjectUtils.checkEquality(operand1.getType(), operand2.getType());
+        return String.format("%s = %s %s %s, %s", getName(), op.toString().toLowerCase(), type, operand1.getName(), operand2.getName());
     }
 
-    public enum Type {
-        ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM, XOR, EQ, NE, GE, GT, LE, LT
+    public enum Op {
+        ADD, FADD, SUB, FSUB, MUL, FMUL, SDIV, FDIV, SREM, XOR
     }
 }

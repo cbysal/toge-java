@@ -2,16 +2,21 @@ package compile.llvm;
 
 import compile.codegen.Label;
 import compile.llvm.ir.Instruction;
+import compile.llvm.type.BasicType;
+import compile.llvm.value.Use;
+import compile.llvm.value.User;
 
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Objects;
 
-public class BasicBlock extends ArrayList<Instruction> {
+public class BasicBlock extends User implements Iterable<Instruction> {
     private static int counter = 0;
     private final int id;
     private final Label label;
 
     public BasicBlock() {
+        super(BasicType.VOID);
         this.id = counter++;
         this.label = new Label();
     }
@@ -21,9 +26,40 @@ public class BasicBlock extends ArrayList<Instruction> {
     }
 
     public Instruction getLast() {
-        if (isEmpty())
+        if (operands.isEmpty())
             return null;
-        return get(size() - 1);
+        return getLastOperand();
+    }
+
+    public void add(Instruction inst) {
+        add(new Use(this, inst));
+    }
+
+    public void addAll(int index, Collection<? extends Instruction> newInsts) {
+        for (Instruction inst : newInsts)
+            add(index, new Use(this, inst));
+    }
+
+    @Override
+    public Iterator<Instruction> iterator() {
+        return new Iterator<>() {
+            private final Iterator<Use> useIterator = operands.iterator();
+
+            @Override
+            public boolean hasNext() {
+                return useIterator.hasNext();
+            }
+
+            @Override
+            public Instruction next() {
+                return (Instruction) useIterator.next().value();
+            }
+        };
+    }
+
+    @Override
+    public String getName() {
+        return "b" + label.getId();
     }
 
     @Override
@@ -45,6 +81,6 @@ public class BasicBlock extends ArrayList<Instruction> {
 
     @Override
     public String toString() {
-        return "b" + label.getId();
+        return getName();
     }
 }

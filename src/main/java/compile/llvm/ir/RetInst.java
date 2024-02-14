@@ -4,17 +4,19 @@ import compile.llvm.type.BasicType;
 import compile.llvm.value.Value;
 
 public class RetInst extends Instruction {
-    public final Value retVal;
+    public RetInst() {
+        super(BasicType.VOID);
+    }
 
     public RetInst(Value retVal) {
-        super(BasicType.VOID);
-        this.retVal = retVal;
+        super(BasicType.VOID, retVal);
     }
 
     @Override
     public String toString() {
-        if (retVal == null)
+        if (isEmpty())
             return "ret void";
+        Value retVal = getOperand(0);
         return String.format("ret %s %s", retVal.getType(), retVal.getName());
     }
 }

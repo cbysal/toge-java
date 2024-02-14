@@ -3,20 +3,14 @@ package compile.llvm.ir;
 import compile.llvm.GlobalVariable;
 import compile.llvm.type.PointerType;
 import compile.llvm.type.Type;
+import compile.llvm.value.Use;
 import compile.llvm.value.Value;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 public class GetElementPtrInst extends Instruction {
-    private final Value pointer;
-    private final List<Value> indexes;
-
     public GetElementPtrInst(Value pointer, Value... indexes) {
-        super(calcType(pointer, indexes.length));
-        this.pointer = pointer;
-        this.indexes = new ArrayList<>(Arrays.asList(indexes));
+        super(calcType(pointer, indexes.length), pointer);
+        for (Value index : indexes)
+            add(new Use(this, index));
     }
 
     private static Type calcType(Value value, int indexSize) {
@@ -28,16 +22,9 @@ public class GetElementPtrInst extends Instruction {
         return new PointerType(type);
     }
 
-    public Value getPointer() {
-        return pointer;
-    }
-
-    public List<Value> getIndexes() {
-        return indexes;
-    }
-
     @Override
     public String toString() {
+        Value pointer = getOperand(0);
         StringBuilder builder = new StringBuilder();
         builder.append(String.format("%s = getelementptr %s, %s %s", getName(), switch (pointer) {
             case GlobalVariable global -> pointer.getType();
@@ -46,8 +33,10 @@ public class GetElementPtrInst extends Instruction {
             case GlobalVariable global -> new PointerType(pointer.getType());
             default -> pointer.getType();
         }, pointer.getName()));
-        for (Value index : indexes)
-            builder.append(", ").append(index.getType()).append(" ").append(index.getName());
+        for (int i = 1; i < size(); i++) {
+            Value operand = getOperand(i);
+            builder.append(", ").append(operand.getType()).append(" ").append(operand.getName());
+        }
         return builder.toString();
     }
 }

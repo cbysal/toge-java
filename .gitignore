@@ -40,7 +40,6 @@ testcase
 *.s
 *.token
 *.ll
-*.vir
 *.mir
 *.sy
 *.in

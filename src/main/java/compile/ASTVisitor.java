@@ -34,7 +34,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
     private boolean isConst;
     private Type curType;
     private BasicBlock retBlock, curBlock, trueBlock, falseBlock;
-    private List<AllocaInst> allocaVIRs;
+    private List<AllocaInst> allocaInsts;
 
     public ASTVisitor(SysYParser.RootContext rootAST) {
         this.rootAST = rootAST;
@@ -48,7 +48,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             return;
         isProcessed = true;
         visitRoot(rootAST);
-        formatVIRs();
+        formatLLVM();
     }
 
     public Map<String, Function> getFuncs() {
@@ -61,7 +61,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         return globals;
     }
 
-    private void formatVIRs() {
+    private void formatLLVM() {
         for (Function func : funcs.values()) {
             if (func.isDeclare())
                 continue;
@@ -137,7 +137,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             return null;
         }
         AllocaInst allocaInst = symbolTable.makeLocal(curType, name);
-        allocaVIRs.add(allocaInst);
+        allocaInsts.add(allocaInst);
         SysYParser.AdditiveExpContext valueExp = ctx.additiveExp();
         if (valueExp != null) {
             Value value = visitAdditiveExp(valueExp);
@@ -162,7 +162,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             return null;
         }
         AllocaInst allocaInst = symbolTable.makeLocal(curType, name, dimensions);
-        allocaVIRs.add(allocaInst);
+        allocaInsts.add(allocaInst);
         if (initVal != null) {
             SortedMap<Integer, SysYParser.AdditiveExpContext> exps = new TreeMap<>();
             allocInitVal(dimensions, exps, 0, initVal);
@@ -190,12 +190,12 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         Type funcType = visitType(ctx.type());
         curFunc = symbolTable.makeFunc(funcType, ctx.Ident().getSymbol().getText());
         symbolTable.in();
-        allocaVIRs = new ArrayList<>();
+        allocaInsts = new ArrayList<>();
         retBlock = new BasicBlock();
         switch (curFunc.getType()) {
             case BasicType.I32, BasicType.FLOAT -> {
                 AllocaInst allocaInst = new AllocaInst(curFunc.getType());
-                allocaVIRs.add(allocaInst);
+                allocaInsts.add(allocaInst);
                 curRetVal = allocaInst;
                 Instruction loadInst = new LoadInst(curRetVal);
                 retBlock.add(loadInst);
@@ -203,7 +203,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             }
             case BasicType.VOID -> {
                 curRetVal = null;
-                retBlock.add(new RetInst(null));
+                retBlock.add(new RetInst());
             }
             default -> throw new IllegalStateException("Unexpected value: " + curFunc.getType());
         }
@@ -213,13 +213,13 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Argument arg = visitFuncArg(argCtx);
             curFunc.addArg(arg);
             AllocaInst allocaInst = symbolTable.makeLocal(arg.getType(), arg.getName());
-            allocaVIRs.add(allocaInst);
+            allocaInsts.add(allocaInst);
             curBlock.add(new StoreInst(arg, allocaInst));
             argToAllocaMap.put(arg, allocaInst);
         }
         visitBlockStmt(ctx.blockStmt());
         curFunc.addBlock(retBlock);
-        curFunc.getBlocks().getFirst().addAll(0, allocaVIRs);
+        curFunc.getBlocks().getFirst().addAll(0, allocaInsts);
         funcs.put(curFunc.getName(), curFunc);
         symbolTable.out();
         return null;
@@ -402,9 +402,10 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                     case "-" -> {
                         Instruction inst = switch (value.getType()) {
                             case BasicType.I1 -> new SExtInst(BasicType.I32, value);
-                            case BasicType.I32 -> new BinaryOperator(BinaryOperator.Type.SUB, new ConstantNumber(0), value);
+                            case BasicType.I32 ->
+                                    new BinaryOperator(BinaryOperator.Op.SUB, new ConstantNumber(0), value);
                             case BasicType.FLOAT ->
-                                    new BinaryOperator(BinaryOperator.Type.FSUB, new ConstantNumber(0.0f), value);
+                                    new BinaryOperator(BinaryOperator.Op.FSUB, new ConstantNumber(0.0f), value);
                             default -> throw new IllegalStateException("Unexpected value: " + value.getType());
                         };
                         curBlock.add(inst);
@@ -412,7 +413,8 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                     }
                     case "!" -> {
                         Instruction inst = switch (value.getType()) {
-                            case BasicType.I1 -> new BinaryOperator(BinaryOperator.Type.XOR, value, new ConstantNumber(true));
+                            case BasicType.I1 ->
+                                    new BinaryOperator(BinaryOperator.Op.XOR, value, new ConstantNumber(true));
                             case BasicType.I32 -> new ICmpInst(ICmpInst.Cond.EQ, value, new ConstantNumber(0));
                             case BasicType.FLOAT -> new FCmpInst(FCmpInst.Cond.OEQ, value, new ConstantNumber(0.0f));
                             default -> throw new IllegalStateException("Unexpected value: " + value.getType());
@@ -639,13 +641,13 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             }
             Instruction inst = new BinaryOperator(switch (ctx.getChild(i * 2 - 1).getText()) {
                 case "+" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryOperator.Type.ADD;
-                    case BasicType.FLOAT -> BinaryOperator.Type.FADD;
+                    case BasicType.I32 -> BinaryOperator.Op.ADD;
+                    case BasicType.FLOAT -> BinaryOperator.Op.FADD;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case "-" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryOperator.Type.SUB;
-                    case BasicType.FLOAT -> BinaryOperator.Type.FSUB;
+                    case BasicType.I32 -> BinaryOperator.Op.SUB;
+                    case BasicType.FLOAT -> BinaryOperator.Op.FSUB;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
@@ -676,16 +678,16 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             }
             Instruction inst = new BinaryOperator(switch (ctx.getChild(i * 2 - 1).getText()) {
                 case "*" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryOperator.Type.MUL;
-                    case BasicType.FLOAT -> BinaryOperator.Type.FMUL;
+                    case BasicType.I32 -> BinaryOperator.Op.MUL;
+                    case BasicType.FLOAT -> BinaryOperator.Op.FMUL;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
                 case "/" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryOperator.Type.SDIV;
-                    case BasicType.FLOAT -> BinaryOperator.Type.FDIV;
+                    case BasicType.I32 -> BinaryOperator.Op.SDIV;
+                    case BasicType.FLOAT -> BinaryOperator.Op.FDIV;
                     default -> throw new IllegalStateException("Unexpected value: " + targetType);
                 };
-                case "%" -> BinaryOperator.Type.SREM;
+                case "%" -> BinaryOperator.Op.SREM;
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
             }, iterVal, nextVal);
             curBlock.add(inst);

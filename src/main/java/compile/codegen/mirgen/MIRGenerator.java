@@ -35,7 +35,7 @@ public class MIRGenerator {
         if (isProcessed)
             return;
         isProcessed = true;
-        vir2Mir();
+        llvm2Mir();
     }
 
     private Pair<Integer, Integer> getCallerNumbers(Function func) {
@@ -101,13 +101,13 @@ public class MIRGenerator {
         return argOffsets;
     }
 
-    private void vir2Mir() {
+    private void llvm2Mir() {
         for (Map.Entry<String, Function> func : func.entrySet())
             if (!func.getValue().getBlocks().isEmpty())
-                mFuncs.put(func.getKey(), vir2MirSingle(func.getValue()));
+                mFuncs.put(func.getKey(), llvm2MirSingle(func.getValue()));
     }
 
-    private MachineFunction vir2MirSingle(Function func) {
+    private MachineFunction llvm2MirSingle(Function func) {
         Map<Argument, Pair<Boolean, Integer>> argOffsets = calcArgOffsets(func.getArgs());
         Pair<Integer, Map<AllocaInst, Integer>> locals = calcLocalOffsets(func.getBlocks().getFirst());
         Pair<Integer, Integer> callerNums = getCallerNumbers(func);
@@ -138,7 +138,7 @@ public class MIRGenerator {
                     continue;
                 }
                 if (inst instanceof GetElementPtrInst getElementPtrInst) {
-                    Value pointer = getElementPtrInst.getPointer();
+                    Value pointer = getElementPtrInst.getOperand(0);
                     if (pointer instanceof GlobalVariable global) {
                         VReg midReg1 = new VReg(BasicType.I32);
                         VReg midReg2 = new VReg(BasicType.I32);
@@ -146,7 +146,7 @@ public class MIRGenerator {
                         VReg midReg4 = new VReg(BasicType.I32);
                         mFunc.getIrs().add(new LlaMIR(midReg1, global));
                         mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrInst.getType().baseType().getSize() / 8));
-                        switch (getElementPtrInst.getIndexes().getLast()) {
+                        switch (getElementPtrInst.getLastOperand()) {
                             case Instruction indexInst ->
                                     mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, instRegMap.get(indexInst)));
                             case ConstantNumber value -> {
@@ -158,7 +158,7 @@ public class MIRGenerator {
                                     mFunc.getIrs().add(new LiMIR(midReg3, value.intValue()));
                             }
                             default ->
-                                    throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getIndexes().getFirst());
+                                    throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getLastOperand());
                         }
                         mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
                         mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, instRegMap.get(getElementPtrInst), midReg1, midReg4));
@@ -172,7 +172,7 @@ public class MIRGenerator {
                         VReg midReg4 = new VReg(BasicType.I32);
                         mFunc.getIrs().add(new LoadItemMIR(innerOffset.getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1, innerOffset.getRight()));
                         mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrInst.getType().baseType().getSize() / 8));
-                        switch (getElementPtrInst.getIndexes().getLast()) {
+                        switch (getElementPtrInst.getLastOperand()) {
                             case Instruction indexInst ->
                                     mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, instRegMap.get(indexInst)));
                             case ConstantNumber value -> {
@@ -184,19 +184,19 @@ public class MIRGenerator {
                                     mFunc.getIrs().add(new LiMIR(midReg3, value.intValue()));
                             }
                             default ->
-                                    throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getIndexes().getLast());
+                                    throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getLastOperand());
                         }
                         mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
                         mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.ADD, instRegMap.get(getElementPtrInst), midReg1, midReg4));
                     }
                     if (pointer instanceof AllocaInst allocaInst) {
-                        if (getElementPtrInst.getIndexes().size() == 2) {
+                        if (getElementPtrInst.size() == 3) {
                             VReg midReg1 = new VReg(BasicType.I32);
                             VReg midReg2 = new VReg(BasicType.I32);
                             VReg midReg3 = new VReg(BasicType.I32);
                             VReg midReg4 = new VReg(BasicType.I32);
                             mFunc.getIrs().add(new AddRegLocalMIR(midReg1, localOffsets.get(allocaInst)));
-                            switch (getElementPtrInst.getIndexes().getLast()) {
+                            switch (getElementPtrInst.getLastOperand()) {
                                 case Instruction indexInst ->
                                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, instRegMap.get(indexInst)));
                                 case ConstantNumber value -> {
@@ -208,7 +208,7 @@ public class MIRGenerator {
                                         mFunc.getIrs().add(new LiMIR(midReg2, value.intValue()));
                                 }
                                 default ->
-                                        throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getIndexes().getLast());
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getLastOperand());
                             }
                             mFunc.getIrs().add(new LiMIR(midReg3, pointer.getType().baseType().baseType().getSize() / 8));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
@@ -219,7 +219,7 @@ public class MIRGenerator {
                             VReg midReg3 = new VReg(BasicType.I32);
                             VReg midReg4 = new VReg(BasicType.I32);
                             mFunc.getIrs().add(new AddRegLocalMIR(midReg1, localOffsets.get(allocaInst)));
-                            switch (getElementPtrInst.getIndexes().getLast()) {
+                            switch (getElementPtrInst.getLastOperand()) {
                                 case Instruction indexInst ->
                                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, instRegMap.get(indexInst)));
                                 case ConstantNumber value -> {
@@ -231,7 +231,7 @@ public class MIRGenerator {
                                         mFunc.getIrs().add(new LiMIR(midReg2, value.intValue()));
                                 }
                                 default ->
-                                        throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getIndexes().getLast());
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getLastOperand());
                             }
                             mFunc.getIrs().add(new LiMIR(midReg3, pointer.getType().baseType().getSize() / 8));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg4, midReg2, midReg3));
@@ -240,11 +240,11 @@ public class MIRGenerator {
                         continue;
                     }
                     if (pointer instanceof Instruction pointerInst) {
-                        if (getElementPtrInst.getIndexes().size() == 2) {
+                        if (getElementPtrInst.size() == 3) {
                             VReg midReg1 = new VReg(BasicType.I32);
                             VReg midReg2 = new VReg(BasicType.I32);
                             VReg midReg3 = new VReg(BasicType.I32);
-                            switch (getElementPtrInst.getIndexes().getLast()) {
+                            switch (getElementPtrInst.getLastOperand()) {
                                 case Instruction indexInst ->
                                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, instRegMap.get(indexInst)));
                                 case ConstantNumber value -> {
@@ -256,7 +256,7 @@ public class MIRGenerator {
                                         mFunc.getIrs().add(new LiMIR(midReg1, value.intValue()));
                                 }
                                 default ->
-                                        throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getIndexes().getLast());
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getLastOperand());
                             }
                             mFunc.getIrs().add(new LiMIR(midReg2, pointer.getType().baseType().baseType().getSize() / 8));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg3, midReg1, midReg2));
@@ -265,7 +265,7 @@ public class MIRGenerator {
                             VReg midReg1 = new VReg(BasicType.I32);
                             VReg midReg2 = new VReg(BasicType.I32);
                             VReg midReg3 = new VReg(BasicType.I32);
-                            switch (getElementPtrInst.getIndexes().getLast()) {
+                            switch (getElementPtrInst.getLastOperand()) {
                                 case Instruction indexInst ->
                                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, instRegMap.get(indexInst)));
                                 case ConstantNumber value -> {
@@ -277,7 +277,7 @@ public class MIRGenerator {
                                         mFunc.getIrs().add(new LiMIR(midReg1, value.intValue()));
                                 }
                                 default ->
-                                        throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getIndexes().getLast());
+                                        throw new IllegalStateException("Unexpected value: " + getElementPtrInst.getLastOperand());
                             }
                             mFunc.getIrs().add(new LiMIR(midReg2, pointer.getType().baseType().getSize() / 8));
                             mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.MUL, midReg3, midReg1, midReg2));
@@ -287,7 +287,7 @@ public class MIRGenerator {
                     continue;
                 }
                 if (inst instanceof LoadInst loadInst) {
-                    Value pointer = loadInst.pointer;
+                    Value pointer = loadInst.getOperand(0);
                     if (pointer instanceof GlobalVariable global) {
                         VReg midReg = new VReg(BasicType.I32);
                         mFunc.getIrs().add(new LlaMIR(midReg, global));
@@ -310,30 +310,31 @@ public class MIRGenerator {
                     continue;
                 }
                 if (inst instanceof RetInst retInst) {
-                    switch (retInst.retVal) {
-                        case Instruction valueInst ->
-                                mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retInst.retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, instRegMap.get(valueInst)));
-                        case ConstantNumber value -> {
-                            switch (value.getType()) {
-                                case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
-                                case BasicType.FLOAT -> {
-                                    VReg midReg = new VReg(BasicType.I32);
-                                    mFunc.getIrs().add(new LiMIR(midReg, Float.floatToIntBits(value.floatValue())));
-                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, MReg.FA0, midReg));
+                    if (!retInst.isEmpty()) {
+                        Value retVal = retInst.getOperand(0);
+                        switch (retVal) {
+                            case Instruction valueInst ->
+                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, instRegMap.get(valueInst)));
+                            case ConstantNumber value -> {
+                                switch (value.getType()) {
+                                    case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(MReg.A0, value.intValue()));
+                                    case BasicType.FLOAT -> {
+                                        VReg midReg = new VReg(BasicType.I32);
+                                        mFunc.getIrs().add(new LiMIR(midReg, Float.floatToIntBits(value.floatValue())));
+                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, MReg.FA0, midReg));
+                                    }
+                                    default -> throw new IllegalStateException("Unexpected value: " + value.getType());
                                 }
-                                default -> throw new IllegalStateException("Unexpected value: " + value.getType());
                             }
+                            default -> throw new IllegalStateException("Unexpected value: " + retVal);
                         }
-                        case null -> {
-                        }
-                        default -> throw new IllegalStateException("Unexpected value: " + retInst.retVal);
                     }
                     mFunc.getIrs().add(new BMIR(null, null, null, retLabelMIR.label));
                     continue;
                 }
                 if (inst instanceof StoreInst storeInst) {
-                    Value value = storeInst.value;
-                    Value pointer = storeInst.pointer;
+                    Value value = storeInst.getOperand(0);
+                    Value pointer = storeInst.getOperand(1);
                     if (pointer instanceof GlobalVariable global) {
                         VReg midReg1 = new VReg(BasicType.I32);
                         VReg midReg2 = new VReg(BasicType.I32);
@@ -419,8 +420,9 @@ public class MIRGenerator {
                     continue;
                 }
                 if (inst instanceof BitCastInst bitCastInst) {
-                    VReg srcReg = instRegMap.get(bitCastInst.getValue());
-                    if (bitCastInst.getValue() instanceof AllocaInst allocaInst) {
+                    Instruction operand = bitCastInst.getOperand(0);
+                    VReg srcReg = instRegMap.get(operand);
+                    if (operand instanceof AllocaInst allocaInst) {
                         srcReg = new VReg(BasicType.I32);
                         mFunc.getIrs().add(new AddRegLocalMIR(srcReg, localOffsets.get(allocaInst)));
                     }
@@ -429,53 +431,53 @@ public class MIRGenerator {
                 }
                 if (inst instanceof ICmpInst iCmpInst) {
                     VReg target = instRegMap.get(iCmpInst);
-                    VReg source1 = switch (iCmpInst.getOp1()) {
+                    VReg operand1 = switch (iCmpInst.getOperand(0)) {
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
                             mFunc.getIrs().add(new LiMIR(midReg, value.intValue()));
                             yield midReg;
                         }
-                        default -> throw new IllegalStateException("Unexpected value: " + iCmpInst.getOp1());
+                        default -> throw new IllegalStateException("Unexpected value: " + iCmpInst.getOperand(0));
                     };
-                    VReg source2 = switch (iCmpInst.getOp2()) {
+                    VReg operand2 = switch (iCmpInst.getOperand(1)) {
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
                             mFunc.getIrs().add(new LiMIR(midReg, value.intValue()));
                             yield midReg;
                         }
-                        default -> throw new IllegalStateException("Unexpected value: " + iCmpInst.getOp2());
+                        default -> throw new IllegalStateException("Unexpected value: " + iCmpInst.getOperand(1));
                     };
                     switch (iCmpInst.getCond()) {
                         case EQ -> {
                             VReg midReg = new VReg(BasicType.I32);
-                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SUB, midReg, operand1, operand2));
                             mFunc.getIrs().add(new RrMIR(RrMIR.Op.SEQZ, target, midReg));
                         }
                         case NE -> {
                             VReg midReg = new VReg(BasicType.I32);
-                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SUB, midReg, source1, source2));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SUB, midReg, operand1, operand2));
                             mFunc.getIrs().add(new RrMIR(RrMIR.Op.SNEZ, target, midReg));
                         }
                         case SGE -> {
                             VReg midReg = new VReg(BasicType.I32);
-                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SLT, midReg, source1, source2));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SLT, midReg, operand1, operand2));
                             mFunc.getIrs().add(new RriMIR(RriMIR.Op.XORI, target, midReg, 1));
                         }
-                        case SGT -> mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SGT, target, source1, source2));
+                        case SGT -> mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SGT, target, operand1, operand2));
                         case SLE -> {
                             VReg midReg = new VReg(BasicType.I32);
-                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SGT, midReg, source1, source2));
+                            mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SGT, midReg, operand1, operand2));
                             mFunc.getIrs().add(new RriMIR(RriMIR.Op.XORI, target, midReg, 1));
                         }
-                        case SLT -> mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SLT, target, source1, source2));
+                        case SLT -> mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.SLT, target, operand1, operand2));
                     }
                     continue;
                 }
                 if (inst instanceof FCmpInst fCmpInst) {
                     VReg target = instRegMap.get(fCmpInst);
-                    VReg source1 = switch (fCmpInst.getOp1()) {
+                    VReg operand1 = switch (fCmpInst.getOperand(0)) {
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg1 = new VReg(BasicType.I32);
@@ -484,9 +486,9 @@ public class MIRGenerator {
                             mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, midReg1));
                             yield midReg2;
                         }
-                        default -> throw new IllegalStateException("Unexpected value: " + fCmpInst.getOp1());
+                        default -> throw new IllegalStateException("Unexpected value: " + fCmpInst.getOperand(0));
                     };
-                    VReg source2 = switch (fCmpInst.getOp2()) {
+                    VReg operand2 = switch (fCmpInst.getOperand(1)) {
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg1 = new VReg(BasicType.I32);
@@ -495,10 +497,10 @@ public class MIRGenerator {
                             mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, midReg1));
                             yield midReg2;
                         }
-                        default -> throw new IllegalStateException("Unexpected value: " + fCmpInst.getOp2());
+                        default -> throw new IllegalStateException("Unexpected value: " + fCmpInst.getOperand(1));
                     };
                     if (fCmpInst.getCond() == FCmpInst.Cond.UNE) {
-                        mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.EQ, target, source1, source2));
+                        mFunc.getIrs().add(new RrrMIR(RrrMIR.Op.EQ, target, operand1, operand2));
                         mFunc.getIrs().add(new RriMIR(RriMIR.Op.XORI, target, target, 1));
                         continue;
                     }
@@ -509,37 +511,37 @@ public class MIRGenerator {
                         case OLE -> RrrMIR.Op.LE;
                         case OLT -> RrrMIR.Op.LT;
                         default -> throw new IllegalStateException("Unexpected value: " + fCmpInst.getCond());
-                    }, target, source1, source2));
+                    }, target, operand1, operand2));
                     continue;
                 }
                 if (inst instanceof ZExtInst zExtInst) {
-                    VReg srcReg = switch (zExtInst.getValue()) {
+                    VReg operand = switch (zExtInst.getOperand(0)) {
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
                             mFunc.getIrs().add(new LiMIR(midReg, value.intValue()));
                             yield midReg;
                         }
-                        default -> throw new IllegalStateException("Unexpected value: " + zExtInst.getValue());
+                        default -> throw new IllegalStateException("Unexpected value: " + zExtInst.getOperand(0));
                     };
-                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, instRegMap.get(zExtInst), srcReg));
+                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, instRegMap.get(zExtInst), operand));
                     continue;
                 }
                 if (inst instanceof SExtInst sExtInst) {
-                    VReg srcReg = switch (sExtInst.getValue()) {
+                    VReg operand = switch (sExtInst.getOperand(0)) {
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
                             mFunc.getIrs().add(new LiMIR(midReg, value.intValue()));
                             yield midReg;
                         }
-                        default -> throw new IllegalStateException("Unexpected value: " + sExtInst.getValue());
+                        default -> throw new IllegalStateException("Unexpected value: " + sExtInst.getOperand(0));
                     };
-                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.NEG, instRegMap.get(sExtInst), srcReg));
+                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.NEG, instRegMap.get(sExtInst), operand));
                     continue;
                 }
                 if (inst instanceof FPToSIInst fpToSIInst) {
-                    VReg srcReg = switch (fpToSIInst.getValue()) {
+                    VReg operand = switch (fpToSIInst.getOperand(0)) {
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg1 = new VReg(BasicType.I32);
@@ -548,22 +550,22 @@ public class MIRGenerator {
                             mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, midReg1));
                             yield midReg2;
                         }
-                        default -> throw new IllegalStateException("Unexpected value: " + fpToSIInst.getValue());
+                        default -> throw new IllegalStateException("Unexpected value: " + fpToSIInst.getOperand(0));
                     };
-                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.CVT, instRegMap.get(fpToSIInst), srcReg));
+                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.CVT, instRegMap.get(fpToSIInst), operand));
                     continue;
                 }
                 if (inst instanceof SIToFPInst siToFPInst) {
-                    VReg srcReg = switch (siToFPInst.getValue()) {
+                    VReg operand = switch (siToFPInst.getOperand(0)) {
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
                             mFunc.getIrs().add(new LiMIR(midReg, value.intValue()));
                             yield midReg;
                         }
-                        default -> throw new IllegalStateException("Unexpected value: " + siToFPInst.getValue());
+                        default -> throw new IllegalStateException("Unexpected value: " + siToFPInst.getOperand(0));
                     };
-                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.CVT, instRegMap.get(siToFPInst), srcReg));
+                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.CVT, instRegMap.get(siToFPInst), operand));
                     continue;
                 }
                 throw new IllegalStateException("Unexpected value: " + inst);

@@ -2,12 +2,12 @@ package compile.llvm.value;
 
 import compile.llvm.type.Type;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 public abstract class Value {
     protected final Type type;
-    private final List<Use> useList = new ArrayList<>();
+    private final Set<Use> uses = new HashSet<>();
 
     public Value(Type type) {
         this.type = type;
@@ -23,7 +23,11 @@ public abstract class Value {
         return type.getSize();
     }
 
-    public List<Use> getUseList() {
-        return useList;
+    public void addUse(Use use) {
+        uses.add(use);
+    }
+
+    public Set<Use> getUses() {
+        return uses;
     }
 }
