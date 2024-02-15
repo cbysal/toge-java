@@ -4,30 +4,23 @@ import compile.codegen.MReg;
 import compile.codegen.VReg;
 import compile.codegen.mirgen.mir.*;
 import compile.codegen.mirgen.trans.MIROpTrans;
-import compile.llvm.Argument;
-import compile.llvm.BasicBlock;
-import compile.llvm.Function;
-import compile.llvm.GlobalVariable;
+import compile.llvm.Module;
+import compile.llvm.*;
 import compile.llvm.contant.ConstantNumber;
 import compile.llvm.ir.*;
 import compile.llvm.type.BasicType;
 import compile.llvm.value.Value;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class MIRGenerator {
-    private final Set<GlobalVariable> globals;
-    private final Map<String, Function> func;
+    private final Module module;
     private final Map<String, MachineFunction> mFuncs = new HashMap<>();
     private boolean isProcessed = false;
 
-    public MIRGenerator(Set<GlobalVariable> globals, Map<String, Function> func) {
-        this.globals = globals;
-        this.func = func;
+    public MIRGenerator(Module module) {
+        this.module = module;
     }
 
     private void checkIfIsProcessed() {
@@ -54,7 +47,7 @@ public class MIRGenerator {
 
     public Set<GlobalVariable> getGlobals() {
         checkIfIsProcessed();
-        return globals;
+        return new HashSet<>(module.getGlobals());
     }
 
     private Pair<Integer, Map<AllocaInst, Integer>> calcLocalOffsets(BasicBlock block) {
@@ -101,9 +94,9 @@ public class MIRGenerator {
     }
 
     private void llvm2Mir() {
-        for (Map.Entry<String, Function> func : func.entrySet())
-            if (!func.getValue().getBlocks().isEmpty())
-                mFuncs.put(func.getKey(), llvm2MirSingle(func.getValue()));
+        for (Function func : module.getFunctions())
+            if (!func.isDeclare())
+                mFuncs.put(func.getName(), llvm2MirSingle(func));
     }
 
     private MachineFunction llvm2MirSingle(Function func) {

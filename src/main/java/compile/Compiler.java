@@ -4,8 +4,8 @@ import compile.codegen.CodeGenerator;
 import compile.codegen.mirgen.MIRGenerator;
 import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.regalloc.RegAllocator;
-import compile.llvm.Function;
 import compile.llvm.GlobalVariable;
+import compile.llvm.Module;
 import compile.sysy.SysYLexer;
 import compile.sysy.SysYParser;
 import execute.Executor;
@@ -37,14 +37,13 @@ public class Compiler {
         SysYParser parser = new SysYParser(commonTokenStream);
         SysYParser.RootContext rootContext = parser.root();
         ASTVisitor astVisitor = new ASTVisitor(rootContext);
-        Set<GlobalVariable> globals = astVisitor.getGlobals();
-        Map<String, Function> funcs = astVisitor.getFuncs();
+        Module module = astVisitor.getModule();
         if (options.containsKey("emit-llvm"))
-            emitLLVM(options.get("emit-llvm"), globals, funcs);
+            emitLLVM(options.get("emit-llvm"), module);
         if (options.containsKey("emit-opt-llvm"))
-            emitLLVM(options.get("emit-opt-llvm"), globals, funcs);
-        MIRGenerator mirGenerator = new MIRGenerator(globals, funcs);
-        globals = mirGenerator.getGlobals();
+            emitLLVM(options.get("emit-opt-llvm"), module);
+        MIRGenerator mirGenerator = new MIRGenerator(module);
+        Set<GlobalVariable> globals = mirGenerator.getGlobals();
         Map<String, MachineFunction> mFuncs = mirGenerator.getFuncs();
         if (options.containsKey("emit-mir"))
             emitMIR(options.get("emit-mir"), mFuncs);
@@ -61,22 +60,27 @@ public class Compiler {
         }
     }
 
-    private void emitLLVM(String filePath, Set<GlobalVariable> globals, Map<String, Function> funcs) {
+    private void emitLLVM(String filePath, Module module) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-            for (GlobalVariable global : globals) {
+            for (GlobalVariable global : module.getGlobals()) {
                 writer.write(global.toString());
                 writer.newLine();
             }
-            if (!globals.isEmpty()) {
+            if (module.hasGlobal()) {
                 writer.newLine();
             }
-            for (Function func : funcs.values().stream().filter(func -> !func.getBlocks().isEmpty()).toList()) {
-                writer.write(func.toString());
-                writer.newLine();
-            }
-            for (Function func : funcs.values().stream().filter(func -> func.getBlocks().isEmpty()).toList()) {
-                writer.write(func.toString());
-            }
+            module.getFunctions().stream().sorted((func1, func2) -> {
+                if (func1.isDeclare() != func2.isDeclare())
+                    return Boolean.compare(func1.isDeclare(), func2.isDeclare());
+                return func1.getName().compareTo(func2.getName());
+            }).forEach(func -> {
+                try {
+                    writer.write(func.toString());
+                    writer.newLine();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

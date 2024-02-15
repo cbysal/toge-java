@@ -1,9 +1,7 @@
 package compile;
 
-import compile.llvm.Argument;
-import compile.llvm.BasicBlock;
-import compile.llvm.Function;
-import compile.llvm.GlobalVariable;
+import compile.llvm.Module;
+import compile.llvm.*;
 import compile.llvm.contant.Constant;
 import compile.llvm.contant.ConstantArray;
 import compile.llvm.contant.ConstantNumber;
@@ -22,8 +20,7 @@ import java.util.stream.Collectors;
 
 public class ASTVisitor extends SysYBaseVisitor<Object> {
     private final SysYParser.RootContext rootAST;
-    private final Set<GlobalVariable> globals = new HashSet<>();
-    private final Map<String, Function> funcs = new HashMap<>();
+    private final Module module = new Module();
     private final SymbolTable symbolTable = new SymbolTable();
     private final Map<Argument, AllocaInst> argToAllocaMap = new HashMap<>();
     private final Deque<BasicBlock> continueStack = new ArrayDeque<>();
@@ -51,18 +48,13 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         formatLLVM();
     }
 
-    public Map<String, Function> getFuncs() {
+    public Module getModule() {
         checkIfIsProcessed();
-        return funcs;
-    }
-
-    public Set<GlobalVariable> getGlobals() {
-        checkIfIsProcessed();
-        return globals;
+        return module;
     }
 
     private void formatLLVM() {
-        for (Function func : funcs.values()) {
+        for (Function func : module.getFunctions()) {
             if (func.isDeclare())
                 continue;
             List<BasicBlock> blocks = func.getBlocks();
@@ -76,27 +68,26 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
     }
 
     private void initBuiltInFuncs() {
-        funcs.put("getint", symbolTable.makeFunc(BasicType.I32, "getint"));
-        funcs.put("getch", symbolTable.makeFunc(BasicType.I32, "getch"));
-        funcs.put("getarray", symbolTable.makeFunc(BasicType.I32, "getarray").addArg(new Argument(new PointerType(BasicType.I32), "a")));
-        funcs.put("getfloat", symbolTable.makeFunc(BasicType.FLOAT, "getfloat"));
-        funcs.put("getfarray", symbolTable.makeFunc(BasicType.I32, "getfarray").addArg(new Argument(new PointerType(BasicType.FLOAT), "a")));
-        funcs.put("putint", symbolTable.makeFunc(BasicType.VOID, "putint").addArg(new Argument(BasicType.I32, "a")));
-        funcs.put("putch", symbolTable.makeFunc(BasicType.VOID, "putch").addArg(new Argument(BasicType.I32, "a")));
-        funcs.put("putarray", symbolTable.makeFunc(BasicType.VOID, "putarray").addArg(new Argument(BasicType.I32, "n")).addArg(new Argument(new PointerType(BasicType.I32), "a")));
-        funcs.put("putfloat", symbolTable.makeFunc(BasicType.VOID, "putfloat").addArg(new Argument(BasicType.FLOAT, "a")));
-        funcs.put("putfarray", symbolTable.makeFunc(BasicType.VOID, "putfarray").addArg(new Argument(BasicType.I32, "n")).addArg(new Argument(new PointerType(BasicType.FLOAT), "a")));
-        funcs.put("_sysy_starttime", symbolTable.makeFunc(BasicType.VOID, "_sysy_starttime").addArg(new Argument(BasicType.I32, "lineno")));
-        funcs.put("_sysy_stoptime", symbolTable.makeFunc(BasicType.VOID, "_sysy_stoptime").addArg(new Argument(BasicType.I32, "lineno")));
+        module.addFunction(symbolTable.makeFunc(BasicType.I32, "getint"));
+        module.addFunction(symbolTable.makeFunc(BasicType.I32, "getch"));
+        module.addFunction(symbolTable.makeFunc(BasicType.I32, "getarray").addArg(new Argument(new PointerType(BasicType.I32), "a")));
+        module.addFunction(symbolTable.makeFunc(BasicType.FLOAT, "getfloat"));
+        module.addFunction(symbolTable.makeFunc(BasicType.I32, "getfarray").addArg(new Argument(new PointerType(BasicType.FLOAT), "a")));
+        module.addFunction(symbolTable.makeFunc(BasicType.VOID, "putint").addArg(new Argument(BasicType.I32, "a")));
+        module.addFunction(symbolTable.makeFunc(BasicType.VOID, "putch").addArg(new Argument(BasicType.I32, "a")));
+        module.addFunction(symbolTable.makeFunc(BasicType.VOID, "putarray").addArg(new Argument(BasicType.I32, "n")).addArg(new Argument(new PointerType(BasicType.I32), "a")));
+        module.addFunction(symbolTable.makeFunc(BasicType.VOID, "putfloat").addArg(new Argument(BasicType.FLOAT, "a")));
+        module.addFunction(symbolTable.makeFunc(BasicType.VOID, "putfarray").addArg(new Argument(BasicType.I32, "n")).addArg(new Argument(new PointerType(BasicType.FLOAT), "a")));
+        module.addFunction(symbolTable.makeFunc(BasicType.VOID, "_sysy_starttime").addArg(new Argument(BasicType.I32, "lineno")));
+        module.addFunction(symbolTable.makeFunc(BasicType.VOID, "_sysy_stoptime").addArg(new Argument(BasicType.I32, "lineno")));
     }
 
     private void initSyscalls() {
-        funcs.put("memset", symbolTable.makeFunc(BasicType.VOID, "memset").addArg(new Argument(new PointerType(BasicType.I32), "addr")).addArg(new Argument(BasicType.I32, "value")).addArg(new Argument(BasicType.I32, "size")));
+        module.addFunction(symbolTable.makeFunc(BasicType.VOID, "memset").addArg(new Argument(new PointerType(BasicType.I32), "addr")).addArg(new Argument(BasicType.I32, "value")).addArg(new Argument(BasicType.I32, "size")));
     }
 
     @Override
     public Object visitRoot(SysYParser.RootContext ctx) {
-
         return super.visitRoot(ctx);
     }
 
@@ -133,7 +124,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Number value = 0;
             if (ctx.additiveExp() != null)
                 value = ((ConstantNumber) visitAdditiveExp(ctx.additiveExp())).getValue();
-            globals.add(symbolTable.makeGlobal(isConst, curType, name, value));
+            module.addGlobal(symbolTable.makeGlobal(isConst, curType, name, value));
             return null;
         }
         AllocaInst allocaInst = symbolTable.makeLocal(curType, name);
@@ -158,7 +149,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                 allocInitVal(dimensions, exps, 0, initVal);
             Type type = dimensions.reversed().stream().reduce(curType, ArrayType::new, (type1, type2) -> type2);
             Map<Integer, Number> values = exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> ((ConstantNumber) visitAdditiveExp(exp.getValue())).getValue()));
-            globals.add(symbolTable.makeGlobal(isConst, type, name, values));
+            module.addGlobal(symbolTable.makeGlobal(isConst, type, name, values));
             return null;
         }
         AllocaInst allocaInst = symbolTable.makeLocal(curType, name, dimensions);
@@ -220,7 +211,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         visitBlockStmt(ctx.blockStmt());
         curFunc.addBlock(retBlock);
         curFunc.getBlocks().getFirst().addAll(0, allocaInsts);
-        funcs.put(curFunc.getName(), curFunc);
+        module.addFunction(curFunc);
         symbolTable.out();
         return null;
     }
