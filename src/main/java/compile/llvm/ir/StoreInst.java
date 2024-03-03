@@ -1,13 +1,14 @@
 package compile.llvm.ir;
 
+import compile.llvm.BasicBlock;
 import compile.llvm.GlobalVariable;
 import compile.llvm.type.BasicType;
 import compile.llvm.type.PointerType;
 import compile.llvm.value.Value;
 
 public class StoreInst extends Instruction {
-    public StoreInst(Value value, Value pointer) {
-        super(BasicType.VOID, value, pointer);
+    public StoreInst(BasicBlock block, Value value, Value pointer) {
+        super(block, BasicType.VOID, value, pointer);
     }
 
     @Override

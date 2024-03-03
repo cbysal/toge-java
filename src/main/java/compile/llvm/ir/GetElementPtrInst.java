@@ -1,5 +1,6 @@
 package compile.llvm.ir;
 
+import compile.llvm.BasicBlock;
 import compile.llvm.GlobalVariable;
 import compile.llvm.type.PointerType;
 import compile.llvm.type.Type;
@@ -7,8 +8,8 @@ import compile.llvm.value.Use;
 import compile.llvm.value.Value;
 
 public class GetElementPtrInst extends Instruction {
-    public GetElementPtrInst(Value pointer, Value... indexes) {
-        super(calcType(pointer, indexes.length), pointer);
+    public GetElementPtrInst(BasicBlock block, Value pointer, Value... indexes) {
+        super(block, calcType(pointer, indexes.length), pointer);
         for (Value index : indexes)
             add(new Use(this, index));
     }

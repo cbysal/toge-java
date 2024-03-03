@@ -1,12 +1,13 @@
 package compile.llvm.ir;
 
+import compile.llvm.BasicBlock;
 import compile.llvm.GlobalVariable;
 import compile.llvm.type.PointerType;
 import compile.llvm.value.Value;
 
 public class LoadInst extends Instruction {
-    public LoadInst(Value pointer) {
-        super(switch (pointer) {
+    public LoadInst(BasicBlock block, Value pointer) {
+        super(block, switch (pointer) {
             case GlobalVariable global -> pointer.getType();
             default -> pointer.getType().baseType();
         }, pointer);

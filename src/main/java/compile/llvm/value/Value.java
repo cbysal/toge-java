@@ -27,6 +27,11 @@ public abstract class Value {
         uses.add(use);
     }
 
+    public void replaceAllUseAs(Value value) {
+        for (Use use : uses)
+            use.setValue(value);
+    }
+
     public Set<Use> getUses() {
         return uses;
     }

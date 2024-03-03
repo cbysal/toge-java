@@ -2,14 +2,11 @@ package compile.llvm;
 
 import compile.llvm.ir.Instruction;
 import compile.llvm.type.Type;
-import compile.llvm.value.User;
+import compile.llvm.value.Value;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 
-public class Function extends User {
+public class Function extends Value implements Iterable<BasicBlock> {
     private final String name;
     private final List<Argument> args = new ArrayList<>();
     private final List<BasicBlock> blocks = new ArrayList<>();
@@ -28,34 +25,37 @@ public class Function extends User {
         return this;
     }
 
-    public void addBlock(BasicBlock block) {
-        blocks.add(block);
+    public boolean add(BasicBlock block) {
+        return blocks.add(block);
     }
 
-    public void addBlock(int index, BasicBlock block) {
+    public void add(int index, BasicBlock block) {
         blocks.add(index, block);
     }
 
-    public void addBlocks(int index, Collection<BasicBlock> newBlocks) {
-        blocks.addAll(index, newBlocks);
+    public boolean add(int index, Collection<BasicBlock> newBlocks) {
+        return blocks.addAll(index, newBlocks);
     }
 
-    public void insertBlockAfter(BasicBlock base, BasicBlock block) {
+    public int size() {
+        return blocks.size();
+    }
+
+    public BasicBlock get(int index) {
+        return blocks.get(index);
+    }
+
+    public BasicBlock getFirst() {
+        return blocks.getFirst();
+    }
+
+    public void insertAfter(BasicBlock base, BasicBlock block) {
         int index = blocks.indexOf(base);
         blocks.add(index + 1, block);
     }
 
     public List<Argument> getArgs() {
         return args;
-    }
-
-    public List<BasicBlock> getBlocks() {
-        return blocks;
-    }
-
-    public void setBlocks(List<BasicBlock> blocks) {
-        this.blocks.clear();
-        this.blocks.addAll(blocks);
     }
 
     @Override
@@ -65,6 +65,11 @@ public class Function extends User {
 
     public String getRawName() {
         return name;
+    }
+
+    @Override
+    public Iterator<BasicBlock> iterator() {
+        return blocks.iterator();
     }
 
     @Override

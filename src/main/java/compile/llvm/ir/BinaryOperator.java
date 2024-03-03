@@ -1,14 +1,15 @@
 package compile.llvm.ir;
 
 import common.ObjectUtils;
+import compile.llvm.BasicBlock;
 import compile.llvm.type.Type;
 import compile.llvm.value.Value;
 
 public class BinaryOperator extends Instruction {
     public final Op op;
 
-    public BinaryOperator(Op op, Value operand1, Value operand2) {
-        super(ObjectUtils.checkEquality(operand1.getType(), operand2.getType()), operand1, operand2);
+    public BinaryOperator(BasicBlock block, Op op, Value operand1, Value operand2) {
+        super(block, ObjectUtils.checkEquality(operand1.getType(), operand2.getType()), operand1, operand2);
         this.op = op;
     }
 

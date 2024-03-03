@@ -18,7 +18,7 @@ import java.util.Map;
 
 public final class MIROpTrans {
     public static void transBranch(List<MIR> irs, Map<Instruction, VReg> instRegMap, BranchInst branchInst) {
-        if (!branchInst.conditional()) {
+        if (!branchInst.isConditional()) {
             BasicBlock dest = branchInst.getOperand(0);
             irs.add(new BMIR(null, null, null, dest));
             return;

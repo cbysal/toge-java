@@ -5,21 +5,21 @@ import compile.llvm.type.BasicType;
 import compile.llvm.value.Value;
 
 public class BranchInst extends Instruction {
-    public BranchInst(BasicBlock dest) {
-        super(BasicType.VOID, dest);
+    public BranchInst(BasicBlock block, BasicBlock dest) {
+        super(block, BasicType.VOID, dest);
     }
 
-    public BranchInst(Value cond, BasicBlock ifTrue, BasicBlock ifFalse) {
-        super(BasicType.VOID, cond, ifTrue, ifFalse);
+    public BranchInst(BasicBlock block, Value cond, BasicBlock ifTrue, BasicBlock ifFalse) {
+        super(block, BasicType.VOID, cond, ifTrue, ifFalse);
     }
 
-    public boolean conditional() {
+    public boolean isConditional() {
         return size() == 3;
     }
 
     @Override
     public String toString() {
-        if (conditional()) {
+        if (isConditional()) {
             Value cond = getOperand(0);
             BasicBlock ifTrue = getOperand(1);
             BasicBlock ifFalse = getOperand(2);

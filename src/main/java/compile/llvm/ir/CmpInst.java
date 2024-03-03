@@ -1,6 +1,7 @@
 package compile.llvm.ir;
 
 import common.ObjectUtils;
+import compile.llvm.BasicBlock;
 import compile.llvm.type.BasicType;
 import compile.llvm.type.Type;
 import compile.llvm.value.Use;
@@ -9,8 +10,8 @@ import compile.llvm.value.Value;
 public abstract class CmpInst extends Instruction {
     private final Cond cond;
 
-    protected CmpInst(Cond cond, Value operand1, Value operand2) {
-        super(BasicType.I1);
+    protected CmpInst(BasicBlock block, Cond cond, Value operand1, Value operand2) {
+        super(block, BasicType.I1);
         this.cond = cond;
         add(new Use(this, operand1));
         add(new Use(this, operand2));

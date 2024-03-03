@@ -18,7 +18,20 @@ public abstract class User extends Value {
 
     public void add(int index, Use use) {
         operands.add(index, use);
-        use.value().addUse(use);
+        use.getValue().addUse(use);
+    }
+
+    public Use remove(int index) {
+        return operands.remove(index);
+    }
+
+    public Use remove(Value value) {
+        for (int i = 0; i < operands.size(); i++) {
+            if (operands.get(i).getValue() == value) {
+                return operands.remove(i);
+            }
+        }
+        return null;
     }
 
     public Use get(int index) {
@@ -30,7 +43,7 @@ public abstract class User extends Value {
     }
 
     public <T extends Value> T getOperand(int index) {
-        return (T) get(index).value();
+        return (T) get(index).getValue();
     }
 
     public boolean isEmpty() {
@@ -41,7 +54,7 @@ public abstract class User extends Value {
         while (operands.size() <= index)
             operands.add(null);
         operands.set(index, use);
-        use.value().addUse(use);
+        use.getValue().addUse(use);
     }
 
     public int size() {

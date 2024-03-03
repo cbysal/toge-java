@@ -1,5 +1,6 @@
 package compile.llvm.ir;
 
+import compile.llvm.BasicBlock;
 import compile.llvm.Function;
 import compile.llvm.type.BasicType;
 import compile.llvm.value.Use;
@@ -9,8 +10,8 @@ import java.util.List;
 import java.util.StringJoiner;
 
 public class CallInst extends Instruction {
-    public CallInst(Function func, List<Value> params) {
-        super(func.getType(), func);
+    public CallInst(BasicBlock block, Function func, List<Value> params) {
+        super(block, func.getType(), func);
         for (Value param : params)
             add(new Use(this, param));
     }

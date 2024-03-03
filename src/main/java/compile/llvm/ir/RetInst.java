@@ -1,15 +1,16 @@
 package compile.llvm.ir;
 
+import compile.llvm.BasicBlock;
 import compile.llvm.type.BasicType;
 import compile.llvm.value.Value;
 
 public class RetInst extends Instruction {
-    public RetInst() {
-        super(BasicType.VOID);
+    public RetInst(BasicBlock block) {
+        super(block, BasicType.VOID);
     }
 
-    public RetInst(Value retVal) {
-        super(BasicType.VOID, retVal);
+    public RetInst(BasicBlock block, Value retVal) {
+        super(block, BasicType.VOID, retVal);
     }
 
     @Override

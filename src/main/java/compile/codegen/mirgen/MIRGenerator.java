@@ -101,19 +101,19 @@ public class MIRGenerator {
 
     private MachineFunction llvm2MirSingle(Function func) {
         Map<Argument, Pair<Boolean, Integer>> argOffsets = calcArgOffsets(func.getArgs());
-        Pair<Integer, Map<AllocaInst, Integer>> locals = calcLocalOffsets(func.getBlocks().getFirst());
+        Pair<Integer, Map<AllocaInst, Integer>> locals = calcLocalOffsets(func.getFirst());
         Pair<Integer, Integer> callerNums = getCallerNumbers(func);
         MachineFunction mFunc = new MachineFunction(func, locals.getLeft(), callerNums.getLeft(), callerNums.getRight());
-        LabelMIR retLabelMIR = new LabelMIR(new BasicBlock());
+        LabelMIR retLabelMIR = new LabelMIR(new BasicBlock(func));
         Map<VReg, MReg> replaceMap = new HashMap<>();
         Map<Instruction, VReg> instRegMap = new HashMap<>();
-        for (BasicBlock block : func.getBlocks()) {
+        for (BasicBlock block : func) {
             for (Instruction inst : block) {
                 instRegMap.put(inst, new VReg(inst.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32));
             }
         }
         Map<AllocaInst, Integer> localOffsets = locals.getRight();
-        for (BasicBlock block : func.getBlocks()) {
+        for (BasicBlock block : func) {
             mFunc.addIR(new LabelMIR(block));
             for (Instruction inst : block) {
                 if (inst instanceof BinaryOperator binaryOperator) {

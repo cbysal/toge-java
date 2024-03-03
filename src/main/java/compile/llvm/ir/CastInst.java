@@ -1,12 +1,13 @@
 package compile.llvm.ir;
 
+import compile.llvm.BasicBlock;
 import compile.llvm.type.Type;
 import compile.llvm.value.Use;
 import compile.llvm.value.Value;
 
 public abstract class CastInst extends Instruction {
-    protected CastInst(Type type, Value operand) {
-        super(type, operand);
+    protected CastInst(BasicBlock block, Type type, Value operand) {
+        super(block, type, operand);
         add(new Use(this, operand));
     }
 

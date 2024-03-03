@@ -1,10 +1,11 @@
 package compile.llvm.ir;
 
+import compile.llvm.BasicBlock;
 import compile.llvm.type.Type;
 import compile.llvm.value.Value;
 
 public class SExtInst extends CastInst {
-    public SExtInst(Type type, Value value) {
-        super(type, value);
+    public SExtInst(BasicBlock block, Type type, Value value) {
+        super(block, type, value);
     }
 }
