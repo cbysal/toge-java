@@ -5,6 +5,7 @@ import compile.llvm.type.Type;
 import compile.llvm.value.Value;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 public class Function extends Value implements Iterable<BasicBlock> {
     private final String name;
@@ -37,6 +38,10 @@ public class Function extends Value implements Iterable<BasicBlock> {
         return blocks.addAll(index, newBlocks);
     }
 
+    public BasicBlock remove(int index) {
+        return blocks.remove(index);
+    }
+
     public int size() {
         return blocks.size();
     }
@@ -52,6 +57,10 @@ public class Function extends Value implements Iterable<BasicBlock> {
     public void insertAfter(BasicBlock base, BasicBlock block) {
         int index = blocks.indexOf(base);
         blocks.add(index + 1, block);
+    }
+
+    public Stream<BasicBlock> stream() {
+        return blocks.stream();
     }
 
     public List<Argument> getArgs() {

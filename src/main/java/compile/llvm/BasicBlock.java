@@ -29,8 +29,12 @@ public class BasicBlock extends Value implements Iterable<Instruction> {
         return instructions.getLast();
     }
 
-    public void add(Instruction inst) {
-        instructions.add(inst);
+    public boolean add(Instruction inst) {
+        return instructions.add(inst);
+    }
+
+    public void add(int index, Instruction inst) {
+        instructions.add(index, inst);
     }
 
     public void addAll(int index, Collection<? extends Instruction> newInsts) {

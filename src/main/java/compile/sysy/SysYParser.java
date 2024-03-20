@@ -915,11 +915,11 @@ public class SysYParser extends Parser {
 		public ExpStmtContext expStmt() {
 			return getRuleContext(ExpStmtContext.class,0);
 		}
-		public IfElseStmtContext ifElseStmt() {
-			return getRuleContext(IfElseStmtContext.class,0);
-		}
 		public IfStmtContext ifStmt() {
 			return getRuleContext(IfStmtContext.class,0);
+		}
+		public IfElseStmtContext ifElseStmt() {
+			return getRuleContext(IfElseStmtContext.class,0);
 		}
 		public WhileStmtContext whileStmt() {
 			return getRuleContext(WhileStmtContext.class,0);
@@ -982,14 +982,14 @@ public class SysYParser extends Parser {
 				enterOuterAlt(_localctx, 4);
 				{
 				setState(177);
-				ifElseStmt();
+				ifStmt();
 				}
 				break;
 			case 5:
 				enterOuterAlt(_localctx, 5);
 				{
 				setState(178);
-				ifStmt();
+				ifElseStmt();
 				}
 				break;
 			case 6:
@@ -2455,7 +2455,7 @@ public class SysYParser extends Parser {
 		"\u00ab\u00a9\u0001\u0000\u0000\u0000\u00ac\u00ad\u0005\u001f\u0000\u0000"+
 		"\u00ad\u0017\u0001\u0000\u0000\u0000\u00ae\u00ba\u0003\u001a\r\u0000\u00af"+
 		"\u00ba\u0003\b\u0004\u0000\u00b0\u00ba\u0003\u001e\u000f\u0000\u00b1\u00ba"+
-		"\u0003 \u0010\u0000\u00b2\u00ba\u0003\"\u0011\u0000\u00b3\u00ba\u0003"+
+		"\u0003\"\u0011\u0000\u00b2\u00ba\u0003 \u0010\u0000\u00b3\u00ba\u0003"+
 		"$\u0012\u0000\u00b4\u00ba\u0003\u0016\u000b\u0000\u00b5\u00ba\u0003\u001c"+
 		"\u000e\u0000\u00b6\u00ba\u0003&\u0013\u0000\u00b7\u00ba\u0003(\u0014\u0000"+
 		"\u00b8\u00ba\u0003*\u0015\u0000\u00b9\u00ae\u0001\u0000\u0000\u0000\u00b9"+

@@ -3,6 +3,7 @@ package compile.codegen.mirgen.trans;
 import compile.codegen.MReg;
 import compile.codegen.VReg;
 import compile.codegen.mirgen.mir.*;
+import compile.llvm.Argument;
 import compile.llvm.BasicBlock;
 import compile.llvm.Function;
 import compile.llvm.GlobalVariable;
@@ -42,19 +43,29 @@ public final class MIROpTrans {
         irs.add(new BMIR(null, null, null, ifFalse));
     }
 
-    public static void transBinary(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryOperator binaryOperator) {
+    public static void transBinary(List<MIR> irs, Map<Instruction, VReg> instRegMap, Map<Argument, VReg> argRegMap, BinaryOperator binaryOperator) {
         Value operand1 = binaryOperator.getOperand(0);
         Value operand2 = binaryOperator.getOperand(1);
-        if (operand1 instanceof Instruction inst1 && operand2 instanceof Instruction inst2) {
-            MIRBinaryTrans.transBinaryRegReg(irs, instRegMap, binaryOperator, instRegMap.get(inst1), instRegMap.get(inst2));
+        VReg reg1 = switch (operand1) {
+            case Argument arg -> argRegMap.get(arg);
+            case Instruction inst -> instRegMap.get(inst);
+            default -> null;
+        };
+        VReg reg2 = switch (operand2) {
+            case Argument arg -> argRegMap.get(arg);
+            case Instruction inst -> instRegMap.get(inst);
+            default -> null;
+        };
+        if (reg1 != null && reg2 != null) {
+            MIRBinaryTrans.transBinaryRegReg(irs, instRegMap, binaryOperator, reg1, reg2);
             return;
         }
-        if (operand1 instanceof Instruction inst1 && operand2 instanceof ConstantNumber value2) {
-            MIRBinaryTrans.transBinaryRegImm(irs, instRegMap, binaryOperator, instRegMap.get(inst1), value2);
+        if (reg1 != null && operand2 instanceof ConstantNumber value2) {
+            MIRBinaryTrans.transBinaryRegImm(irs, instRegMap, binaryOperator, reg1, value2);
             return;
         }
-        if (operand1 instanceof ConstantNumber value1 && operand2 instanceof Instruction inst2) {
-            MIRBinaryTrans.transBinaryImmReg(irs, instRegMap, binaryOperator, value1, instRegMap.get(inst2));
+        if (operand1 instanceof ConstantNumber value1 && reg2 != null) {
+            MIRBinaryTrans.transBinaryImmReg(irs, instRegMap, binaryOperator, value1, reg2);
             return;
         }
         if (operand1 instanceof ConstantNumber value1 && operand2 instanceof ConstantNumber value2) {
@@ -70,7 +81,7 @@ public final class MIROpTrans {
         throw new RuntimeException();
     }
 
-    public static int transCall(List<MIR> irs, Map<Instruction, VReg> instRegMap, CallInst callInst, Map<AllocaInst, Integer> localOffsets) {
+    public static int transCall(List<MIR> irs, Map<Instruction, VReg> instRegMap, Map<Argument, VReg> argRegMap, CallInst callInst, Map<AllocaInst, Integer> localOffsets) {
         Function func = callInst.getOperand(0);
         List<MIR> saveCalleeIRs = new ArrayList<>();
         int iSize = 0, fSize = 0;
@@ -79,6 +90,8 @@ public final class MIROpTrans {
             if (param.getType() == BasicType.FLOAT) {
                 if (fSize < MReg.F_CALLER_REGS.size()) {
                     switch (param) {
+                        case Argument arg ->
+                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), argRegMap.get(arg)));
                         case AllocaInst allocaInst ->
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), instRegMap.get(allocaInst)));
                         case Instruction inst ->
@@ -89,6 +102,8 @@ public final class MIROpTrans {
                     }
                 } else {
                     switch (param) {
+                        case Argument arg ->
+                                irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, argRegMap.get(arg), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case Instruction inst ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, instRegMap.get(inst), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case ConstantNumber value -> {
@@ -111,6 +126,8 @@ public final class MIROpTrans {
                             else
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), instRegMap.get(allocaInst)));
                         }
+                        case Argument arg ->
+                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), argRegMap.get(arg)));
                         case Instruction inst ->
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), instRegMap.get(inst)));
                         case ConstantNumber value ->
@@ -124,6 +141,8 @@ public final class MIROpTrans {
                             irs.add(new AddRegLocalMIR(midReg, localOffsets.get(allocaInst)));
                             irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         }
+                        case Argument arg ->
+                                irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, argRegMap.get(arg), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case Instruction inst ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, instRegMap.get(inst), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case ConstantNumber value -> {

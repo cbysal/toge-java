@@ -58,6 +58,15 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
                 continue;
             for (int i = 0; i < func.size(); i++) {
                 BasicBlock block = func.get(i);
+                for (int j = 0; j < block.size() - 1; j++) {
+                    Instruction terminal = block.get(j);
+                    if (terminal instanceof BranchInst || terminal instanceof RetInst) {
+                        while (block.size() > j + 1) {
+                            block.remove(j);
+                        }
+                        break;
+                    }
+                }
                 if (block.isEmpty() || !(block.getLast() instanceof RetInst || block.getLast() instanceof BranchInst)) {
                     block.add(new BranchInst(block, func.get(i + 1)));
                 }
@@ -208,6 +217,14 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             argToAllocaMap.put(arg, allocaInst);
         }
         visitBlockStmt(ctx.blockStmt());
+        if (curFunc.getType() != BasicType.VOID) {
+            Constant retVal = switch (curFunc.getType()) {
+                case BasicType.I32 -> new ConstantNumber(0);
+                case BasicType.FLOAT -> new ConstantNumber(0.0f);
+                default -> throw new IllegalStateException("Unexpected value: " + curFunc.getType());
+            };
+            entryBlock.add(new StoreInst(entryBlock, retVal, curRetVal));
+        }
         entryBlock.add(new BranchInst(entryBlock, curFunc.get(1)));
         curFunc.add(retBlock);
         module.addFunction(curFunc);

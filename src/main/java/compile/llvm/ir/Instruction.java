@@ -19,6 +19,10 @@ public abstract class Instruction extends User {
         this.id = counter++;
     }
 
+    public BasicBlock getBlock() {
+        return block;
+    }
+
     @Override
     public int hashCode() {
         return id;

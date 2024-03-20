@@ -6,6 +6,7 @@ import compile.codegen.mirgen.MachineFunction;
 import compile.codegen.regalloc.RegAllocator;
 import compile.llvm.GlobalVariable;
 import compile.llvm.Module;
+import compile.llvm.pass.PassManager;
 import compile.sysy.SysYLexer;
 import compile.sysy.SysYParser;
 import execute.Executor;
@@ -40,6 +41,8 @@ public class Compiler {
         Module module = astVisitor.getModule();
         if (options.containsKey("emit-llvm"))
             emitLLVM(options.get("emit-llvm"), module);
+        PassManager passManager = new PassManager(module);
+        passManager.run();
         if (options.containsKey("emit-opt-llvm"))
             emitLLVM(options.get("emit-opt-llvm"), module);
         MIRGenerator mirGenerator = new MIRGenerator(module);

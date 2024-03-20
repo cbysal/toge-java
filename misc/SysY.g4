@@ -34,8 +34,8 @@ stmt:
     assignStmt
     | varDecl
     | expStmt
-    | ifElseStmt
     | ifStmt
+    | ifElseStmt
     | whileStmt
 	| blockStmt
 	| blankStmt
