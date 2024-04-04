@@ -55,7 +55,7 @@ public class PromotePass extends FunctionPass {
         return allocas;
     }
 
-    private void insertPhi(Function func, DomTreeAnalysis domTreeAnalysis, Set<AllocaInst> allocas) {
+    private void insertPhi(Function func, Map<BasicBlock, Set<BasicBlock>> df, Set<AllocaInst> allocas) {
         Set<AllocaInst> globals = new HashSet<>();
         Map<AllocaInst, Set<BasicBlock>> blocks = new HashMap<>();
         for (BasicBlock block : func) {
@@ -78,7 +78,6 @@ public class PromotePass extends FunctionPass {
                 }
             }
         }
-        Map<BasicBlock, Set<BasicBlock>> df = domTreeAnalysis.getDF();
         for (AllocaInst global : globals) {
             Queue<BasicBlock> workList = new ArrayDeque<>(blocks.get(global));
             while (!workList.isEmpty()) {
@@ -212,17 +211,20 @@ public class PromotePass extends FunctionPass {
     }
 
     @Override
-    public void runOnFunction(Function func) {
+    public boolean runOnFunction(Function func) {
         if (func.isDeclare()) {
-            return;
+            return false;
         }
         cleanUnreachableBlocks(func);
+        Set<AllocaInst> promoteAllocas = analyzePromoteAllocas(func);
+        if (promoteAllocas.isEmpty()) {
+            return false;
+        }
         globalPhiMap.clear();
         for (BasicBlock block : func)
             globalPhiMap.put(block, new HashMap<>());
-        Set<AllocaInst> promoteAllocas = analyzePromoteAllocas(func);
         DomTreeAnalysis domTreeAnalysis = new DomTreeAnalysis(func);
-        insertPhi(func, domTreeAnalysis, promoteAllocas);
+        insertPhi(func, domTreeAnalysis.getDF(), promoteAllocas);
         rename(func.getFirst(), new HashMap<>(), promoteAllocas, domTreeAnalysis.getDomTree());
         prunePhi(func);
         for (Map.Entry<BasicBlock, Map<AllocaInst, PHINode>> phiEntry : globalPhiMap.entrySet()) {
@@ -240,5 +242,6 @@ public class PromotePass extends FunctionPass {
                 }
             }
         }
+        return true;
     }
 }

@@ -9,9 +9,13 @@ public abstract class FunctionPass extends Pass {
     }
 
     @Override
-    public void run() {
-        module.getFunctions().forEach(this::runOnFunction);
+    public boolean run() {
+        boolean modified = false;
+        for (Function func : module.getFunctions()) {
+            modified |= runOnFunction(func);
+        }
+        return modified;
     }
 
-    public abstract void runOnFunction(Function function);
+    public abstract boolean runOnFunction(Function function);
 }

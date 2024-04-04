@@ -10,6 +10,10 @@ public class PassManager {
     }
 
     public void run() {
-        new PromotePass(module).run();
+        boolean modified;
+        do {
+            modified = false;
+            modified |= new PromotePass(module).run();
+        } while (modified);
     }
 }
