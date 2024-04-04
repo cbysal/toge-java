@@ -5,7 +5,7 @@ import compile.llvm.Function;
 import compile.llvm.Module;
 import compile.llvm.contant.ConstantNumber;
 import compile.llvm.ir.*;
-import compile.llvm.pass.analysis.DominatorTreeAnalysis;
+import compile.llvm.pass.analysis.DomTreeAnalysis;
 import compile.llvm.type.BasicType;
 import compile.llvm.type.PointerType;
 import compile.llvm.value.Use;
@@ -14,7 +14,6 @@ import compile.llvm.value.Value;
 import java.util.*;
 
 public class PromotePass extends FunctionPass {
-    private boolean changed;
     private final Map<BasicBlock, Map<AllocaInst, PHINode>> globalPhiMap = new HashMap<>();
 
     public PromotePass(Module module) {
@@ -47,34 +46,16 @@ public class PromotePass extends FunctionPass {
         }
     }
 
-    private Set<AllocaInst> analyzeTodoRegs(Function func) {
-        Set<AllocaInst> todoRegs = new HashSet<>();
+    private Set<AllocaInst> analyzePromoteAllocas(Function func) {
+        Set<AllocaInst> allocas = new HashSet<>();
         for (BasicBlock block : func)
             for (Instruction inst : block)
                 if (inst instanceof AllocaInst allocaInst && isAllocaPromotable(allocaInst))
-                    todoRegs.add(allocaInst);
-        return todoRegs;
+                    allocas.add(allocaInst);
+        return allocas;
     }
 
-    private Map<BasicBlock, Set<BasicBlock>> calcPrevMap(Function func) {
-        Map<BasicBlock, Set<BasicBlock>> prevMap = new HashMap<>();
-        for (BasicBlock block : func) {
-            prevMap.put(block, new HashSet<>());
-        }
-        for (BasicBlock block : func) {
-            if (block.getLast() instanceof BranchInst branchInst) {
-                if (branchInst.isConditional()) {
-                    prevMap.get((BasicBlock) branchInst.getOperand(1)).add(block);
-                    prevMap.get((BasicBlock) branchInst.getOperand(2)).add(block);
-                } else {
-                    prevMap.get((BasicBlock) branchInst.getOperand(0)).add(block);
-                }
-            }
-        }
-        return prevMap;
-    }
-
-    private void insertPhi(Function func, Set<AllocaInst> allocaInsts) {
+    private void insertPhi(Function func, DomTreeAnalysis domTreeAnalysis, Set<AllocaInst> allocas) {
         Set<AllocaInst> globals = new HashSet<>();
         Map<AllocaInst, Set<BasicBlock>> blocks = new HashMap<>();
         for (BasicBlock block : func) {
@@ -82,12 +63,12 @@ public class PromotePass extends FunctionPass {
             for (Instruction inst : block) {
                 switch (inst) {
                     case LoadInst loadInst -> {
-                        if (loadInst.getOperand(0) instanceof AllocaInst allocaInst && allocaInsts.contains(allocaInst) && !varKill.contains(allocaInst)) {
+                        if (loadInst.getOperand(0) instanceof AllocaInst allocaInst && allocas.contains(allocaInst) && !varKill.contains(allocaInst)) {
                             globals.add(allocaInst);
                         }
                     }
                     case StoreInst storeInst -> {
-                        if (storeInst.getOperand(1) instanceof AllocaInst allocaInst && allocaInsts.contains(allocaInst)) {
+                        if (storeInst.getOperand(1) instanceof AllocaInst allocaInst && allocas.contains(allocaInst)) {
                             varKill.add(allocaInst);
                             blocks.computeIfAbsent(allocaInst, k -> new HashSet<>()).add(block);
                         }
@@ -97,8 +78,7 @@ public class PromotePass extends FunctionPass {
                 }
             }
         }
-        DominatorTreeAnalysis dominatorTreeAnalysis = new DominatorTreeAnalysis(func);
-        Map<BasicBlock, Set<BasicBlock>> df = dominatorTreeAnalysis.getDomFrontier();
+        Map<BasicBlock, Set<BasicBlock>> df = domTreeAnalysis.getDF();
         for (AllocaInst global : globals) {
             Queue<BasicBlock> workList = new ArrayDeque<>(blocks.get(global));
             while (!workList.isEmpty()) {
@@ -111,48 +91,6 @@ public class PromotePass extends FunctionPass {
                 }
             }
         }
-    }
-
-    private Map<AllocaInst, Set<Value>> insertPhiHelper(Map<BasicBlock, Set<BasicBlock>> prevMap, BasicBlock block, Set<AllocaInst> uses, Set<BasicBlock> visited) {
-        Map<AllocaInst, Set<Value>> counter = new HashMap<>();
-        Map<AllocaInst, PHINode> phiMap = globalPhiMap.get(block);
-        for (int i = block.size() - 1; i >= 0; i--) {
-            if (block.get(i) instanceof StoreInst storeInst && storeInst.getOperand(1) instanceof AllocaInst allocaInst && uses.contains(allocaInst)) {
-                uses.remove(allocaInst);
-                counter.computeIfAbsent(allocaInst, k -> new HashSet<>()).add(storeInst);
-            }
-        }
-        for (Map.Entry<AllocaInst, PHINode> phiEntry : phiMap.entrySet()) {
-            AllocaInst allocaInst = phiEntry.getKey();
-            if (uses.contains(allocaInst)) {
-                uses.remove(allocaInst);
-                counter.computeIfAbsent(allocaInst, k -> new HashSet<>()).add(phiEntry.getValue());
-            }
-        }
-        if (!uses.isEmpty()) {
-            visited.add(block);
-            for (BasicBlock prevBlock : prevMap.get(block)) {
-                if (visited.contains(prevBlock))
-                    continue;
-                Map<AllocaInst, Set<Value>> innerCounter = insertPhiHelper(prevMap, prevBlock, new HashSet<>(uses), visited);
-                for (Map.Entry<AllocaInst, Set<Value>> entry : innerCounter.entrySet()) {
-                    counter.computeIfAbsent(entry.getKey(), k -> new HashSet<>()).addAll(entry.getValue());
-                }
-            }
-            visited.remove(block);
-        }
-        for (Map.Entry<AllocaInst, Set<Value>> entry : counter.entrySet()) {
-            if (entry.getValue().size() >= 2) {
-                AllocaInst allocaInst = entry.getKey();
-                if (!phiMap.containsKey(allocaInst)) {
-                    phiMap.put(allocaInst, new PHINode(block, allocaInst.getType().baseType()));
-                    changed = true;
-                }
-                entry.getValue().clear();
-                entry.getValue().add(phiMap.get(allocaInst));
-            }
-        }
-        return counter;
     }
 
     private void rename(BasicBlock block, Map<AllocaInst, Stack<Value>> replaceMap, Set<AllocaInst> allocaInsts, Map<BasicBlock, Set<BasicBlock>> domTree) {
@@ -227,6 +165,52 @@ public class PromotePass extends FunctionPass {
         return allocaInst.getType() instanceof PointerType pointerType && pointerType.baseType() instanceof BasicType;
     }
 
+    private void prunePhi(Function func) {
+        boolean toContinue;
+        do {
+            toContinue = false;
+            Queue<PHINode> workList = new ArrayDeque<>();
+            Set<PHINode> marked = new HashSet<>();
+            for (BasicBlock block : func) {
+                toContinue |= globalPhiMap.get(block).entrySet().removeIf(entry -> entry.getValue().getUses().isEmpty());
+            }
+            for (int i = func.size() - 1; i >= 0; i--) {
+                BasicBlock block = func.get(i);
+                for (PHINode phiNode : globalPhiMap.get(block).values()) {
+                    workList.offer(phiNode);
+                    marked.add(phiNode);
+                }
+            }
+            while (!workList.isEmpty()) {
+                PHINode phiNode = workList.poll();
+                marked.remove(phiNode);
+                boolean flag = false;
+                Value replaceValue = null;
+                if (phiNode.size() == 2) {
+                    Value value1 = phiNode.getOperand(0);
+                    Value value2 = phiNode.getOperand(1);
+                    if (value1 == phiNode) {
+                        flag = true;
+                        replaceValue = value2;
+                    } else if (value2 == phiNode) {
+                        flag = true;
+                        replaceValue = value1;
+                    }
+                }
+                if (flag) {
+                    toContinue = true;
+                    for (Use use : replaceValue.getUses()) {
+                        use.setValue(replaceValue);
+                        if (replaceValue instanceof PHINode replacePhiNode && !marked.contains(replacePhiNode)) {
+                            workList.offer(replacePhiNode);
+                            marked.add(replacePhiNode);
+                        }
+                    }
+                }
+            }
+        } while (toContinue);
+    }
+
     @Override
     public void runOnFunction(Function func) {
         if (func.isDeclare()) {
@@ -236,12 +220,11 @@ public class PromotePass extends FunctionPass {
         globalPhiMap.clear();
         for (BasicBlock block : func)
             globalPhiMap.put(block, new HashMap<>());
-        Set<AllocaInst> todoRegs = analyzeTodoRegs(func);
-        do {
-            changed = false;
-            insertPhi(func, todoRegs);
-        } while (changed);
-        rename(func.getFirst(), new HashMap<>(), todoRegs, new DominatorTreeAnalysis(func).getDomTree());
+        Set<AllocaInst> promoteAllocas = analyzePromoteAllocas(func);
+        DomTreeAnalysis domTreeAnalysis = new DomTreeAnalysis(func);
+        insertPhi(func, domTreeAnalysis, promoteAllocas);
+        rename(func.getFirst(), new HashMap<>(), promoteAllocas, domTreeAnalysis.getDomTree());
+        prunePhi(func);
         for (Map.Entry<BasicBlock, Map<AllocaInst, PHINode>> phiEntry : globalPhiMap.entrySet()) {
             for (PHINode phiNode : phiEntry.getValue().values()) {
                 BasicBlock block = phiEntry.getKey();

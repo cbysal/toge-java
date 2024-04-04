@@ -7,10 +7,8 @@ import compile.llvm.ir.BranchInst;
 import compile.llvm.ir.Instruction;
 
 import java.util.*;
-import java.util.function.BinaryOperator;
-import java.util.stream.Collectors;
 
-public final class DominatorTreeAnalysis implements Analysis<Map<BasicBlock, Set<BasicBlock>>> {
+public final class DomTreeAnalysis implements Analysis<Map<BasicBlock, Set<BasicBlock>>> {
     private final Function function;
     private final Map<BasicBlock, Set<BasicBlock>> prevMap = new HashMap<>();
     private final Map<BasicBlock, Set<BasicBlock>> domMap = new HashMap<>();
@@ -18,7 +16,7 @@ public final class DominatorTreeAnalysis implements Analysis<Map<BasicBlock, Set
     private final Map<BasicBlock, Set<BasicBlock>> domTree = new HashMap<>();
     private final Map<BasicBlock, Set<BasicBlock>> domFrontier = new HashMap<>();
 
-    public DominatorTreeAnalysis(Function function) {
+    public DomTreeAnalysis(Function function) {
         this.function = function;
     }
 
@@ -145,7 +143,7 @@ public final class DominatorTreeAnalysis implements Analysis<Map<BasicBlock, Set
         return domTree;
     }
 
-    public Map<BasicBlock, Set<BasicBlock>> getDomFrontier() {
+    public Map<BasicBlock, Set<BasicBlock>> getDF() {
         analyzePrev();
         analyzeDom();
         analyzeIdom();
