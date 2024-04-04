@@ -113,14 +113,10 @@ public class MIRGenerator {
         LabelMIR retLabelMIR = new LabelMIR(new BasicBlock(func));
         Map<VReg, MReg> replaceMap = new HashMap<>();
         Map<Instruction, VReg> instRegMap = new HashMap<>();
-        Map<Argument, VReg> argRegMap = new HashMap<>();
         for (BasicBlock block : func) {
             for (Instruction inst : block) {
                 instRegMap.put(inst, new VReg(inst.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32));
             }
-        }
-        for (Argument arg : func.getArgs()) {
-            argRegMap.put(arg, new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32));
         }
         for (BasicBlock block : func) {
             for (int i = 0; i < block.size(); i++) {
@@ -137,13 +133,12 @@ public class MIRGenerator {
                 }
             }
         }
-        Map<PHINode, VReg> phiRegMap = new HashMap<>();
         Map<AllocaInst, Integer> localOffsets = locals.getRight();
         for (BasicBlock block : func) {
             mFunc.addIR(new LabelMIR(block));
             for (Instruction inst : block) {
                 if (inst instanceof BinaryOperator binaryOperator) {
-                    MIROpTrans.transBinary(mFunc.getIrs(), instRegMap, argRegMap, binaryOperator);
+                    MIROpTrans.transBinary(mFunc.getIrs(), instRegMap, argOffsets, binaryOperator);
                     continue;
                 }
                 if (inst instanceof BranchInst branchInst) {
@@ -151,7 +146,7 @@ public class MIRGenerator {
                     continue;
                 }
                 if (inst instanceof CallInst callInst) {
-                    int paramNum = MIROpTrans.transCall(mFunc.getIrs(), instRegMap, argRegMap, callInst, localOffsets);
+                    int paramNum = MIROpTrans.transCall(mFunc.getIrs(), instRegMap, argOffsets, callInst, localOffsets);
                     mFunc.setMaxFuncParamNum(Integer.max(mFunc.getMaxFuncParamNum(), paramNum));
                     continue;
                 }
@@ -166,7 +161,7 @@ public class MIRGenerator {
                         mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrInst.getType().baseType().getSize() / 8));
                         switch (getElementPtrInst.getLastOperand()) {
                             case Argument arg ->
-                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, argRegMap.get(arg)));
+                                    mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg3, argOffsets.get(arg).getRight()));
                             case Instruction indexInst ->
                                     mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, instRegMap.get(indexInst)));
                             case ConstantNumber value -> {
@@ -194,7 +189,7 @@ public class MIRGenerator {
                         mFunc.getIrs().add(new LiMIR(midReg2, getElementPtrInst.getType().baseType().getSize() / 8));
                         switch (getElementPtrInst.getLastOperand()) {
                             case Argument indexArg ->
-                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, argRegMap.get(indexArg)));
+                                    mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg3, argOffsets.get(indexArg).getRight()));
                             case Instruction indexInst ->
                                     mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg3, instRegMap.get(indexInst)));
                             case ConstantNumber value -> {
@@ -220,7 +215,7 @@ public class MIRGenerator {
                             mFunc.getIrs().add(new AddRegLocalMIR(midReg1, localOffsets.get(allocaInst)));
                             switch (getElementPtrInst.getLastOperand()) {
                                 case Argument arg ->
-                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, argRegMap.get(arg)));
+                                        mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg2, argOffsets.get(arg).getRight()));
                                 case Instruction indexInst ->
                                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, instRegMap.get(indexInst)));
                                 case ConstantNumber value -> {
@@ -245,7 +240,7 @@ public class MIRGenerator {
                             mFunc.getIrs().add(new AddRegLocalMIR(midReg1, localOffsets.get(allocaInst)));
                             switch (getElementPtrInst.getLastOperand()) {
                                 case Argument arg ->
-                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, argRegMap.get(arg)));
+                                        mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg2, argOffsets.get(arg).getRight()));
                                 case Instruction indexInst ->
                                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, instRegMap.get(indexInst)));
                                 case ConstantNumber value -> {
@@ -272,7 +267,7 @@ public class MIRGenerator {
                             VReg midReg3 = new VReg(BasicType.I32);
                             switch (getElementPtrInst.getLastOperand()) {
                                 case Argument arg ->
-                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, argRegMap.get(arg)));
+                                        mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1, argOffsets.get(arg).getRight()));
                                 case Instruction indexInst ->
                                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, instRegMap.get(indexInst)));
                                 case ConstantNumber value -> {
@@ -295,7 +290,7 @@ public class MIRGenerator {
                             VReg midReg3 = new VReg(BasicType.I32);
                             switch (getElementPtrInst.getLastOperand()) {
                                 case Argument arg ->
-                                        mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, argRegMap.get(arg)));
+                                        mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1, argOffsets.get(arg).getRight()));
                                 case Instruction indexInst ->
                                         mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg1, instRegMap.get(indexInst)));
                                 case ConstantNumber value -> {
@@ -344,7 +339,7 @@ public class MIRGenerator {
                         Value retVal = retInst.getOperand(0);
                         switch (retVal) {
                             case Argument arg ->
-                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, argRegMap.get(arg)));
+                                    mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, argOffsets.get(arg).getRight()));
                             case Instruction valueInst ->
                                     mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, retVal.getType() == BasicType.I32 ? MReg.A0 : MReg.FA0, instRegMap.get(valueInst)));
                             case ConstantNumber value -> {
@@ -373,7 +368,7 @@ public class MIRGenerator {
                         mFunc.getIrs().add(new LlaMIR(midReg1, global));
                         switch (value) {
                             case Argument arg ->
-                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, argRegMap.get(arg)));
+                                    mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg2, argOffsets.get(arg).getRight()));
                             case Instruction valueInst ->
                                     mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, instRegMap.get(valueInst)));
                             case ConstantNumber v -> {
@@ -396,7 +391,7 @@ public class MIRGenerator {
                         mFunc.getIrs().add(new LoadItemMIR(innerOffset.getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg1, innerOffset.getRight()));
                         switch (value) {
                             case Argument valueArg ->
-                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, argRegMap.get(valueArg)));
+                                    mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg2, argOffsets.get(valueArg).getRight()));
                             case Instruction valueInst ->
                                     mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg2, instRegMap.get(valueInst)));
                             case ConstantNumber v -> {
@@ -436,7 +431,8 @@ public class MIRGenerator {
                     if (pointer instanceof Instruction pointerInst) {
                         VReg midReg = new VReg(BasicType.I32);
                         switch (value) {
-                            case Argument arg -> mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg, argRegMap.get(arg)));
+                            case Argument arg ->
+                                    mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
                             case Instruction valueInst ->
                                     mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg, instRegMap.get(valueInst)));
                             case ConstantNumber v -> {
@@ -469,7 +465,11 @@ public class MIRGenerator {
                 if (inst instanceof ICmpInst iCmpInst) {
                     VReg target = instRegMap.get(iCmpInst);
                     VReg operand1 = switch (iCmpInst.getOperand(0)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
@@ -479,7 +479,11 @@ public class MIRGenerator {
                         default -> throw new IllegalStateException("Unexpected value: " + iCmpInst.getOperand(0));
                     };
                     VReg operand2 = switch (iCmpInst.getOperand(1)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
@@ -517,7 +521,11 @@ public class MIRGenerator {
                 if (inst instanceof FCmpInst fCmpInst) {
                     VReg target = instRegMap.get(fCmpInst);
                     VReg operand1 = switch (fCmpInst.getOperand(0)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg1 = new VReg(BasicType.I32);
@@ -529,7 +537,11 @@ public class MIRGenerator {
                         default -> throw new IllegalStateException("Unexpected value: " + fCmpInst.getOperand(0));
                     };
                     VReg operand2 = switch (fCmpInst.getOperand(1)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg1 = new VReg(BasicType.I32);
@@ -557,7 +569,11 @@ public class MIRGenerator {
                 }
                 if (inst instanceof ZExtInst zExtInst) {
                     VReg operand = switch (zExtInst.getOperand(0)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
@@ -571,7 +587,11 @@ public class MIRGenerator {
                 }
                 if (inst instanceof SExtInst sExtInst) {
                     VReg operand = switch (sExtInst.getOperand(0)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
@@ -585,7 +605,11 @@ public class MIRGenerator {
                 }
                 if (inst instanceof FPToSIInst fpToSIInst) {
                     VReg operand = switch (fpToSIInst.getOperand(0)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg1 = new VReg(BasicType.I32);
@@ -601,7 +625,11 @@ public class MIRGenerator {
                 }
                 if (inst instanceof SIToFPInst siToFPInst) {
                     VReg operand = switch (siToFPInst.getOperand(0)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction valueInst -> instRegMap.get(valueInst);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
@@ -615,13 +643,25 @@ public class MIRGenerator {
                 }
                 if (inst instanceof FakeMvInst fakeMvInst) {
                     PHINode phiNode = fakeMvInst.getOperand(0);
-                    VReg target = phiRegMap.computeIfAbsent(phiNode, k -> new VReg(phiNode.getType()));
+                    VReg target = instRegMap.get(phiNode);
                     VReg source = switch (fakeMvInst.getOperand(1)) {
-                        case Argument arg -> argRegMap.get(arg);
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                            mFunc.getIrs().add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            yield midReg;
+                        }
                         case Instruction inst1 -> instRegMap.get(inst1);
                         case ConstantNumber value -> {
                             VReg midReg = new VReg(value.getType());
-                            mFunc.getIrs().add(new LiMIR(midReg, value.intValue()));
+                            switch (midReg.getType()) {
+                                case BasicType.I32 -> mFunc.getIrs().add(new LiMIR(midReg, value.intValue()));
+                                case BasicType.FLOAT -> {
+                                    VReg midReg1 = new VReg(BasicType.I32);
+                                    mFunc.getIrs().add(new LiMIR(midReg1, Float.floatToIntBits(value.floatValue())));
+                                    mFunc.getIrs().add(new RrMIR(RrMIR.Op.MV, midReg, midReg1));
+                                }
+                                default -> throw new IllegalStateException("Unexpected value: " + midReg.getType());
+                            }
                             yield midReg;
                         }
                         default -> null;

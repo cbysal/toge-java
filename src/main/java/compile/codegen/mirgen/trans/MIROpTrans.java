@@ -12,6 +12,7 @@ import compile.llvm.ir.*;
 import compile.llvm.type.BasicType;
 import compile.llvm.type.PointerType;
 import compile.llvm.value.Value;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,16 +44,24 @@ public final class MIROpTrans {
         irs.add(new BMIR(null, null, null, ifFalse));
     }
 
-    public static void transBinary(List<MIR> irs, Map<Instruction, VReg> instRegMap, Map<Argument, VReg> argRegMap, BinaryOperator binaryOperator) {
+    public static void transBinary(List<MIR> irs, Map<Instruction, VReg> instRegMap, Map<Argument, Pair<Boolean, Integer>> argOffsets, BinaryOperator binaryOperator) {
         Value operand1 = binaryOperator.getOperand(0);
         Value operand2 = binaryOperator.getOperand(1);
         VReg reg1 = switch (operand1) {
-            case Argument arg -> argRegMap.get(arg);
+            case Argument arg -> {
+                VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                irs.add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                yield midReg;
+            }
             case Instruction inst -> instRegMap.get(inst);
             default -> null;
         };
         VReg reg2 = switch (operand2) {
-            case Argument arg -> argRegMap.get(arg);
+            case Argument arg -> {
+                VReg midReg = new VReg(arg.getType() == BasicType.FLOAT ? BasicType.FLOAT : BasicType.I32);
+                irs.add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                yield midReg;
+            }
             case Instruction inst -> instRegMap.get(inst);
             default -> null;
         };
@@ -81,7 +90,7 @@ public final class MIROpTrans {
         throw new RuntimeException();
     }
 
-    public static int transCall(List<MIR> irs, Map<Instruction, VReg> instRegMap, Map<Argument, VReg> argRegMap, CallInst callInst, Map<AllocaInst, Integer> localOffsets) {
+    public static int transCall(List<MIR> irs, Map<Instruction, VReg> instRegMap, Map<Argument, Pair<Boolean, Integer>> argOffsets, CallInst callInst, Map<AllocaInst, Integer> localOffsets) {
         Function func = callInst.getOperand(0);
         List<MIR> saveCalleeIRs = new ArrayList<>();
         int iSize = 0, fSize = 0;
@@ -91,7 +100,7 @@ public final class MIROpTrans {
                 if (fSize < MReg.F_CALLER_REGS.size()) {
                     switch (param) {
                         case Argument arg ->
-                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), argRegMap.get(arg)));
+                                saveCalleeIRs.add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, MReg.F_CALLER_REGS.get(fSize), argOffsets.get(arg).getRight()));
                         case AllocaInst allocaInst ->
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.F_CALLER_REGS.get(fSize), instRegMap.get(allocaInst)));
                         case Instruction inst ->
@@ -102,8 +111,11 @@ public final class MIROpTrans {
                     }
                 } else {
                     switch (param) {
-                        case Argument arg ->
-                                irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, argRegMap.get(arg), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType());
+                            irs.add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
+                        }
                         case Instruction inst ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, instRegMap.get(inst), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case ConstantNumber value -> {
@@ -127,7 +139,7 @@ public final class MIROpTrans {
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), instRegMap.get(allocaInst)));
                         }
                         case Argument arg ->
-                                saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), argRegMap.get(arg)));
+                                saveCalleeIRs.add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, MReg.I_CALLER_REGS.get(iSize), argOffsets.get(arg).getRight()));
                         case Instruction inst ->
                                 saveCalleeIRs.add(new RrMIR(RrMIR.Op.MV, MReg.I_CALLER_REGS.get(iSize), instRegMap.get(inst)));
                         case ConstantNumber value ->
@@ -141,8 +153,11 @@ public final class MIROpTrans {
                             irs.add(new AddRegLocalMIR(midReg, localOffsets.get(allocaInst)));
                             irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         }
-                        case Argument arg ->
-                                irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, argRegMap.get(arg), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
+                        case Argument arg -> {
+                            VReg midReg = new VReg(arg.getType());
+                            irs.add(new LoadItemMIR(argOffsets.get(arg).getLeft() ? LoadItemMIR.Item.PARAM_INNER : LoadItemMIR.Item.PARAM_OUTER, midReg, argOffsets.get(arg).getRight()));
+                            irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, midReg, (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
+                        }
                         case Instruction inst ->
                                 irs.add(new StoreItemMIR(StoreItemMIR.Item.PARAM_CALL, instRegMap.get(inst), (Integer.max(iSize - MReg.I_CALLER_REGS.size(), 0) + Integer.max(fSize - MReg.I_CALLER_REGS.size(), 0)) * 8));
                         case ConstantNumber value -> {
