@@ -13,7 +13,10 @@ public class PassManager {
         boolean modified;
         do {
             modified = false;
+            modified |= new BranchOptPass(module).run();
             modified |= new PromotePass(module).run();
+            modified |= new ConstPropPass(module).run();
+            modified |= new DCEPass(module).run();
         } while (modified);
     }
 }

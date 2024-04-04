@@ -22,6 +22,7 @@ public abstract class User extends Value {
     }
 
     public Use remove(int index) {
+        operands.get(index).getValue().getUses().remove(operands.get(index));
         return operands.remove(index);
     }
 

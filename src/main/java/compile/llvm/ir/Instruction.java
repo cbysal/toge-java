@@ -9,7 +9,7 @@ import compile.llvm.value.Value;
 public abstract class Instruction extends User {
     private static int counter = 0;
     protected final int id;
-    private final BasicBlock block;
+    private BasicBlock block;
 
     protected Instruction(BasicBlock block, Type type, Value... operands) {
         super(type);
@@ -21,6 +21,10 @@ public abstract class Instruction extends User {
 
     public BasicBlock getBlock() {
         return block;
+    }
+
+    public void setBlock(BasicBlock block) {
+        this.block = block;
     }
 
     @Override

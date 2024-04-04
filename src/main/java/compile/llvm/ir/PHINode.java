@@ -28,6 +28,11 @@ public class PHINode extends Instruction {
         return Pair.of(block, use.getValue());
     }
 
+    public void setBlockValue(int index, BasicBlock block) {
+        Use use = get(index);
+        useBlockMap.put(use, block);
+    }
+
     @Override
     public String toString() {
         StringJoiner joiner = new StringJoiner(", ");

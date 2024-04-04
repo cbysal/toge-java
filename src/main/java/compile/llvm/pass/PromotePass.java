@@ -20,32 +20,6 @@ public class PromotePass extends FunctionPass {
         super(module);
     }
 
-    private void cleanUnreachableBlocks(Function func) {
-        Set<BasicBlock> reachableBlocks = new HashSet<>();
-        Queue<BasicBlock> frontier = new ArrayDeque<>();
-        frontier.add(func.getFirst());
-        while (!frontier.isEmpty()) {
-            BasicBlock block = frontier.poll();
-            if (reachableBlocks.contains(block))
-                continue;
-            reachableBlocks.add(block);
-            if (block.getLast() instanceof BranchInst branchInst) {
-                if (branchInst.isConditional()) {
-                    frontier.offer(branchInst.getOperand(1));
-                    frontier.offer(branchInst.getOperand(2));
-                } else {
-                    frontier.offer(branchInst.getOperand(0));
-                }
-            }
-        }
-        for (int i = 0; i < func.size(); i++) {
-            if (!reachableBlocks.contains(func.get(i))) {
-                func.remove(i);
-                i--;
-            }
-        }
-    }
-
     private Set<AllocaInst> analyzePromoteAllocas(Function func) {
         Set<AllocaInst> allocas = new HashSet<>();
         for (BasicBlock block : func)
@@ -215,7 +189,6 @@ public class PromotePass extends FunctionPass {
         if (func.isDeclare()) {
             return false;
         }
-        cleanUnreachableBlocks(func);
         Set<AllocaInst> promoteAllocas = analyzePromoteAllocas(func);
         if (promoteAllocas.isEmpty()) {
             return false;
