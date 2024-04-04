@@ -66,27 +66,38 @@ public final class DominatorTreeAnalysis implements Analysis<Map<BasicBlock, Set
     private void analyzeIdom() {
         if (!iDomMap.isEmpty())
             return;
-        for (BasicBlock block : function) {
-            domMap.get(block).remove(block);
-            if (domMap.get(block).isEmpty())
-                iDomMap.put(block, null);
-            else if (domMap.get(block).size() == 1)
-                iDomMap.put(block, domMap.get(block).iterator().next());
+        Map<BasicBlock, Set<BasicBlock>> remainDom = new HashMap<>();
+        Set<BasicBlock> toRemoveBlocks = new HashSet<>();
+        for (Map.Entry<BasicBlock, Set<BasicBlock>> entry : domMap.entrySet()) {
+            BasicBlock block = entry.getKey();
+            Set<BasicBlock> domBlocks = new HashSet<>(entry.getValue());
+            domBlocks.remove(block);
+            switch (domBlocks.size()) {
+                case 0 -> iDomMap.put(block, null);
+                case 1 -> {
+                    BasicBlock domBlock = domBlocks.iterator().next();
+                    iDomMap.put(block, domBlock);
+                    toRemoveBlocks.add(domBlock);
+                }
+                default -> remainDom.put(block, domBlocks);
+            }
         }
-        while (iDomMap.size() < function.size()) {
-            for (BasicBlock block : function) {
-                if (iDomMap.containsKey(block))
-                    continue;
-                for (Map.Entry<BasicBlock, BasicBlock> entry : iDomMap.entrySet())
-                    if (domMap.get(block).contains(entry.getKey()))
-                        domMap.get(block).remove(entry.getValue());
+        while (!remainDom.isEmpty()) {
+            Set<BasicBlock> nextToRemoveBlocks = new HashSet<>();
+            Iterator<Map.Entry<BasicBlock, Set<BasicBlock>>> iterator = remainDom.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<BasicBlock, Set<BasicBlock>> entry = iterator.next();
+                BasicBlock block = entry.getKey();
+                Set<BasicBlock> domBlocks = entry.getValue();
+                domBlocks.removeAll(toRemoveBlocks);
+                if (domBlocks.size() == 1) {
+                    BasicBlock domBlock = domBlocks.iterator().next();
+                    iDomMap.put(block, domBlock);
+                    nextToRemoveBlocks.add(domBlock);
+                    iterator.remove();
+                }
             }
-            for (BasicBlock block : function) {
-                if (iDomMap.containsKey(block))
-                    continue;
-                if (domMap.get(block).size() == 1)
-                    iDomMap.put(block, domMap.get(block).iterator().next());
-            }
+            toRemoveBlocks = nextToRemoveBlocks;
         }
     }
 
