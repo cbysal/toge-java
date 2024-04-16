@@ -43,14 +43,17 @@ public class RegAllocatorForSingleFunc {
         List<MIR> irs = func.getIrs();
         Map<BasicBlock, Integer> labelIdMap = new HashMap<>();
         for (int i = 0; i < irs.size(); i++)
-            if (irs.get(i) instanceof LabelMIR labelMIR)
+            if (irs.get(i) instanceof LabelMIR) {
+                LabelMIR labelMIR = (LabelMIR) irs.get(i);
                 labelIdMap.put(labelMIR.getBlock(), i);
+            }
         Set<Integer> begins = new HashSet<>();
         begins.add(0);
         Map<Integer, Integer> jumpIdMap = new HashMap<>();
         Map<Integer, Boolean> isBranchMap = new HashMap<>();
         for (int i = 0; i < irs.size(); i++) {
-            if (irs.get(i) instanceof BMIR bMIR) {
+            if (irs.get(i) instanceof BMIR) {
+                BMIR bMIR = (BMIR) irs.get(i);
                 begins.add(i + 1);
                 jumpIdMap.put(i, labelIdMap.get(bMIR.block));
                 isBranchMap.put(i, bMIR.hasCond());
@@ -161,7 +164,8 @@ public class RegAllocatorForSingleFunc {
         for (Block block : blocks) {
             for (int i = block.getBegin(); i < block.getEnd(); i++) {
                 MIR ir = irs.get(i);
-                if (ir instanceof CallMIR callMIR) {
+                if (ir instanceof CallMIR) {
+                    CallMIR callMIR = (CallMIR) ir;
                     int iSize = 0, fSize = 0;
                     for (Argument arg : callMIR.func.getArgs()) {
                         if (arg.getType() == BasicType.FLOAT && fSize < MReg.F_CALLER_REGS.size()) {
@@ -192,17 +196,20 @@ public class RegAllocatorForSingleFunc {
         Map<Reg, Set<Reg>> conflictMap = calcConflictMap();
         Map<VReg, MReg> vRegToMRegMap = new HashMap<>();
         for (Reg toAllocateReg : conflictMap.keySet()) {
-            if (toAllocateReg instanceof VReg vReg) {
+            if (toAllocateReg instanceof VReg) {
+                VReg vReg = (VReg) toAllocateReg;
                 List<MReg> regs = vReg.getType() == BasicType.FLOAT ? MReg.F_REGS : MReg.I_REGS;
                 Set<MReg> usedRegs = new HashSet<>();
                 for (Reg reg : conflictMap.get(vReg)) {
-                    if (reg instanceof VReg vReg1) {
+                    if (reg instanceof VReg) {
+                        VReg vReg1 = (VReg) reg;
                         MReg mReg = vRegToMRegMap.get(vReg1);
                         if (mReg != null)
                             usedRegs.add(mReg);
                         continue;
                     }
-                    if (reg instanceof MReg mReg) {
+                    if (reg instanceof MReg) {
+                        MReg mReg = (MReg) reg;
                         usedRegs.add(mReg);
                         continue;
                     }
@@ -229,7 +236,8 @@ public class RegAllocatorForSingleFunc {
             if (ir instanceof CallMIR)
                 callAddrSize = 8;
             for (Reg reg : ir.getRegs())
-                if (reg instanceof MReg mReg) {
+                if (reg instanceof MReg) {
+                    MReg mReg = (MReg) reg;
                     if (MReg.I_CALLEE_REGS.contains(mReg)) {
                         usedICalleeRegs.add(mReg);
                         continue;
@@ -295,7 +303,8 @@ public class RegAllocatorForSingleFunc {
         List<MIR> irs = func.getIrs();
         for (int i = 0; i < irs.size(); i++) {
             MIR ir = irs.get(i);
-            if (ir instanceof AddRegLocalMIR addRegLocalMIR) {
+            if (ir instanceof AddRegLocalMIR) {
+                AddRegLocalMIR addRegLocalMIR = (AddRegLocalMIR) ir;
                 int totalSize = funcParamSize + alignSize + spillSize + addRegLocalMIR.imm;
                 if (totalSize < 2048)
                     irs.set(i, new RriMIR(RriMIR.Op.ADDI, addRegLocalMIR.dest, MReg.SP, totalSize));
@@ -306,23 +315,46 @@ public class RegAllocatorForSingleFunc {
                 }
                 continue;
             }
-            if (ir instanceof LoadItemMIR loadItemMIR) {
-                int totalSize = switch (loadItemMIR.item) {
-                    case SPILL -> funcParamSize + alignSize + loadItemMIR.imm;
-                    case LOCAL -> funcParamSize + alignSize + spillSize + loadItemMIR.imm;
-                    case PARAM_INNER ->
-                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + loadItemMIR.imm;
-                    case PARAM_OUTER ->
-                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + loadItemMIR.imm;
-                };
-                int size = switch (loadItemMIR.item) {
-                    case LOCAL -> 4;
-                    case SPILL, PARAM_INNER, PARAM_OUTER -> switch (loadItemMIR.dest.getType()) {
-                        case BasicType.FLOAT -> 4;
-                        case BasicType.I32 -> 8;
-                        default -> throw new IllegalStateException("Unexpected value: " + loadItemMIR.dest.getType());
-                    };
-                };
+            if (ir instanceof LoadItemMIR) {
+                LoadItemMIR loadItemMIR = (LoadItemMIR) ir;
+                int totalSize;
+                switch (loadItemMIR.item) {
+                    case SPILL:
+                        totalSize = funcParamSize + alignSize + loadItemMIR.imm;
+                        break;
+                    case LOCAL:
+                        totalSize = funcParamSize + alignSize + spillSize + loadItemMIR.imm;
+                        break;
+                    case PARAM_INNER:
+                        totalSize = funcParamSize + alignSize + spillSize + localSize + savedRegSize + loadItemMIR.imm;
+                        break;
+                    case PARAM_OUTER:
+                        totalSize = funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + loadItemMIR.imm;
+                        break;
+                    default:
+                        throw new IllegalArgumentException();
+                }
+                int size;
+                switch (loadItemMIR.item) {
+                    case LOCAL:
+                        size = 4;
+                        break;
+                    case SPILL:
+                    case PARAM_INNER:
+                    case PARAM_OUTER:
+                        int i1;
+                        if (loadItemMIR.dest.getType().equals(BasicType.FLOAT)) {
+                            i1 = 4;
+                        } else if (loadItemMIR.dest.getType().equals(BasicType.I32)) {
+                            i1 = 8;
+                        } else {
+                            throw new IllegalStateException("Unexpected value: " + loadItemMIR.dest.getType());
+                        }
+                        size = i1;
+                        break;
+                    default:
+                        throw new IllegalArgumentException();
+                }
                 if (totalSize < 2048) {
                     irs.set(i, new LoadMIR(loadItemMIR.dest, MReg.SP, totalSize, size));
                 } else {
@@ -333,24 +365,50 @@ public class RegAllocatorForSingleFunc {
                 }
                 continue;
             }
-            if (ir instanceof StoreItemMIR storeItemMIR) {
-                int totalSize = switch (storeItemMIR.item) {
-                    case PARAM_CALL -> storeItemMIR.imm;
-                    case SPILL -> funcParamSize + alignSize + storeItemMIR.imm;
-                    case LOCAL -> funcParamSize + alignSize + spillSize + storeItemMIR.imm;
-                    case PARAM_INNER ->
-                            funcParamSize + alignSize + spillSize + localSize + savedRegSize + storeItemMIR.imm;
-                    case PARAM_OUTER ->
-                            funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + storeItemMIR.imm;
-                };
-                int size = switch (storeItemMIR.item) {
-                    case LOCAL -> 4;
-                    case PARAM_CALL, PARAM_INNER, PARAM_OUTER, SPILL -> switch (storeItemMIR.src.getType()) {
-                        case BasicType.FLOAT -> 4;
-                        case BasicType.I32 -> 8;
-                        default -> throw new IllegalStateException("Unexpected value: " + storeItemMIR.src.getType());
-                    };
-                };
+            if (ir instanceof StoreItemMIR) {
+                StoreItemMIR storeItemMIR = (StoreItemMIR) ir;
+                int totalSize;
+                switch (storeItemMIR.item) {
+                    case PARAM_CALL:
+                        totalSize = storeItemMIR.imm;
+                        break;
+                    case SPILL:
+                        totalSize = funcParamSize + alignSize + storeItemMIR.imm;
+                        break;
+                    case LOCAL:
+                        totalSize = funcParamSize + alignSize + spillSize + storeItemMIR.imm;
+                        break;
+                    case PARAM_INNER:
+                        totalSize = funcParamSize + alignSize + spillSize + localSize + savedRegSize + storeItemMIR.imm;
+                        break;
+                    case PARAM_OUTER:
+                        totalSize = funcParamSize + alignSize + spillSize + localSize + paramInnerSize + savedRegSize + callAddrSize + storeItemMIR.imm;
+                        break;
+                    default:
+                        throw new IllegalArgumentException();
+                }
+                int size;
+                switch (storeItemMIR.item) {
+                    case LOCAL:
+                        size = 4;
+                        break;
+                    case PARAM_CALL:
+                    case PARAM_INNER:
+                    case PARAM_OUTER:
+                    case SPILL:
+                        int i1;
+                        if (storeItemMIR.src.getType().equals(BasicType.FLOAT)) {
+                            i1 = 4;
+                        } else if (storeItemMIR.src.getType().equals(BasicType.I32)) {
+                            i1 = 8;
+                        } else {
+                            throw new IllegalStateException("Unexpected value: " + storeItemMIR.src.getType());
+                        }
+                        size = i1;
+                        break;
+                    default:
+                        throw new IllegalArgumentException();
+                }
                 if (totalSize < 2048) {
                     irs.set(i, new StoreMIR(storeItemMIR.src, MReg.SP, totalSize, size));
                 } else {
@@ -376,19 +434,22 @@ public class RegAllocatorForSingleFunc {
             do {
                 toContinueInner = false;
                 for (Reg toAllocateReg : conflictMap.keySet()) {
-                    if (toAllocateReg instanceof VReg vReg) {
+                    if (toAllocateReg instanceof VReg) {
+                        VReg vReg = (VReg) toAllocateReg;
                         allocatedVRegs.add(vReg);
                         boolean toSpill = true;
                         List<MReg> regs = vReg.getType() == BasicType.FLOAT ? MReg.F_REGS : MReg.I_REGS;
                         Set<MReg> usedRegs = new HashSet<>();
                         for (Reg reg : conflictMap.get(vReg)) {
-                            if (reg instanceof VReg vReg1) {
+                            if (reg instanceof VReg) {
+                                VReg vReg1 = (VReg) reg;
                                 MReg mReg = vReg2MRegMap.get(vReg1);
                                 if (mReg != null)
                                     usedRegs.add(mReg);
                                 continue;
                             }
-                            if (reg instanceof MReg mReg) {
+                            if (reg instanceof MReg) {
+                                MReg mReg = (MReg) reg;
                                 usedRegs.add(mReg);
                                 continue;
                             }

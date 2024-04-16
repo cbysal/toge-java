@@ -19,10 +19,14 @@ public class VReg extends Reg {
 
     @Override
     public String toString() {
-        return switch (type) {
-            case BasicType.I32 -> "$i";
-            case BasicType.FLOAT -> "$f";
-            default -> throw new RuntimeException("Invalid type");
-        } + id;
+        String invalidType;
+        if (type.equals(BasicType.I32)) {
+            invalidType = "$i";
+        } else if (type.equals(BasicType.FLOAT)) {
+            invalidType = "$f";
+        } else {
+            throw new RuntimeException("Invalid type");
+        }
+        return invalidType + id;
     }
 }

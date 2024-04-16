@@ -48,21 +48,32 @@ public class CodeGenerator {
             builder.append(global.getRawName()).append(":\n");
             int num = size / 4;
             if (global.isSingle()) {
-                builder.append("\t.word ").append(switch (global.getType()) {
-                    case BasicType.I32 -> global.getInt();
-                    case BasicType.FLOAT -> Float.floatToIntBits(global.getFloat());
-                    default -> throw new IllegalStateException("Unexpected value: " + global.getType());
-                }).append('\n');
+                Number number;
+                if (global.getType().equals(BasicType.I32)) {
+                    number = global.getInt();
+                } else if (global.getType().equals(BasicType.FLOAT)) {
+                    number = Float.floatToIntBits(global.getFloat());
+                } else {
+                    throw new IllegalStateException("Unexpected value: " + global.getType());
+                }
+                builder.append("\t.word ").append(number).append('\n');
             } else {
                 Type type = global.getType();
-                while (type instanceof ArrayType arrayType)
+                ArrayType arrayType;
+                while (type instanceof ArrayType) {
+                    arrayType = (ArrayType) type;
                     type = arrayType.baseType();
+                }
                 for (int i = 0; i < num; i++) {
-                    builder.append("\t.word ").append(switch (type) {
-                        case BasicType.I32 -> global.getInt(i);
-                        case BasicType.FLOAT -> Float.floatToIntBits(global.getFloat(i));
-                        default -> throw new IllegalStateException("Unexpected value: " + type);
-                    }).append('\n');
+                    Number number;
+                    if (type.equals(BasicType.I32)) {
+                        number = global.getInt(i);
+                    } else if (type.equals(BasicType.FLOAT)) {
+                        number = Float.floatToIntBits(global.getFloat(i));
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + type);
+                    }
+                    builder.append("\t.word ").append(number).append('\n');
                 }
             }
         }

@@ -100,12 +100,19 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
 
     @Override
     public Type visitType(SysYParser.TypeContext ctx) {
-        curType = switch (ctx.getText()) {
-            case "int" -> BasicType.I32;
-            case "float" -> BasicType.FLOAT;
-            case "void" -> BasicType.VOID;
-            default -> throw new IllegalStateException("Unexpected value: " + ctx.getText());
-        };
+        switch (ctx.getText()) {
+            case "int":
+                curType = BasicType.I32;
+                break;
+            case "float":
+                curType = BasicType.FLOAT;
+                break;
+            case "void":
+                curType = BasicType.VOID;
+                break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + ctx.getText());
+        }
         return curType;
     }
 
@@ -154,7 +161,9 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             SortedMap<Integer, SysYParser.AdditiveExpContext> exps = new TreeMap<>();
             if (initVal != null)
                 allocInitVal(dimensions, exps, 0, initVal);
-            Type type = dimensions.reversed().stream().reduce(curType, ArrayType::new, (type1, type2) -> type2);
+            List<Integer> tmpDimensions = new ArrayList<>(dimensions);
+            Collections.reverse(tmpDimensions);
+            Type type = tmpDimensions.stream().reduce(curType, ArrayType::new, (type1, type2) -> type2);
             Map<Integer, Number> values = exps.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, exp -> ((ConstantNumber) visitAdditiveExp(exp.getValue())).getValue()));
             module.addGlobal(symbolTable.makeGlobal(isConst, type, name, values));
             return null;
@@ -191,20 +200,18 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         entryBlock = new BasicBlock(curFunc);
         curFunc.add(entryBlock);
         retBlock = new BasicBlock(curFunc);
-        switch (curFunc.getType()) {
-            case BasicType.I32, BasicType.FLOAT -> {
-                AllocaInst allocaInst = new AllocaInst(entryBlock, curFunc.getType());
-                entryBlock.add(allocaInst);
-                curRetVal = allocaInst;
-                Instruction loadInst = new LoadInst(retBlock, curRetVal);
-                retBlock.add(loadInst);
-                retBlock.add(new RetInst(retBlock, loadInst));
-            }
-            case BasicType.VOID -> {
-                curRetVal = null;
-                retBlock.add(new RetInst(retBlock));
-            }
-            default -> throw new IllegalStateException("Unexpected value: " + curFunc.getType());
+        if (curFunc.getType().equals(BasicType.I32) || curFunc.getType().equals(BasicType.FLOAT)) {
+            AllocaInst allocaInst = new AllocaInst(entryBlock, curFunc.getType());
+            entryBlock.add(allocaInst);
+            curRetVal = allocaInst;
+            Instruction loadInst = new LoadInst(retBlock, curRetVal);
+            retBlock.add(loadInst);
+            retBlock.add(new RetInst(retBlock, loadInst));
+        } else if (curFunc.getType().equals(BasicType.VOID)) {
+            curRetVal = null;
+            retBlock.add(new RetInst(retBlock));
+        } else {
+            throw new IllegalStateException("Unexpected value: " + curFunc.getType());
         }
         curBlock = new BasicBlock(curFunc);
         curFunc.add(curBlock);
@@ -218,11 +225,14 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         }
         visitBlockStmt(ctx.blockStmt());
         if (curFunc.getType() != BasicType.VOID) {
-            Constant retVal = switch (curFunc.getType()) {
-                case BasicType.I32 -> new ConstantNumber(0);
-                case BasicType.FLOAT -> new ConstantNumber(0.0f);
-                default -> throw new IllegalStateException("Unexpected value: " + curFunc.getType());
-            };
+            Constant retVal;
+            if (curFunc.getType().equals(BasicType.I32)) {
+                retVal = new ConstantNumber(0);
+            } else if (curFunc.getType().equals(BasicType.FLOAT)) {
+                retVal = new ConstantNumber(0.0f);
+            } else {
+                throw new IllegalStateException("Unexpected value: " + curFunc.getType());
+            }
             entryBlock.add(new StoreInst(entryBlock, retVal, curRetVal));
         }
         entryBlock.add(new BranchInst(entryBlock, curFunc.get(1)));
@@ -237,7 +247,9 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         visitType(ctx.type());
         Type type = visitType(ctx.type());
         if (!ctx.LB().isEmpty()) {
-            for (SysYParser.AdditiveExpContext exp : ctx.additiveExp().reversed())
+            List<SysYParser.AdditiveExpContext> tmpAdditiveExps = new ArrayList<>(ctx.additiveExp());
+            Collections.reverse(tmpAdditiveExps);
+            for (SysYParser.AdditiveExpContext exp : tmpAdditiveExps)
                 type = new ArrayType(type, ((ConstantNumber) visitAdditiveExp(exp)).intValue());
             type = new PointerType(type);
         }
@@ -376,12 +388,12 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         if (ctx.additiveExp().isEmpty()) {
             return pointer;
         }
-        if (pointer.getType() instanceof PointerType pointerType && pointerType.baseType() instanceof PointerType) {
+        if (pointer.getType() instanceof PointerType && pointer.getType().baseType() instanceof PointerType) {
             Instruction inst = new LoadInst(curBlock, pointer);
             pointer = inst;
             curBlock.add(inst);
         }
-        List<Value> dimensions = ctx.additiveExp().stream().map(this::visitAdditiveExp).toList();
+        List<Value> dimensions = ctx.additiveExp().stream().map(this::visitAdditiveExp).collect(Collectors.toList());
         boolean isFirst = true;
         for (Value dimension : dimensions) {
             Instruction inst;
@@ -398,50 +410,61 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
 
     @Override
     public Value visitUnaryExp(SysYParser.UnaryExpContext ctx) {
-        return switch (ctx.getChildCount()) {
-            case 2 -> {
+        switch (ctx.getChildCount()) {
+            case 2:
                 Value value = visitUnaryExp(ctx.unaryExp());
-                if (value instanceof ConstantNumber number) {
-                    yield switch (ctx.getChild(0).getText()) {
-                        case "+" -> number;
-                        case "-" -> number.neg();
-                        case "!" -> number.lNot();
-                        default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(0).getText());
-                    };
+                if (value instanceof ConstantNumber) {
+                    ConstantNumber number = (ConstantNumber) value;
+                    switch (ctx.getChild(0).getText()) {
+                        case "+":
+                            return number;
+                        case "-":
+                            return number.neg();
+                        case "!":
+                            return number.lNot();
+                        default:
+                            throw new IllegalStateException("Unexpected value: " + ctx.getChild(0).getText());
+                    }
                 }
-                yield switch (ctx.getChild(0).getText()) {
-                    case "+" -> value;
-                    case "-" -> {
-                        Instruction inst = switch (value.getType()) {
-                            case BasicType.I1 -> new SExtInst(curBlock, BasicType.I32, value);
-                            case BasicType.I32 ->
-                                    new BinaryOperator(curBlock, BinaryOperator.Op.SUB, new ConstantNumber(0), value);
-                            case BasicType.FLOAT ->
-                                    new BinaryOperator(curBlock, BinaryOperator.Op.FSUB, new ConstantNumber(0.0f), value);
-                            default -> throw new IllegalStateException("Unexpected value: " + value.getType());
-                        };
+                switch (ctx.getChild(0).getText()) {
+                    case "+":
+                        return value;
+                    case "-": {
+                        Instruction inst;
+                        if (value.getType().equals(BasicType.I1)) {
+                            inst = new SExtInst(curBlock, BasicType.I32, value);
+                        } else if (value.getType().equals(BasicType.I32)) {
+                            inst = new BinaryOperator(curBlock, BinaryOperator.Op.SUB, new ConstantNumber(0), value);
+                        } else if (value.getType().equals(BasicType.FLOAT)) {
+                            inst = new BinaryOperator(curBlock, BinaryOperator.Op.FSUB, new ConstantNumber(0.0f), value);
+                        } else {
+                            throw new IllegalStateException("Unexpected value: " + value.getType());
+                        }
                         curBlock.add(inst);
-                        yield inst;
+                        return inst;
                     }
-                    case "!" -> {
-                        Instruction inst = switch (value.getType()) {
-                            case BasicType.I1 ->
-                                    new BinaryOperator(curBlock, BinaryOperator.Op.XOR, value, new ConstantNumber(true));
-                            case BasicType.I32 ->
-                                    new ICmpInst(curBlock, ICmpInst.Cond.EQ, value, new ConstantNumber(0));
-                            case BasicType.FLOAT ->
-                                    new FCmpInst(curBlock, FCmpInst.Cond.OEQ, value, new ConstantNumber(0.0f));
-                            default -> throw new IllegalStateException("Unexpected value: " + value.getType());
-                        };
+                    case "!": {
+                        Instruction inst;
+                        if (value.getType().equals(BasicType.I1)) {
+                            inst = new BinaryOperator(curBlock, BinaryOperator.Op.XOR, value, new ConstantNumber(true));
+                        } else if (value.getType().equals(BasicType.I32)) {
+                            inst = new ICmpInst(curBlock, ICmpInst.Cond.EQ, value, new ConstantNumber(0));
+                        } else if (value.getType().equals(BasicType.FLOAT)) {
+                            inst = new FCmpInst(curBlock, FCmpInst.Cond.OEQ, value, new ConstantNumber(0.0f));
+                        } else {
+                            throw new IllegalStateException("Unexpected value: " + value.getType());
+                        }
                         curBlock.add(inst);
-                        yield inst;
+                        return inst;
                     }
-                    default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(0).getText());
-                };
-            }
-            case 3 -> visitAdditiveExp(ctx.additiveExp());
-            default -> (Value) super.visitUnaryExp(ctx);
-        };
+                    default:
+                        throw new IllegalStateException("Unexpected value: " + ctx.getChild(0).getText());
+                }
+            case 3:
+                return visitAdditiveExp(ctx.additiveExp());
+            default:
+                return (Value) super.visitUnaryExp(ctx);
+        }
     }
 
     @Override
@@ -450,12 +473,14 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         if (pointer instanceof Argument)
             pointer = argToAllocaMap.get(pointer);
         Type type = pointer.getType();
-        if (pointer instanceof GlobalVariable global) {
+        if (pointer instanceof GlobalVariable) {
+            GlobalVariable global = (GlobalVariable) pointer;
             if (global.isConst() && global.isSingle())
                 return global.getValue();
             type = new PointerType(type);
         }
-        if (type.baseType() instanceof ArrayType arrayType) {
+        if (type.baseType() instanceof ArrayType) {
+            ArrayType arrayType = (ArrayType) type.baseType();
             Value[] indexes = new Value[arrayType.getArraySizes().size()];
             Arrays.fill(indexes, new ConstantNumber(0));
             Instruction inst = new GetElementPtrInst(curBlock, pointer, indexes);
@@ -526,7 +551,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         blocks.add(curBlock);
         for (int i = 0; i < ctx.landExp().size() - 1; i++) {
             BasicBlock block = new BasicBlock(curFunc);
-            curFunc.insertAfter(blocks.getLast(), block);
+            curFunc.insertAfter(blocks.get(blocks.size() - 1), block);
             blocks.add(block);
         }
         BasicBlock trueBlock = this.trueBlock;
@@ -538,10 +563,10 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Value value = visitLandExp(ctx.landExp(i));
             processValueCond(value);
         }
-        this.curBlock = blocks.getLast();
+        this.curBlock = blocks.get(blocks.size() - 1);
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
-        Value value = visitLandExp(ctx.landExp().getLast());
+        Value value = visitLandExp(ctx.landExp().get(ctx.landExp().size() - 1));
         processValueCond(value);
         return null;
     }
@@ -552,7 +577,7 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         blocks.add(curBlock);
         for (int i = 0; i < ctx.equalityExp().size() - 1; i++) {
             BasicBlock block = new BasicBlock(curFunc);
-            curFunc.insertAfter(blocks.getLast(), block);
+            curFunc.insertAfter(blocks.get(blocks.size() - 1), block);
             blocks.add(block);
         }
         BasicBlock trueBlock = this.trueBlock;
@@ -564,10 +589,10 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Value value = visitEqualityExp(ctx.equalityExp(i));
             processValueCond(value);
         }
-        this.curBlock = blocks.getLast();
+        this.curBlock = blocks.get(blocks.size() - 1);
         this.trueBlock = trueBlock;
         this.falseBlock = falseBlock;
-        Value value = visitEqualityExp(ctx.equalityExp().getLast());
+        Value value = visitEqualityExp(ctx.equalityExp().get(ctx.equalityExp().size() - 1));
         processValueCond(value);
         return null;
     }
@@ -580,19 +605,35 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Type targetType = automaticTypePromotion(iterVal.getType(), nextVal.getType());
             iterVal = typeConversion(iterVal, targetType);
             nextVal = typeConversion(nextVal, targetType);
-            Instruction ir = switch (ctx.getChild(2 * i - 1).getText()) {
-                case "==" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpInst(curBlock, ICmpInst.Cond.EQ, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpInst(curBlock, FCmpInst.Cond.OEQ, iterVal, nextVal);
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                case "!=" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpInst(curBlock, ICmpInst.Cond.NE, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpInst(curBlock, FCmpInst.Cond.UNE, iterVal, nextVal);
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(2 * i - 1).getText());
-            };
+            Instruction ir;
+            switch (ctx.getChild(2 * i - 1).getText()) {
+                case "==": {
+                    Instruction instruction;
+                    if (targetType.equals(BasicType.I32)) {
+                        instruction = new ICmpInst(curBlock, ICmpInst.Cond.EQ, iterVal, nextVal);
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        instruction = new FCmpInst(curBlock, FCmpInst.Cond.OEQ, iterVal, nextVal);
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    ir = instruction;
+                    break;
+                }
+                case "!=": {
+                    Instruction instruction;
+                    if (targetType.equals(BasicType.I32)) {
+                        instruction = new ICmpInst(curBlock, ICmpInst.Cond.NE, iterVal, nextVal);
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        instruction = new FCmpInst(curBlock, FCmpInst.Cond.UNE, iterVal, nextVal);
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    ir = instruction;
+                    break;
+                }
+                default:
+                    throw new IllegalStateException("Unexpected value: " + ctx.getChild(2 * i - 1).getText());
+            }
             curBlock.add(ir);
             iterVal = ir;
         }
@@ -607,29 +648,48 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Type targetType = automaticTypePromotion(iterVal.getType(), nextVal.getType());
             iterVal = typeConversion(iterVal, targetType);
             nextVal = typeConversion(nextVal, targetType);
-            Instruction inst = switch (ctx.getChild(2 * i - 1).getText()) {
-                case "<" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpInst(curBlock, ICmpInst.Cond.SLT, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpInst(curBlock, FCmpInst.Cond.OLT, iterVal, nextVal);
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                case ">" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpInst(curBlock, ICmpInst.Cond.SGT, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpInst(curBlock, FCmpInst.Cond.OGT, iterVal, nextVal);
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                case "<=" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpInst(curBlock, ICmpInst.Cond.SLE, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpInst(curBlock, FCmpInst.Cond.OLE, iterVal, nextVal);
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                case ">=" -> switch (targetType) {
-                    case BasicType.I32 -> new ICmpInst(curBlock, ICmpInst.Cond.SGE, iterVal, nextVal);
-                    case BasicType.FLOAT -> new FCmpInst(curBlock, FCmpInst.Cond.OGE, iterVal, nextVal);
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
-            };
+            Instruction inst;
+            String text = ctx.getChild(2 * i - 1).getText();
+            switch (text) {
+                case "<":
+                    if (targetType.equals(BasicType.I32)) {
+                        inst = new ICmpInst(curBlock, ICmpInst.Cond.SLT, iterVal, nextVal);
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        inst = new FCmpInst(curBlock, FCmpInst.Cond.OLT, iterVal, nextVal);
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    break;
+                case ">":
+                    if (targetType.equals(BasicType.I32)) {
+                        inst = new ICmpInst(curBlock, ICmpInst.Cond.SGT, iterVal, nextVal);
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        inst = new FCmpInst(curBlock, FCmpInst.Cond.OGT, iterVal, nextVal);
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    break;
+                case "<=":
+                    if (targetType.equals(BasicType.I32)) {
+                        inst = new ICmpInst(curBlock, ICmpInst.Cond.SLE, iterVal, nextVal);
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        inst = new FCmpInst(curBlock, FCmpInst.Cond.OLE, iterVal, nextVal);
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    break;
+                case ">=":
+                    if (targetType.equals(BasicType.I32)) {
+                        inst = new ICmpInst(curBlock, ICmpInst.Cond.SGE, iterVal, nextVal);
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        inst = new FCmpInst(curBlock, FCmpInst.Cond.OGE, iterVal, nextVal);
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
+            }
             curBlock.add(inst);
             iterVal = inst;
         }
@@ -644,28 +704,45 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Type targetType = automaticTypePromotion(iterVal.getType(), nextVal.getType());
             iterVal = typeConversion(iterVal, targetType);
             nextVal = typeConversion(nextVal, targetType);
-            if (iterVal instanceof ConstantNumber number1 && nextVal instanceof ConstantNumber number2) {
-                iterVal = switch (ctx.getChild(i * 2 - 1).getText()) {
-                    case "+" -> number1.add(number2);
-                    case "-" -> number1.sub(number2);
-                    default ->
-                            throw new IllegalStateException("Unexpected value: " + ctx.getChild(i * 2 - 1).getText());
-                };
+            if (iterVal instanceof ConstantNumber && nextVal instanceof ConstantNumber) {
+                ConstantNumber number1 = (ConstantNumber) iterVal;
+                ConstantNumber number2 = (ConstantNumber) nextVal;
+                switch (ctx.getChild(i * 2 - 1).getText()) {
+                    case "+":
+                        iterVal = number1.add(number2);
+                        break;
+                    case "-":
+                        iterVal = number1.sub(number2);
+                        break;
+                    default:
+                        throw new IllegalStateException("Unexpected value: " + ctx.getChild(i * 2 - 1).getText());
+                }
                 continue;
             }
-            Instruction inst = new BinaryOperator(curBlock, switch (ctx.getChild(i * 2 - 1).getText()) {
-                case "+" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryOperator.Op.ADD;
-                    case BasicType.FLOAT -> BinaryOperator.Op.FADD;
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                case "-" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryOperator.Op.SUB;
-                    case BasicType.FLOAT -> BinaryOperator.Op.FSUB;
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
-            }, iterVal, nextVal);
+            BinaryOperator.Op op;
+            switch (ctx.getChild(i * 2 - 1).getText()) {
+                case "+":
+                    if (targetType.equals(BasicType.I32)) {
+                        op = BinaryOperator.Op.ADD;
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        op = BinaryOperator.Op.FADD;
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    break;
+                case "-":
+                    if (targetType.equals(BasicType.I32)) {
+                        op = BinaryOperator.Op.SUB;
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        op = BinaryOperator.Op.FSUB;
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
+            }
+            Instruction inst = new BinaryOperator(curBlock, op, iterVal, nextVal);
             curBlock.add(inst);
             iterVal = inst;
         }
@@ -680,30 +757,51 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
             Type targetType = automaticTypePromotion(iterVal.getType(), nextVal.getType());
             iterVal = typeConversion(iterVal, targetType);
             nextVal = typeConversion(nextVal, targetType);
-            if (iterVal instanceof ConstantNumber number1 && nextVal instanceof ConstantNumber number2) {
-                iterVal = switch (ctx.getChild(i * 2 - 1).getText()) {
-                    case "*" -> number1.mul(number2);
-                    case "/" -> number1.div(number2);
-                    case "%" -> number1.rem(number2);
-                    default ->
-                            throw new IllegalStateException("Unexpected value: " + ctx.getChild(i * 2 - 1).getText());
-                };
+            if (iterVal instanceof ConstantNumber && nextVal instanceof ConstantNumber) {
+                ConstantNumber number1 = (ConstantNumber) iterVal;
+                ConstantNumber number2 = (ConstantNumber) nextVal;
+                switch (ctx.getChild(i * 2 - 1).getText()) {
+                    case "*":
+                        iterVal = number1.mul(number2);
+                        break;
+                    case "/":
+                        iterVal = number1.div(number2);
+                        break;
+                    case "%":
+                        iterVal = number1.rem(number2);
+                        break;
+                    default:
+                        throw new IllegalStateException("Unexpected value: " + ctx.getChild(i * 2 - 1).getText());
+                }
                 continue;
             }
-            Instruction inst = new BinaryOperator(curBlock, switch (ctx.getChild(i * 2 - 1).getText()) {
-                case "*" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryOperator.Op.MUL;
-                    case BasicType.FLOAT -> BinaryOperator.Op.FMUL;
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                case "/" -> switch (targetType) {
-                    case BasicType.I32 -> BinaryOperator.Op.SDIV;
-                    case BasicType.FLOAT -> BinaryOperator.Op.FDIV;
-                    default -> throw new IllegalStateException("Unexpected value: " + targetType);
-                };
-                case "%" -> BinaryOperator.Op.SREM;
-                default -> throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
-            }, iterVal, nextVal);
+            BinaryOperator.Op op;
+            switch (ctx.getChild(i * 2 - 1).getText()) {
+                case "*":
+                    if (targetType.equals(BasicType.I32)) {
+                        op = BinaryOperator.Op.MUL;
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        op = BinaryOperator.Op.FMUL;
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    break;
+                case "/":
+                    if (targetType.equals(BasicType.I32)) {
+                        op = BinaryOperator.Op.SDIV;
+                    } else if (targetType.equals(BasicType.FLOAT)) {
+                        op = BinaryOperator.Op.FDIV;
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + targetType);
+                    }
+                    break;
+                case "%":
+                    op = BinaryOperator.Op.SREM;
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected value: " + ctx.getChild(1).getText());
+            }
+            Instruction inst = new BinaryOperator(curBlock, op, iterVal, nextVal);
             curBlock.add(inst);
             iterVal = inst;
         }
@@ -727,20 +825,20 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
 
     private void processValueCond(Value value) {
         if (value != null) {
-            Value cond = switch (value.getType()) {
-                case BasicType.I1 -> value;
-                case BasicType.I32 -> {
-                    Instruction ir = new ICmpInst(curBlock, ICmpInst.Cond.NE, value, new ConstantNumber(0));
-                    curBlock.add(ir);
-                    yield ir;
-                }
-                case BasicType.FLOAT -> {
-                    Instruction ir = new FCmpInst(curBlock, FCmpInst.Cond.UNE, value, new ConstantNumber(0.0f));
-                    curBlock.add(ir);
-                    yield ir;
-                }
-                default -> throw new IllegalStateException("Unexpected value: " + value.getType());
-            };
+            Value cond;
+            if (value.getType().equals(BasicType.I1)) {
+                cond = value;
+            } else if (value.getType().equals(BasicType.I32)) {
+                Instruction ir = new ICmpInst(curBlock, ICmpInst.Cond.NE, value, new ConstantNumber(0));
+                curBlock.add(ir);
+                cond = ir;
+            } else if (value.getType().equals(BasicType.FLOAT)) {
+                Instruction ir = new FCmpInst(curBlock, FCmpInst.Cond.UNE, value, new ConstantNumber(0.0f));
+                curBlock.add(ir);
+                cond = ir;
+            } else {
+                throw new IllegalStateException("Unexpected value: " + value.getType());
+            }
             curBlock.add(new BranchInst(curBlock, cond, this.trueBlock, this.falseBlock));
         }
     }
@@ -756,58 +854,69 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
     private Value typeConversion(Value value, Type targetType) {
         if (value.getType() == targetType)
             return value;
-        if (value instanceof ConstantNumber number) {
-            return switch (targetType) {
-                case BasicType.I1 -> new ConstantNumber(number.intValue() != 0);
-                case BasicType.I32 -> new ConstantNumber(number.intValue());
-                case BasicType.FLOAT -> new ConstantNumber(number.floatValue());
-                default -> throw new IllegalStateException("Unexpected value: " + targetType);
-            };
+        if (value instanceof ConstantNumber) {
+            ConstantNumber number = (ConstantNumber) value;
+            Value value1;
+            if (targetType.equals(BasicType.I1)) {
+                value1 = new ConstantNumber(number.intValue() != 0);
+            } else if (targetType.equals(BasicType.I32)) {
+                value1 = new ConstantNumber(number.intValue());
+            } else if (targetType.equals(BasicType.FLOAT)) {
+                value1 = new ConstantNumber(number.floatValue());
+            } else {
+                throw new IllegalStateException("Unexpected value: " + targetType);
+            }
+            return value1;
         }
-        return switch (targetType) {
-            case BasicType.I1 -> switch (value.getType()) {
-                case BasicType.I32 -> {
-                    Instruction inst = new ICmpInst(curBlock, ICmpInst.Cond.NE, value, new ConstantNumber(0));
-                    curBlock.add(inst);
-                    yield inst;
-                }
-                case BasicType.FLOAT -> {
-                    Instruction inst = new FCmpInst(curBlock, FCmpInst.Cond.UNE, value, new ConstantNumber(0.0f));
-                    curBlock.add(inst);
-                    yield inst;
-                }
-                default -> value;
-            };
-            case BasicType.I32 -> switch (value.getType()) {
-                case BasicType.I1 -> {
-                    Instruction inst = new ZExtInst(curBlock, BasicType.I32, value);
-                    curBlock.add(inst);
-                    yield inst;
-                }
-                case BasicType.FLOAT -> {
-                    Instruction inst = new FPToSIInst(curBlock, BasicType.I32, value);
-                    curBlock.add(inst);
-                    yield inst;
-                }
-                default -> value;
-            };
-            case BasicType.FLOAT -> switch (value.getType()) {
-                case BasicType.I1 -> {
-                    Instruction inst = new ZExtInst(curBlock, BasicType.I32, value);
-                    curBlock.add(inst);
-                    inst = new SIToFPInst(curBlock, BasicType.FLOAT, inst);
-                    curBlock.add(inst);
-                    yield inst;
-                }
-                case BasicType.I32 -> {
-                    Instruction inst = new SIToFPInst(curBlock, BasicType.FLOAT, value);
-                    curBlock.add(inst);
-                    yield inst;
-                }
-                default -> value;
-            };
-            default -> value;
-        };
+        Value value2;
+        if (targetType.equals(BasicType.I1)) {
+            Value value1;
+            if (value.getType().equals(BasicType.I32)) {
+                Instruction inst = new ICmpInst(curBlock, ICmpInst.Cond.NE, value, new ConstantNumber(0));
+                curBlock.add(inst);
+                value1 = inst;
+            } else if (value.getType().equals(BasicType.FLOAT)) {
+                Instruction inst = new FCmpInst(curBlock, FCmpInst.Cond.UNE, value, new ConstantNumber(0.0f));
+                curBlock.add(inst);
+                value1 = inst;
+            } else {
+                value1 = value;
+            }
+            value2 = value1;
+        } else if (targetType.equals(BasicType.I32)) {
+            Value value1;
+            if (value.getType().equals(BasicType.I1)) {
+                Instruction inst = new ZExtInst(curBlock, BasicType.I32, value);
+                curBlock.add(inst);
+                value1 = inst;
+            } else if (value.getType().equals(BasicType.FLOAT)) {
+                Instruction inst = new FPToSIInst(curBlock, BasicType.I32, value);
+                curBlock.add(inst);
+                value1 = inst;
+            } else {
+                value1 = value;
+            }
+            value2 = value1;
+        } else if (targetType.equals(BasicType.FLOAT)) {
+            Value value1;
+            if (value.getType().equals(BasicType.I1)) {
+                Instruction inst = new ZExtInst(curBlock, BasicType.I32, value);
+                curBlock.add(inst);
+                inst = new SIToFPInst(curBlock, BasicType.FLOAT, inst);
+                curBlock.add(inst);
+                value1 = inst;
+            } else if (value.getType().equals(BasicType.I32)) {
+                Instruction inst = new SIToFPInst(curBlock, BasicType.FLOAT, value);
+                curBlock.add(inst);
+                value1 = inst;
+            } else {
+                value1 = value;
+            }
+            value2 = value1;
+        } else {
+            value2 = value;
+        }
+        return value2;
     }
 
     private static class SymbolTable extends LinkedList<Map<String, Value>> {
@@ -824,8 +933,8 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
 
         public Function getFunc(String name) {
             Value symbol = get(name);
-            if (symbol instanceof Function func)
-                return func;
+            if (symbol instanceof Function)
+                return (Function) symbol;
             throw new RuntimeException("Undefined function symbol: " + name);
         }
 
@@ -853,25 +962,33 @@ public class ASTVisitor extends SysYBaseVisitor<Object> {
         }
 
         public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Number value) {
-            GlobalVariable symbol = new GlobalVariable(isConst, type, name, new ConstantNumber(switch (type) {
-                case BasicType.I32 -> value.intValue();
-                case BasicType.FLOAT -> value.floatValue();
-                default -> throw new IllegalStateException("Unexpected value: " + type);
-            }));
+            Number number;
+            if (type.equals(BasicType.I32)) {
+                number = value.intValue();
+            } else if (type.equals(BasicType.FLOAT)) {
+                number = value.floatValue();
+            } else {
+                throw new IllegalStateException("Unexpected value: " + type);
+            }
+            GlobalVariable symbol = new GlobalVariable(isConst, type, name, new ConstantNumber(number));
             this.getFirst().put(name, symbol);
             return symbol;
         }
 
         public GlobalVariable makeGlobal(boolean isConst, Type type, String name, Map<Integer, Number> values) {
             Type rootType = type;
-            while (rootType instanceof ArrayType arrayType)
-                rootType = arrayType.baseType();
+            while (rootType instanceof ArrayType)
+                rootType = rootType.baseType();
             for (Map.Entry<Integer, Number> entry : values.entrySet()) {
-                entry.setValue(switch (rootType) {
-                    case BasicType.I32 -> entry.getValue().intValue();
-                    case BasicType.FLOAT -> entry.getValue().floatValue();
-                    default -> throw new IllegalStateException("Unexpected value: " + rootType);
-                });
+                Number number;
+                if (rootType.equals(BasicType.I32)) {
+                    number = entry.getValue().intValue();
+                } else if (rootType.equals(BasicType.FLOAT)) {
+                    number = entry.getValue().floatValue();
+                } else {
+                    throw new IllegalStateException("Unexpected value: " + rootType);
+                }
+                entry.setValue(number);
             }
             GlobalVariable symbol = new GlobalVariable(isConst, type, name, fuseConst(type, new TreeMap<>(values), 0));
             this.getFirst().put(name, symbol);

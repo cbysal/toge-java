@@ -7,6 +7,7 @@ import compile.llvm.ir.BranchInst;
 import compile.llvm.ir.Instruction;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class DomTreeAnalysis implements Analysis<Map<BasicBlock, Set<BasicBlock>>> {
     private final Function function;
@@ -27,7 +28,8 @@ public final class DomTreeAnalysis implements Analysis<Map<BasicBlock, Set<Basic
             prevMap.put(block, new HashSet<>());
         for (BasicBlock block : function) {
             for (Instruction inst : block) {
-                if (inst instanceof BranchInst branchInst) {
+                if (inst instanceof BranchInst) {
+                    BranchInst branchInst = (BranchInst) inst;
                     if (branchInst.isConditional()) {
                         BasicBlock trueBlock = branchInst.getOperand(1);
                         BasicBlock falseBlock = branchInst.getOperand(2);
@@ -46,7 +48,7 @@ public final class DomTreeAnalysis implements Analysis<Map<BasicBlock, Set<Basic
         if (!domMap.isEmpty())
             return;
         for (BasicBlock block : function)
-            domMap.put(block, new HashSet<>(function.stream().toList()));
+            domMap.put(block, new HashSet<>(function.stream().collect(Collectors.toList())));
         boolean changed;
         do {
             changed = false;
@@ -71,13 +73,17 @@ public final class DomTreeAnalysis implements Analysis<Map<BasicBlock, Set<Basic
             Set<BasicBlock> domBlocks = new HashSet<>(entry.getValue());
             domBlocks.remove(block);
             switch (domBlocks.size()) {
-                case 0 -> iDomMap.put(block, null);
-                case 1 -> {
+                case 0:
+                    iDomMap.put(block, null);
+                    break;
+                case 1:
                     BasicBlock domBlock = domBlocks.iterator().next();
                     iDomMap.put(block, domBlock);
                     toRemoveBlocks.add(domBlock);
-                }
-                default -> remainDom.put(block, domBlocks);
+                    break;
+                default:
+                    remainDom.put(block, domBlocks);
+                    break;
             }
         }
         while (!remainDom.isEmpty()) {

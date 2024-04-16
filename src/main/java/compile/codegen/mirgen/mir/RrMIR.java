@@ -65,49 +65,68 @@ public class RrMIR extends MIR {
 
     @Override
     public String toString() {
-        return switch (op) {
-            case CVT -> switch (dest.getType()) {
-                case BasicType.FLOAT -> {
+        switch (op) {
+            case CVT: {
+                String s;
+                if (dest.getType().equals(BasicType.FLOAT)) {
                     if (src.getType() != BasicType.I32)
                         throw new RuntimeException();
-                    yield String.format("fcvt.s.w\t%s,%s", dest, src);
-                }
-                case BasicType.I32 -> {
+                    s = String.format("fcvt.s.w\t%s,%s", dest, src);
+                } else if (dest.getType().equals(BasicType.I32)) {
                     if (src.getType() != BasicType.FLOAT)
                         throw new RuntimeException();
-                    yield String.format("fcvt.w.s\t%s,%s,rtz", dest, src);
+                    s = String.format("fcvt.w.s\t%s,%s,rtz", dest, src);
+                } else {
+                    throw new IllegalStateException("Unexpected value: " + dest.getType());
                 }
-                default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
-            };
-            case FABS -> String.format("fabs.s\t%s,%s", dest, src);
-            case NEG -> switch (dest.getType()) {
-                case BasicType.FLOAT -> {
+                return s;
+            }
+            case FABS:
+                return String.format("fabs.s\t%s,%s", dest, src);
+            case NEG: {
+                String s;
+                if (dest.getType().equals(BasicType.FLOAT)) {
                     if (src.getType() != BasicType.FLOAT)
                         throw new RuntimeException();
-                    yield String.format("fneg.s\t%s,%s", dest, src);
-                }
-                case BasicType.I32 -> {
+                    s = String.format("fneg.s\t%s,%s", dest, src);
+                } else if (dest.getType().equals(BasicType.I32)) {
                     if (src.getType() != BasicType.I32)
                         throw new RuntimeException();
-                    yield String.format("negw\t%s,%s", dest, src);
+                    s = String.format("negw\t%s,%s", dest, src);
+                } else {
+                    throw new IllegalStateException("Unexpected value: " + dest.getType());
                 }
-                default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
-            };
-            case MV -> String.format("%s\t%s,%s", switch (dest.getType()) {
-                case BasicType.FLOAT -> switch (src.getType()) {
-                    case BasicType.FLOAT -> "fmv.s";
-                    case BasicType.I32 -> "fmv.w.x";
-                    default -> throw new IllegalStateException("Unexpected value: " + src.getType());
-                };
-                case BasicType.I32 -> switch (src.getType()) {
-                    case BasicType.FLOAT -> "fmv.x.w";
-                    case BasicType.I32 -> "mv";
-                    default -> throw new IllegalStateException("Unexpected value: " + src.getType());
-                };
-                default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
-            }, dest, src);
-            case SEQZ, SNEZ -> String.format("%s\t%s,%s", op.toString().toLowerCase(), dest, src);
-        };
+                return s;
+            }
+            case MV: {
+                String s;
+                if (dest.getType().equals(BasicType.FLOAT)) {
+                    if (src.getType().equals(BasicType.FLOAT)) {
+                        s = "fmv.s";
+                    } else if (src.getType().equals(BasicType.I32)) {
+                        s = "fmv.w.x";
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + src.getType());
+                    }
+                } else if (dest.getType().equals(BasicType.I32)) {
+                    if (src.getType().equals(BasicType.FLOAT)) {
+                        s = "fmv.x.w";
+                    } else if (src.getType().equals(BasicType.I32)) {
+                        s = "mv";
+                    } else {
+                        throw new IllegalStateException("Unexpected value: " + src.getType());
+                    }
+                } else {
+                    throw new IllegalStateException("Unexpected value: " + dest.getType());
+                }
+                return String.format("%s\t%s,%s", s, dest, src);
+            }
+            case SEQZ:
+            case SNEZ:
+                return String.format("%s\t%s,%s", op.toString().toLowerCase(), dest, src);
+            default:
+                throw new IllegalArgumentException();
+        }
     }
 
     public enum Op {

@@ -5,11 +5,17 @@ public enum BasicType implements Type {
 
     @Override
     public int getSize() {
-        return switch (this) {
-            case I1 -> 1;
-            case I32, FLOAT -> 32;
-            case VOID -> 0;
-        };
+        switch (this) {
+            case I1:
+                return 1;
+            case I32:
+            case FLOAT:
+                return 32;
+            case VOID:
+                return 0;
+            default:
+                throw new IllegalArgumentException();
+        }
     }
 
     @Override

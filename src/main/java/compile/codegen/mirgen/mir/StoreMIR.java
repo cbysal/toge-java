@@ -61,14 +61,23 @@ public class StoreMIR extends MIR {
 
     @Override
     public String toString() {
-        return String.format("%s\t%s,%d(%s)", switch (src.getType()) {
-            case BasicType.FLOAT -> "fsw";
-            case BasicType.I32 -> switch (size) {
-                case 4 -> "sw";
-                case 8 -> "sd";
-                default -> throw new IllegalStateException("Unexpected value: " + size);
-            };
-            default -> throw new IllegalStateException("Unexpected value: " + src.getType());
-        }, src, imm, dest);
+        String s;
+        if (src.getType().equals(BasicType.FLOAT)) {
+            s = "fsw";
+        } else if (src.getType().equals(BasicType.I32)) {
+            switch (size) {
+                case 4:
+                    s = "sw";
+                    break;
+                case 8:
+                    s = "sd";
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected value: " + size);
+            }
+        } else {
+            throw new IllegalStateException("Unexpected value: " + src.getType());
+        }
+        return String.format("%s\t%s,%d(%s)", s, src, imm, dest);
     }
 }

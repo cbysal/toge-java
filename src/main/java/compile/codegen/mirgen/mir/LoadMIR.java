@@ -66,14 +66,23 @@ public class LoadMIR extends MIR {
 
     @Override
     public String toString() {
-        return String.format("%s\t%s,%d(%s)", switch (dest.getType()) {
-            case BasicType.FLOAT -> "flw";
-            case BasicType.I32 -> switch (size) {
-                case 4 -> "lw";
-                case 8 -> "ld";
-                default -> throw new IllegalStateException("Unexpected value: " + size);
-            };
-            default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
-        }, dest, imm, src);
+        String str;
+        if (dest.getType().equals(BasicType.FLOAT)) {
+            str = "flw";
+        } else if (dest.getType().equals(BasicType.I32)) {
+            switch (size) {
+                case 4:
+                    str = "lw";
+                    break;
+                case 8:
+                    str = "ld";
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected value: " + size);
+            }
+        } else {
+            throw new IllegalStateException("Unexpected value: " + dest.getType());
+        }
+        return String.format("%s\t%s,%d(%s)", str, dest, imm, src);
     }
 }

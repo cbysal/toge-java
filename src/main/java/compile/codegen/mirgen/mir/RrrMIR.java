@@ -100,18 +100,49 @@ public class RrrMIR extends MIR {
 
     @Override
     public String toString() {
-        return String.format("%s\t%s, %s, %s", switch (dest.getType()) {
-            case BasicType.FLOAT -> switch (op) {
-                case ADD, SUB, MUL, DIV -> String.format("f%s.s", op.toString().toLowerCase());
-                default -> throw new IllegalStateException("Unexpected value: " + op);
-            };
-            case BasicType.I32 -> switch (op) {
-                case ADD, ADDW, SUB, SUBW, MUL, MULW, DIV, DIVW, REMW, XOR, AND, SLT, SGT ->
-                        op.toString().toLowerCase();
-                case EQ, GE, GT, LE, LT -> String.format("f%s.s", op.toString().toLowerCase());
-            };
-            default -> throw new IllegalStateException("Unexpected value: " + dest.getType());
-        }, dest, src1, src2);
+        String s;
+        if (dest.getType().equals(BasicType.FLOAT)) {
+            switch (op) {
+                case ADD:
+                case SUB:
+                case MUL:
+                case DIV:
+                    s = String.format("f%s.s", op.toString().toLowerCase());
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected value: " + op);
+            }
+        } else if (dest.getType().equals(BasicType.I32)) {
+            switch (op) {
+                case ADD:
+                case ADDW:
+                case SUB:
+                case SUBW:
+                case MUL:
+                case MULW:
+                case DIV:
+                case DIVW:
+                case REMW:
+                case XOR:
+                case AND:
+                case SLT:
+                case SGT:
+                    s = op.toString().toLowerCase();
+                    break;
+                case EQ:
+                case GE:
+                case GT:
+                case LE:
+                case LT:
+                    s = String.format("f%s.s", op.toString().toLowerCase());
+                    break;
+                default:
+                    throw new IllegalArgumentException();
+            }
+        } else {
+            throw new IllegalStateException("Unexpected value: " + dest.getType());
+        }
+        return String.format("%s\t%s, %s, %s", s, dest, src1, src2);
     }
 
     public enum Op {

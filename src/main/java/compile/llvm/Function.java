@@ -51,7 +51,7 @@ public class Function extends Value implements Iterable<BasicBlock> {
     }
 
     public BasicBlock getFirst() {
-        return blocks.getFirst();
+        return blocks.get(0);
     }
 
     public void insertAfter(BasicBlock base, BasicBlock block) {

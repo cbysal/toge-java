@@ -24,8 +24,11 @@ public class PromotePass extends FunctionPass {
         Set<AllocaInst> allocas = new HashSet<>();
         for (BasicBlock block : func)
             for (Instruction inst : block)
-                if (inst instanceof AllocaInst allocaInst && isAllocaPromotable(allocaInst))
-                    allocas.add(allocaInst);
+                if (inst instanceof AllocaInst) {
+                    AllocaInst allocaInst = (AllocaInst) inst;
+                    if (isAllocaPromotable(allocaInst))
+                        allocas.add(allocaInst);
+                }
         return allocas;
     }
 
@@ -35,19 +38,22 @@ public class PromotePass extends FunctionPass {
         for (BasicBlock block : func) {
             Set<AllocaInst> varKill = new HashSet<>();
             for (Instruction inst : block) {
-                switch (inst) {
-                    case LoadInst loadInst -> {
-                        if (loadInst.getOperand(0) instanceof AllocaInst allocaInst && allocas.contains(allocaInst) && !varKill.contains(allocaInst)) {
+                if (Objects.requireNonNull(inst) instanceof LoadInst) {
+                    LoadInst loadInst = (LoadInst) inst;
+                    if (loadInst.getOperand(0) instanceof AllocaInst) {
+                        AllocaInst allocaInst = loadInst.getOperand(0);
+                        if (allocas.contains(allocaInst) && !varKill.contains(allocaInst)) {
                             globals.add(allocaInst);
                         }
                     }
-                    case StoreInst storeInst -> {
-                        if (storeInst.getOperand(1) instanceof AllocaInst allocaInst && allocas.contains(allocaInst)) {
+                } else if (inst instanceof StoreInst) {
+                    StoreInst storeInst = (StoreInst) inst;
+                    if (storeInst.getOperand(1) instanceof AllocaInst) {
+                        AllocaInst allocaInst = storeInst.getOperand(1);
+                        if (allocas.contains(allocaInst)) {
                             varKill.add(allocaInst);
                             blocks.computeIfAbsent(allocaInst, k -> new HashSet<>()).add(block);
                         }
-                    }
-                    default -> {
                     }
                 }
             }
@@ -74,17 +80,23 @@ public class PromotePass extends FunctionPass {
             counter.put(allocaInst, counter.getOrDefault(allocaInst, 0) + 1);
         }
         for (int i = 0; i < block.size(); i++) {
-            switch (block.get(i)) {
-                case StoreInst storeInst -> {
-                    if (storeInst.getOperand(1) instanceof AllocaInst allocaInst && allocaInsts.contains(allocaInst)) {
+            Instruction instruction = block.get(i);
+            if (Objects.requireNonNull(instruction) instanceof StoreInst) {
+                StoreInst storeInst = (StoreInst) instruction;
+                if (storeInst.getOperand(1) instanceof AllocaInst) {
+                    AllocaInst allocaInst = storeInst.getOperand(1);
+                    if (allocaInsts.contains(allocaInst)) {
                         block.remove(i);
                         i--;
                         replaceMap.computeIfAbsent(allocaInst, k -> new Stack<>()).push(storeInst.getOperand(0));
                         counter.put(allocaInst, counter.getOrDefault(allocaInst, 0) + 1);
                     }
                 }
-                case LoadInst loadInst -> {
-                    if (loadInst.getOperand(0) instanceof AllocaInst allocaInst && allocaInsts.contains(allocaInst)) {
+            } else if (instruction instanceof LoadInst) {
+                LoadInst loadInst = (LoadInst) instruction;
+                if (loadInst.getOperand(0) instanceof AllocaInst) {
+                    AllocaInst allocaInst = loadInst.getOperand(0);
+                    if (allocaInsts.contains(allocaInst)) {
                         block.remove(i);
                         i--;
                         if (replaceMap.containsKey(allocaInst)) {
@@ -94,12 +106,11 @@ public class PromotePass extends FunctionPass {
                         }
                     }
                 }
-                default -> {
-                }
             }
         }
         List<BasicBlock> nextBlocks = new ArrayList<>();
-        if (block.getLast() instanceof BranchInst branchInst) {
+        if (block.getLast() instanceof BranchInst) {
+            BranchInst branchInst = (BranchInst) block.getLast();
             if (branchInst.isConditional()) {
                 nextBlocks.add(branchInst.getOperand(1));
                 nextBlocks.add(branchInst.getOperand(2));
@@ -135,7 +146,7 @@ public class PromotePass extends FunctionPass {
     }
 
     private boolean isAllocaPromotable(AllocaInst allocaInst) {
-        return allocaInst.getType() instanceof PointerType pointerType && pointerType.baseType() instanceof BasicType;
+        return allocaInst.getType() instanceof PointerType && allocaInst.getType().baseType() instanceof BasicType;
     }
 
     private void prunePhi(Function func) {
@@ -174,9 +185,12 @@ public class PromotePass extends FunctionPass {
                     toContinue = true;
                     for (Use use : replaceValue.getUses()) {
                         use.setValue(replaceValue);
-                        if (replaceValue instanceof PHINode replacePhiNode && !marked.contains(replacePhiNode)) {
-                            workList.offer(replacePhiNode);
-                            marked.add(replacePhiNode);
+                        if (replaceValue instanceof PHINode) {
+                            PHINode replacePhiNode = (PHINode) replaceValue;
+                            if (!marked.contains(replacePhiNode)) {
+                                workList.offer(replacePhiNode);
+                                marked.add(replacePhiNode);
+                            }
                         }
                     }
                 }
@@ -209,9 +223,12 @@ public class PromotePass extends FunctionPass {
         for (BasicBlock block : func) {
             for (int i = 0; i < block.size(); i++) {
                 Instruction inst = block.get(i);
-                if (inst instanceof AllocaInst allocaInst && isAllocaPromotable(allocaInst)) {
-                    block.remove(i);
-                    i--;
+                if (inst instanceof AllocaInst) {
+                    AllocaInst allocaInst = (AllocaInst) inst;
+                    if (isAllocaPromotable(allocaInst)) {
+                        block.remove(i);
+                        i--;
+                    }
                 }
             }
         }

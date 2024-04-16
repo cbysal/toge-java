@@ -24,7 +24,8 @@ public class BranchOptPass extends FunctionPass {
             BasicBlock block = func.get(i);
             Set<Use> uses = block.getUses();
             if (uses.isEmpty()) {
-                if (block.getLast() instanceof BranchInst branchInst) {
+                if (block.getLast() instanceof BranchInst) {
+                    BranchInst branchInst = (BranchInst) block.getLast();
                     Set<BasicBlock> nextBlocks = new HashSet<>();
                     if (branchInst.isConditional()) {
                         nextBlocks.add(branchInst.getOperand(1));
@@ -34,7 +35,8 @@ public class BranchOptPass extends FunctionPass {
                     }
                     for (BasicBlock nextBlock : nextBlocks) {
                         for (Instruction inst : nextBlock) {
-                            if (inst instanceof PHINode phiNode) {
+                            if (inst instanceof PHINode) {
+                                PHINode phiNode = (PHINode) inst;
                                 for (int j = 0; j < phiNode.size(); j++) {
                                     if (phiNode.getBlockValue(j).getLeft() == block) {
                                         phiNode.remove(j);
@@ -57,7 +59,8 @@ public class BranchOptPass extends FunctionPass {
                         inst.setBlock(prevBlock);
                         prevBlock.add(inst);
                     }
-                    if (block.getLast() instanceof BranchInst nextBranchInst) {
+                    if (block.getLast() instanceof BranchInst) {
+                        BranchInst nextBranchInst = (BranchInst) block.getLast();
                         Set<BasicBlock> nextBlocks = new HashSet<>();
                         if (nextBranchInst.isConditional()) {
                             nextBlocks.add(nextBranchInst.getOperand(1));
@@ -67,7 +70,8 @@ public class BranchOptPass extends FunctionPass {
                         }
                         for (BasicBlock nextBlock : nextBlocks) {
                             for (Instruction inst : nextBlock) {
-                                if (inst instanceof PHINode phiNode) {
+                                if (inst instanceof PHINode) {
+                                    PHINode phiNode = (PHINode) inst;
                                     for (int j = 0; j < phiNode.size(); j++) {
                                         if (phiNode.getBlockValue(j).getLeft() == block) {
                                             phiNode.setBlockValue(j, prevBlock);
@@ -85,21 +89,26 @@ public class BranchOptPass extends FunctionPass {
         }
         for (int i = 0; i < func.size(); i++) {
             BasicBlock block = func.get(i);
-            if (block.getLast() instanceof BranchInst branchInst && branchInst.isConditional() && branchInst.getOperand(0) instanceof ConstantNumber condValue) {
-                branchInst.remove(0);
-                Use use = branchInst.remove(condValue.intValue());
-                BasicBlock nextBlock = (BasicBlock) use.getValue();
-                for (Instruction inst : nextBlock) {
-                    if (inst instanceof PHINode phiNode) {
-                        for (int j = 0; j < phiNode.size(); j++) {
-                            if (phiNode.getBlockValue(j).getLeft() == block) {
-                                phiNode.remove(j);
-                                j--;
+            if (block.getLast() instanceof BranchInst) {
+                BranchInst branchInst = (BranchInst) block.getLast();
+                if (branchInst.isConditional() && branchInst.getOperand(0) instanceof ConstantNumber) {
+                    ConstantNumber condValue = branchInst.getOperand(0);
+                    branchInst.remove(0);
+                    Use use = branchInst.remove(condValue.intValue());
+                    BasicBlock nextBlock = (BasicBlock) use.getValue();
+                    for (Instruction inst : nextBlock) {
+                        if (inst instanceof PHINode) {
+                            PHINode phiNode = (PHINode) inst;
+                            for (int j = 0; j < phiNode.size(); j++) {
+                                if (phiNode.getBlockValue(j).getLeft() == block) {
+                                    phiNode.remove(j);
+                                    j--;
+                                }
                             }
                         }
                     }
+                    modified = true;
                 }
-                modified = true;
             }
         }
         return modified;

@@ -38,53 +38,110 @@ public final class MIRBinaryTrans {
     static void transBinaryImmReg(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryOperator binaryOperator, ConstantNumber value, VReg reg) {
         VReg target = instRegMap.get(binaryOperator);
         switch (binaryOperator.op) {
-            case ADD -> transAddRegImmI(irs, target, reg, value.intValue());
-            case FADD -> transAddRegImmF(irs, target, reg, value.floatValue());
-            case SDIV -> transDivImmRegI(irs, target, value.intValue(), reg);
-            case FDIV -> transDivImmRegF(irs, target, value.floatValue(), reg);
-            case SREM -> transModImmReg(irs, target, value.intValue(), reg);
-            case MUL -> transMulRegImmI(irs, target, reg, value.intValue());
-            case FMUL -> transMulRegImmF(irs, target, reg, value.floatValue());
-            case SUB -> transSubImmRegI(irs, target, value.intValue(), reg);
-            case FSUB -> transSubImmRegF(irs, target, value.floatValue(), reg);
-            default -> throw new RuntimeException();
+            case ADD:
+                transAddRegImmI(irs, target, reg, value.intValue());
+                break;
+            case FADD:
+                transAddRegImmF(irs, target, reg, value.floatValue());
+                break;
+            case SDIV:
+                transDivImmRegI(irs, target, value.intValue(), reg);
+                break;
+            case FDIV:
+                transDivImmRegF(irs, target, value.floatValue(), reg);
+                break;
+            case SREM:
+                transModImmReg(irs, target, value.intValue(), reg);
+                break;
+            case MUL:
+                transMulRegImmI(irs, target, reg, value.intValue());
+                break;
+            case FMUL:
+                transMulRegImmF(irs, target, reg, value.floatValue());
+                break;
+            case SUB:
+                transSubImmRegI(irs, target, value.intValue(), reg);
+                break;
+            case FSUB:
+                transSubImmRegF(irs, target, value.floatValue(), reg);
+                break;
+            default:
+                throw new RuntimeException();
         }
     }
 
     static void transBinaryRegImm(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryOperator binaryOperator, VReg reg, ConstantNumber value) {
         VReg target = instRegMap.get(binaryOperator);
         switch (binaryOperator.op) {
-            case ADD -> transAddRegImmI(irs, target, reg, value.intValue());
-            case FADD -> transAddRegImmF(irs, target, reg, value.floatValue());
-            case SDIV -> transDivRegImmI(irs, target, reg, value.intValue());
-            case FDIV -> transDivRegImmF(irs, target, reg, value.floatValue());
-            case SREM -> transModRegImm(irs, target, reg, value.intValue());
-            case MUL -> transMulRegImmI(irs, target, reg, value.intValue());
-            case FMUL -> transMulRegImmF(irs, target, reg, value.floatValue());
-            case SUB -> transSubRegImmI(irs, target, reg, value.intValue());
-            case FSUB -> transSubRegImmF(irs, target, reg, value.floatValue());
-            case XOR -> {
+            case ADD:
+                transAddRegImmI(irs, target, reg, value.intValue());
+                break;
+            case FADD:
+                transAddRegImmF(irs, target, reg, value.floatValue());
+                break;
+            case SDIV:
+                transDivRegImmI(irs, target, reg, value.intValue());
+                break;
+            case FDIV:
+                transDivRegImmF(irs, target, reg, value.floatValue());
+                break;
+            case SREM:
+                transModRegImm(irs, target, reg, value.intValue());
+                break;
+            case MUL:
+                transMulRegImmI(irs, target, reg, value.intValue());
+                break;
+            case FMUL:
+                transMulRegImmF(irs, target, reg, value.floatValue());
+                break;
+            case SUB:
+                transSubRegImmI(irs, target, reg, value.intValue());
+                break;
+            case FSUB:
+                transSubRegImmF(irs, target, reg, value.floatValue());
+                break;
+            case XOR:
                 VReg midReg = new VReg(BasicType.I32);
                 MIROpHelper.loadImmToReg(irs, midReg, value.intValue());
                 irs.add(new RrrMIR(RrrMIR.Op.XOR, target, reg, midReg));
-            }
-            default -> throw new RuntimeException();
+                break;
+            default:
+                throw new RuntimeException();
         }
     }
 
     static void transBinaryRegReg(List<MIR> irs, Map<Instruction, VReg> instRegMap, BinaryOperator binaryOperator, VReg reg1, VReg reg2) {
         VReg target = instRegMap.get(binaryOperator);
         switch (binaryOperator.op) {
-            case ADD -> transAddRegRegI(irs, target, reg1, reg2);
-            case FADD -> transAddRegRegF(irs, target, reg1, reg2);
-            case SDIV -> transDivRegRegI(irs, target, reg1, reg2);
-            case FDIV -> transDivRegRegF(irs, target, reg1, reg2);
-            case SREM -> transModRegReg(irs, target, reg1, reg2);
-            case MUL -> transMulRegRegI(irs, target, reg1, reg2);
-            case FMUL -> transMulRegRegF(irs, target, reg1, reg2);
-            case SUB -> transSubRegRegI(irs, target, reg1, reg2);
-            case FSUB -> transSubRegRegF(irs, target, reg1, reg2);
-            default -> throw new RuntimeException();
+            case ADD:
+                transAddRegRegI(irs, target, reg1, reg2);
+                break;
+            case FADD:
+                transAddRegRegF(irs, target, reg1, reg2);
+                break;
+            case SDIV:
+                transDivRegRegI(irs, target, reg1, reg2);
+                break;
+            case FDIV:
+                transDivRegRegF(irs, target, reg1, reg2);
+                break;
+            case SREM:
+                transModRegReg(irs, target, reg1, reg2);
+                break;
+            case MUL:
+                transMulRegRegI(irs, target, reg1, reg2);
+                break;
+            case FMUL:
+                transMulRegRegF(irs, target, reg1, reg2);
+                break;
+            case SUB:
+                transSubRegRegI(irs, target, reg1, reg2);
+                break;
+            case FSUB:
+                transSubRegRegF(irs, target, reg1, reg2);
+                break;
+            default:
+                throw new RuntimeException();
         }
     }
 

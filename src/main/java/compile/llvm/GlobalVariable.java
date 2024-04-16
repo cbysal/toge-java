@@ -11,6 +11,7 @@ import compile.llvm.value.User;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class GlobalVariable extends User {
     private final boolean isConst;
@@ -31,7 +32,8 @@ public class GlobalVariable extends User {
     public List<Integer> getDimensions() {
         List<Integer> dimensions = new ArrayList<>();
         Type type = this.type;
-        while (type instanceof ArrayType arrayType) {
+        while (type instanceof ArrayType) {
+            ArrayType arrayType = (ArrayType) type;
             dimensions.add(arrayType.arraySize());
             type = arrayType.baseType();
         }
@@ -65,15 +67,14 @@ public class GlobalVariable extends User {
         List<Integer> dimensions = getDimensions();
         Constant value = this.value;
         for (int dimension : dimensions) {
-            switch (value) {
-                case ConstantArray constantArray -> {
-                    value = constantArray.getValues().get(index / dimension);
-                    index %= dimension;
-                }
-                case ConstantZero constantZero -> {
-                    return 0;
-                }
-                default -> throw new IllegalStateException("Unexpected value: " + value);
+            if (Objects.requireNonNull(value) instanceof ConstantArray) {
+                ConstantArray constantArray = (ConstantArray) value;
+                value = constantArray.getValues().get(index / dimension);
+                index %= dimension;
+            } else if (value instanceof ConstantZero) {
+                return 0;
+            } else {
+                throw new IllegalStateException("Unexpected value: " + value);
             }
         }
         return ((ConstantNumber) value).floatValue();
@@ -88,20 +89,19 @@ public class GlobalVariable extends User {
 
     public int getInt(int index) {
         List<Integer> dimensions = new ArrayList<>(getDimensions());
-        dimensions.removeFirst();
+        dimensions.remove(0);
         dimensions.add(1);
         Constant value = this.value;
         for (int i = 0; i < dimensions.size(); i++) {
             int dimension = dimensions.get(i);
-            switch (value) {
-                case ConstantArray constantArray -> {
-                    value = constantArray.getValues().get(index / dimensions.stream().skip(i).reduce(1, Math::multiplyExact));
-                    index %= dimension;
-                }
-                case ConstantZero constantZero -> {
-                    return 0;
-                }
-                default -> throw new IllegalStateException("Unexpected value: " + value);
+            if (Objects.requireNonNull(value) instanceof ConstantArray) {
+                ConstantArray constantArray = (ConstantArray) value;
+                value = constantArray.getValues().get(index / dimensions.stream().skip(i).reduce(1, Math::multiplyExact));
+                index %= dimension;
+            } else if (value instanceof ConstantZero) {
+                return 0;
+            } else {
+                throw new IllegalStateException("Unexpected value: " + value);
             }
         }
         return ((ConstantNumber) value).intValue();

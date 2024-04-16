@@ -1,6 +1,16 @@
 package compile.llvm.type;
 
-public record PointerType(Type baseType) implements Type {
+public final class PointerType implements Type {
+    private final Type baseType;
+
+    public PointerType(Type baseType) {
+        this.baseType = baseType;
+    }
+
+    public Type baseType() {
+        return baseType;
+    }
+
     @Override
     public int getSize() {
         return 64;
